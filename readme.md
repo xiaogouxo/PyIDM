@@ -1,4 +1,4 @@
-Welcom to Hanash download manager a downloader with a very fast multi-connections downloading speed.
+Welcom to Hanash download manager a multi-connections downloader with a great downloading speed.
 
 it downloads any file type, with ability to resume unfinished ones
 
