@@ -8,6 +8,22 @@ please note "Hanash DM" uses pycurl a wrapper of famous curl which will try to u
 
 Developed in Python, based on "pyCuRL/curl", "youtube_dl", and designed by "PySimpleGUI"
 
+
+
+-----Requirements -------
+Python 3+
+
+required modules:
+pycurl
+certifi
+PySimpleGUI
+mimetypes
+pyperclip
+plyer
+pillows
+youtube_dl
+
+
 your feedback is most welcomed on 
 email: mahmoud_elshahhat@yahoo.com
 
