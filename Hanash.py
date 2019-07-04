@@ -21,11 +21,10 @@ import plyer  # for os notification messages
 version = '2.7'
 test = False  # when active all exceptions will be re-raised
 
-about_notes = """Welcom to Hanash download manager a downloader with a very fast multi-connections downloading speed.
-it downloads any file type, with ability to resume unfinished ones
-also it can download videos and playlists from youtube and other stream sites will be supported soon.
+about_notes = """Hanash is a general purpose multi-connections download manager based on python, 
+it downloads any file type, plus videos, and playlists from youtube.
 
-please note "Hanash DM" uses pycurl a wrapper of famous curl which will try to use your max internet speed and will leave no internet to other applications on the same network, you can use "limit speed" option in setting window 
+please note "Hanash DM" uses PycURL, a Python interface to libcurl which will try to use your max internet speed, you can use "limit speed" option in setting window 
 
 Developed in Python, based on "pyCuRL/curl", "youtube_dl", and designed by "PySimpleGUI"
 
