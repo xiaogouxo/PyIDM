@@ -25,6 +25,8 @@ youtube_dl
 
 
 you can run one line command to install packages using pip:
+
+
 pip install pycurl youtube_dl certifi PySimpleGUI pyperclip plyer pillow
 
 
