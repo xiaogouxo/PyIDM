@@ -396,7 +396,6 @@ class MainWindow:
 
         except Exception as e:
             print('gui not updated:', e)
-            raise e
 
     def enable(self):
         self.disabled = False
@@ -763,6 +762,8 @@ class MainWindow:
     def start_download(self, d, silent=None):
         if d is None:
             return
+
+        log('start download fn>', d.name)
 
         # validate save folder
         try:
@@ -1331,22 +1332,20 @@ class MainWindow:
             if os.path.isfile(os.path.join(self.d.folder, video.name)):
                 log(f'file name: {video.name} already exist, skip downloading this file')
                 continue
-            else:
-                break
 
-        video.url = stream.url
-        video.type = stream.extension
-        video.size = stream.filesize
+            video.url = stream.url
+            video.type = stream.extension
+            video.size = stream.filesize
 
-        resume_support = True if video.size else False
+            resume_support = True if video.size else False
 
-        log('download playlist fn>', 'stream', repr(stream))
-        log(f'download playlist fn> media size= {video.size}, name= {video.name}')
+            log('download playlist fn>', 'stream', repr(stream))
+            log(f'download playlist fn> media size= {video.size}, name= {video.name}')
 
-        # start download
-        d = DownloadItem(url=video.webpage_url, eff_url=video.url, name=video.name, size=video.size,
-                         folder=self.d.folder, max_connections=self.max_connections, resumable=resume_support)
-        self.start_download(d, silent=True)
+            # start download
+            d = DownloadItem(url=video.webpage_url, eff_url=video.url, name=video.name, size=video.size,
+                             folder=self.d.folder, max_connections=self.max_connections, resumable=resume_support)
+            self.start_download(d, silent=True)
     # endregion
 
     # region General
@@ -1415,13 +1414,13 @@ class MainWindow:
 
 class DownloadWindow:
 
-    def __init__(self, d=None, q=None):
+    def __init__(self, d=None):
         self.d = d
         self.q = d.q
         self.window = None
         self.event = None
         self.values = None
-        self.timeout = 50
+        self.timeout = 10
         self.timer = 0
         self.log_text = ''
 
