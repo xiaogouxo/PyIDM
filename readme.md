@@ -23,7 +23,7 @@ youtube_dl
 you can run one line command to install required packages:
 
 
-"pip install pycurl youtube_dl certifi PySimpleGUI pyperclip plyer pillow"
+"pip "
 
 note for pyperclip:
 Pyperclip is a cross-platform Python module for copy and paste clipboard functions. it is being used if you want to monitor clipboard for files urls and it will be processed automatically by Hanash DM.

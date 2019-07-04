@@ -359,11 +359,9 @@ class MainWindow:
                 except:
                     pass
 
-                # in case we use youtube-dl debug callback
-                if v.startswith('[download] Downloading video'):
-                    v = v.replace('[download] Downloading video', 'Downloading video info')
-                    v = v.strip('\n')
-                    self.set_status(v)
+                # show youtube_dl activity in status text
+                if'[youtube]' in v:
+                    self.set_status(v.strip('\n'))
 
             elif k == 'url':
                 self.window.Element('url').Update(v)
