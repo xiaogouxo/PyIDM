@@ -1,13 +1,9 @@
-Welcom to Hanash download manager a multi-connections downloader with a great downloading speed.
+Hanash is a general purpose multi-connections download manager based on python, 
+it downloads any file type, plus videos, and playlists from youtube.
 
-it downloads any file type, with ability to resume unfinished ones
-
-also it can download videos and playlists from youtube and other stream sites will be supported soon.
-
-please note "Hanash DM" uses pycurl a wrapper of famous curl which will try to use your max internet speed, you can use "limit speed" option in setting window 
+please note "Hanash DM" uses PycURL, a Python interface to libcurl which will try to use your max internet speed, you can use "limit speed" option in setting window 
 
 Developed in Python, based on "pyCuRL/curl", "youtube_dl", and designed by "PySimpleGUI"
-
 
 
 -----Requirements -------
@@ -24,15 +20,18 @@ pillow
 youtube_dl
 
 
-you can run one line command to install packages using pip:
+you can run one line command to install required packages:
 
 
-pip install pycurl youtube_dl certifi PySimpleGUI pyperclip plyer pillow
+"pip install pycurl youtube_dl certifi PySimpleGUI pyperclip plyer pillow"
+
+note for pyperclip:
+Pyperclip is a cross-platform Python module for copy and paste clipboard functions. it is being used if you want to monitor clipboard for files urls and it will be processed automatically by Hanash DM.
+On Linux, this module makes use of the xclip or xsel commands, which should come with the os. Otherwise run "sudo apt-get install xclip" on Debian like or "sudo pacman -S xclip" on archlinux
 
 
 
-your feedback is most welcomed on 
-email: mahmoud_elshahhat@yahoo.com
+your feedback is most welcomed on https://github.com/Aboghazala/Hanash or email to mahmoud_elshahhat@yahoo.com
 
 Thanks,
 Mahmoud Elshahat 
