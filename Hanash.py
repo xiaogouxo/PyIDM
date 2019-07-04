@@ -239,8 +239,8 @@ class MainWindow:
     # region gui design
     def create_window(self):
         # main tab
-        main_layout = [[sg.Text(' Hanash Download Manager', font='Helvetica 20', size=(37, 1), justification='center'),
-                        sg.Button('', image_filename=r'icons/info025.png', size=(25, 25), key='about')],
+        main_layout = [[sg.Button('', image_filename=r'icons/info025.png', size=(25, 25), key='about'), 
+                        sg.Text(' Hanash Download Manager', font='Helvetica 20', size=(37, 1), justification='center')],
 
                        # url
                        [sg.Text('URL:')],
@@ -692,7 +692,10 @@ class MainWindow:
 
             # download folder
             folder = self.setting.get('folder', None)
-            self.d.folder = folder if os.path.isdir(folder) else os.path.join(os.path.expanduser("~"), 'Downloads')
+            if folder and os.path.isdir(folder):
+                self.d.folder = folder 
+            else:
+                self.d.folder = os.path.join(os.path.expanduser("~"), 'Downloads')
 
             # clipboard monitor
             global monitor_clipboard
