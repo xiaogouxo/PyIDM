@@ -18,7 +18,7 @@ from PIL import Image
 from collections import deque
 import plyer  # for os notification messages
 
-version = '2.7.1'
+version = '2.7.2'
 test = False  # when active all exceptions will be re-raised
 
 about_notes = """Hanash is a general purpose multi-connections download manager based on python, 
