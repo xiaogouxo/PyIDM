@@ -296,7 +296,7 @@ class MainWindow:
                            sg.Combo(values=themes, default_value=self.theme, size=(15, 1), enable_events=True,
                                     key='themes')],
                           [sg.T('Speed Limit:'), sg.Input('', size=(4, 1), key='speed_limit', enable_events=True),
-                           sg.T('kb/s')],
+                           sg.T('kb/s  *zero or blank means no limit')],
                           [sg.Checkbox('Monitor copied urls in clipboard', default=monitor_clipboard, key='monitor',
                                        enable_events=True)],
                           [sg.Checkbox("Don't show download window", key='hide_download_window',
@@ -640,10 +640,8 @@ class MainWindow:
 
             # clean d_list
             for d in d_list:
-                status = d.status
-                if status not in [Status.completed]:
-                    status = Status.completed if d.remaining_parts == 0 else Status.cancelled
-                    d.status = status
+                status = Status.completed if d.progress >= 100 else Status.cancelled
+                d.status = status
 
                 d.time_left = '---'
                 d.speed = '---'
@@ -786,7 +784,7 @@ class MainWindow:
         if os.path.isfile(os.path.join(d.folder, d.name)):
             #  show dialogue
             msg = 'File with the same name already exist in ' + self.d.folder + '\n Do you want to overwrite file?'
-            response = sg.PopupOKCancel(msg)
+            response = sg.PopupYesNo(msg)
 
             if response == 'No':
                 log('Download cancelled by user')
@@ -1597,8 +1595,6 @@ class Connection:
 
     def reuse(self, seg='0-0', speed_limit=0):
         """Recycle same object again, better for performance as recommended by curl docs"""
-        self.q.log('start worker', self.tag, 'seg', self.seg, 'range:', self.seg_range, 'SL=', self.speed_limit)
-
         self.reset()
 
         # assign new values
@@ -1607,6 +1603,8 @@ class Connection:
         self.target_size = get_seg_size(seg)
         self.f_name = os.path.join(self.temp_folder, seg)  # segment name with full path
         self.speed_limit = speed_limit
+
+        self.q.log('start worker', self.tag, 'seg', self.seg, 'range:', self.seg_range, 'SL=', self.speed_limit)
 
         # run
         if os.path.exists(self.f_name) and self.target_size and self.resumable:
@@ -1639,8 +1637,16 @@ class Connection:
         # in case the server sent extra bytes from last session by mistake, start over
         elif self.actual_size > self.target_size:
             self.q.log(f'found seg {self.seg} oversized {self.actual_size}')
-            self.mode = 'wb'  # open file for re-write
-            self.start_size = 0
+            # self.mode = 'wb'  # open file for re-write
+            # self.start_size = 0
+            # truncate file
+            with open(self.f_name, 'rb+') as f:
+                f.truncate(self.target_size)
+            self.report_completed()
+
+            # send downloaded value to brain, -1 means this data from local disk, not from server side
+            self.q.data[self.tag].put((-1, self.target_size))
+            self.done_before = True
 
         else:  # should resume
             # set new range and file open mode
@@ -1709,9 +1715,9 @@ class Connection:
         self.c.setopt(pycurl.LOW_SPEED_TIME, 60)
 
         # verbose
-        # self.c.setopt(pycurl.VERBOSE, 1)
+        self.c.setopt(pycurl.VERBOSE, 0)
 
-        # # very important, it tells curl not to include headers with the body
+        # # it tells curl not to include headers with the body
         # self.c.setopt(pycurl.HEADEROPT, 0)
 
         # call back functions
@@ -1772,7 +1778,7 @@ class Connection:
 
         except Exception as e:
             if any(statement in repr(e) for statement in ('Failed writing body', 'Callback aborted')):
-                error = 'aborted by user'
+                error = f'worker {self.tag} terminated, {e}'
             else:
                 error = repr(e)
 
@@ -1829,8 +1835,8 @@ class DownloadItem:
         self._status = status
         self.remaining_parts = remaining_parts
         # animation
-        self.animation_icon = {Status.downloading: '►►', Status.pending: '&', Status.completed: '✔',
-                               Status.cancelled: ' '}
+        self.animation_icon = {Status.downloading: '►►', Status.pending: 'P', Status.completed: '✔',
+                               Status.cancelled: '--'}
         self.i = ''  # animation image
         self._part_size = part_size
 
@@ -2302,7 +2308,7 @@ def brain(d=None, speed_limit=0):
 def thread_manager(d, barrier, speed_limit):
     q = d.q
     # create worker/connection list
-    connections = [Connection(tag=i, url=d.url, temp_folder=d.temp_folder, q=q, resumable=d.resumable) for i in
+    connections = [Connection(tag=i, url=d.eff_url, temp_folder=d.temp_folder, q=q, resumable=d.resumable) for i in
                    range(d.max_connections)]
 
     def stop_all_workers():
