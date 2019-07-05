@@ -18,7 +18,7 @@ from PIL import Image
 from collections import deque
 import plyer  # for os notification messages
 
-version = '2.7'
+version = '2.7.1'
 test = False  # when active all exceptions will be re-raised
 
 about_notes = """Hanash is a general purpose multi-connections download manager based on python, 
@@ -211,7 +211,7 @@ class MainWindow:
         # settings
         self.setting = dict()
         self.max_concurrent_downloads = 3
-        self.hide_download_window = True
+        self.hide_download_window = False
         self.theme = 'Green'  # default to Green
 
         # log
@@ -762,8 +762,6 @@ class MainWindow:
     def start_download(self, d, silent=None):
         if d is None:
             return
-
-        log('start download fn>', d.name)
 
         # validate save folder
         try:
