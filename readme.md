@@ -5,27 +5,29 @@ please note "Hanash DM" uses PycURL, a Python interface to libcurl which will tr
 
 Developed in Python, based on "pyCuRL/curl", "youtube_dl", and designed by "PySimpleGUI"
 
+**snapshots**
 
------Requirements -------
+![main window](https://github.com/Aboghazala/Hanash/blob/master/images/main.PNG)
+![downloads_tab](https://github.com/Aboghazala/Hanash/blob/master/images/downloads.PNG)
+![setting_tab](https://github.com/Aboghazala/Hanash/blob/master/images/setting.PNG)
+![d_window](https://github.com/Aboghazala/Hanash/blob/master/images/d_window.PNG)
+
+example multi-downloading with speed limit of 10 KB/sec as a test
+
+![concurrent windows](https://github.com/Aboghazala/Hanash/blob/master/images/concurrent_windows.PNG)
+
+
+**-----Requirements -------**
+```python
 Python 3+
-
-required modules:
-pycurl
-certifi
-PySimpleGUI
-mimetypes
-pyperclip
-plyer
-pillow
-youtube_dl
-
+```
 
 you can run one line command to install required packages:
+```python
+pip pycurl certifi PySimpleGUI mimetypes pyperclip plyer pillow youtube_dl
+```
+**note for pyperclip:**
 
-
-"pip "
-
-note for pyperclip:
 Pyperclip is a cross-platform Python module for copy and paste clipboard functions. it is being used if you want to monitor clipboard for files urls and it will be processed automatically by Hanash DM.
 On Linux, this module makes use of the xclip or xsel commands, which should come with the os. Otherwise run "sudo apt-get install xclip" on Debian like or "sudo pacman -S xclip" on archlinux
 
@@ -36,3 +38,5 @@ your feedback is most welcomed on https://github.com/Aboghazala/Hanash or email 
 Thanks,
 Mahmoud Elshahat 
 2019
+
+
