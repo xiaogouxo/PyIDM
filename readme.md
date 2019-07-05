@@ -1,5 +1,6 @@
 Hanash is a general purpose multi-connections download manager based on python, 
 it downloads any file type, plus videos, and playlists from youtube.
+![main window](https://github.com/Aboghazala/Hanash/blob/master/images/main.PNG)
 
 please note "Hanash DM" uses PycURL, a Python interface to libcurl which will try to use your max internet speed, you can use "limit speed" option in setting window 
 
@@ -7,7 +8,6 @@ Developed in Python, based on "pyCuRL/curl", "youtube_dl", and designed by "PySi
 
 **snapshots**
 
-![main window](https://github.com/Aboghazala/Hanash/blob/master/images/main.PNG)
 ![downloads_tab](https://github.com/Aboghazala/Hanash/blob/master/images/downloads.PNG)
 ![setting_tab](https://github.com/Aboghazala/Hanash/blob/master/images/setting.PNG)
 ![d_window](https://github.com/Aboghazala/Hanash/blob/master/images/d_window.PNG)
