@@ -1002,17 +1002,20 @@ class MainWindow:
         d = self.selected_d
 
         try:
-            # linux
-            os.system('xdg-open "%s"' % d.folder)
-        except:
-            # windows
-            try:
-                if d.name not in os.listdir(d.folder):
-                    os.startfile(d.folder)
+            folder = os.path.abspath(d.folder)
+            file = os.path.join(folder, d.name)
+
+            if os.name == 'nt':
+                # windows
+                if d.name not in os.listdir(folder):
+                    os.startfile(folder)
                 else:
-                    param = r'explorer /select, ' + '"' + d.name + '"'
+                    param = r'explorer /select, ' + '"' + file + '"'
                     subprocess.Popen(param)
-            except Exception as e:
+            else:
+                # linux
+                os.system('xdg-open "%s"' % folder)
+        except Exception as e:
                 handle_exceptions(e)
 
     def refresh_link_btn(self):
@@ -2423,6 +2426,7 @@ def file_mngr(d, barrier, seg_list):
         completed_parts = set()
 
     # target file
+    d.folder = os.path.abspath(d.folder)
     target_file = os.path.join(d.folder, d.name)
 
     # check / create temp file
