@@ -630,7 +630,14 @@ class MainWindow:
     # region config files
     @property
     def sett_folder(self):
-        return current_directory
+        if os.name == 'nt':
+            roaming = os.getenv('APPDATA')  # return APPDATA\Roaming\ under windows
+            _sett_folder = os.path.join(roaming, '.Hanash')
+            if '.Hanash' not in os.listdir(roaming):
+                os.mkdir(_sett_folder)
+            return _sett_folder
+        else:
+            return current_directory
 
     def load_d_list(self):
         try:
@@ -990,8 +997,7 @@ class MainWindow:
                 d = self.d_list[i]
                 delete_folder(d.temp_folder)
                 os.unlink(d.temp_file)
-            except Exception as e:
-                handle_exceptions(e)
+            except Exception as e:                handle_exceptions(e)
 
         self.d_list.clear()
 
