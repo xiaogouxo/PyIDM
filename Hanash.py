@@ -707,7 +707,7 @@ class MainWindow:
             self.max_concurrent_downloads = self.setting.get('max_concurrent_downloads', 3)
 
             # download window
-            self.hide_download_window = self.setting.get('hide_download_window', True)
+            self.hide_download_window = self.setting.get('hide_download_window', False)
 
             # theme
             self.theme = self.setting.get('theme', 'Green')
