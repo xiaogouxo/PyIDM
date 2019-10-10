@@ -33,10 +33,13 @@ On Linux, this module makes use of the xclip or xsel commands, which should come
 
 also a windows executable / installer available: https://github.com/Aboghazala/Hanash/tree/master/windows_exe
 
-your feedback is most welcomed on https://github.com/Aboghazala/Hanash or email to mahmoud_elshahhat@yahoo.com
+your feedback is most welcomed by filling an issue on https://github.com/Aboghazala/Hanash
 
-Thanks,
-Mahmoud Elshahat 
+Cheers,
+
+Mahmoud Elshahat
+
+
 2019
 
 
