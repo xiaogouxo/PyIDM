@@ -203,7 +203,7 @@ class MainWindow:
 
         # download list
         self.d_headers = ['i', 'num', 'name', 'progress', 'speed', 'time_left', 'size', 'downloaded', 'status',
-                               'resumable', 'folder', 'max_connections', 'live_connections', 'remaining_parts']
+                          'resumable', 'folder', 'max_connections', 'live_connections', 'remaining_parts']
         self.d_list = list()  # list of DownloadItem() objects
         self.selected_row_num = None
         self.selected_d = DownloadItem()
@@ -238,7 +238,7 @@ class MainWindow:
     # region gui design
     def create_window(self):
         # main tab
-        main_layout = [[sg.Button('', image_filename=r'icons/info025.png', size=(25, 25), key='about'), 
+        main_layout = [[sg.Button('', image_filename=r'icons/info025.png', size=(25, 25), key='about'),
                         sg.Text(' Hanash Download Manager', font='Helvetica 20', size=(37, 1), justification='center')],
 
                        # url
@@ -309,7 +309,7 @@ class MainWindow:
                                     key='max_connections', default_value=self.max_connections)],
                           [sg.Text('file part size:'), sg.Input(default_text=1024, size=(6, 1),
                                                                 enable_events=True, key='part_size'),
-                           sg.Text('KBytes   *affects only new downloads')],
+                           sg.Text('KBytes   *affects new downloads only')],
                           ]
 
         log_layout = [[sg.T('Details events:')], [sg.Multiline(default_text=self.log_text, size=(70, 16), key='log')],
@@ -342,7 +342,8 @@ class MainWindow:
     def select_tab(self, index):
         try:
             self.window.Element('tab_group').SelectTab(index)
-        except: pass
+        except:
+            pass
 
     def update_gui(self):
 
@@ -360,7 +361,7 @@ class MainWindow:
                     pass
 
                 # show youtube_dl activity in status text
-                if'[youtube]' in v:
+                if '[youtube]' in v:
                     self.set_status(v.strip('\n'))
 
             elif k == 'url':
@@ -389,10 +390,14 @@ class MainWindow:
             # re-select the previously selected row in the table
             if self.selected_row_num is not None:
                 self.window.Element('table').Update(select_rows=(self.selected_row_num,))
+            else:
+                # update selected item number
+                self.window.Element('selected_row_num').Update('---')
 
             # update status bar
             self.window.Element('status_bar').Update(
                 f'Active downloads: {len(active_downloads)}, pending: {len(self.pending)}')
+
 
         except Exception as e:
             print('gui not updated:', e)
@@ -428,7 +433,7 @@ class MainWindow:
                 # close all download windows if existed
                 for win in self.download_windows.values():
                     win.window.Close()
-                self.download_windows= {}
+                self.download_windows = {}
 
                 self.restart_window()
 
@@ -438,7 +443,8 @@ class MainWindow:
                 self.selected_d = self.d_list[self.selected_row_num]
                 try:
                     self.window.Element('selected_row_num').Update('---' if item_num is None else item_num + 1)
-                except: pass
+                except:
+                    pass
 
             elif event == 'url':
                 self.url_text_change()
@@ -694,7 +700,7 @@ class MainWindow:
             # download folder
             folder = self.setting.get('folder', None)
             if folder and os.path.isdir(folder):
-                self.d.folder = folder 
+                self.d.folder = folder
             else:
                 self.d.folder = os.path.join(os.path.expanduser("~"), 'Downloads')
 
@@ -867,10 +873,10 @@ class MainWindow:
         if self.file_in_d_list(self.d.name, self.d.folder):
             #  show dialogue
             msg = f'File with the same name: \n{self.d.name},\n already exist in download list\n' \
-                  'Do you want to resume this file?\n' \
-                  'Yes ==> resume ... \n' 'No ==> cancel ... \n' \
-                  'note: "if you need fresh download, you have to change file name \n' \
-                  'or target folder or delete same entry from download list'
+                'Do you want to resume this file?\n' \
+                'Yes ==> resume ... \n' 'No ==> cancel ... \n' \
+                'note: "if you need fresh download, you have to change file name \n' \
+                'or target folder or delete same entry from download list'
             response = sg.PopupOKCancel(msg)
             if response == 'No':
                 log('Download cancelled by user')
@@ -997,7 +1003,8 @@ class MainWindow:
                 d = self.d_list[i]
                 delete_folder(d.temp_folder)
                 os.unlink(d.temp_file)
-            except Exception as e:                handle_exceptions(e)
+            except Exception as e:
+                handle_exceptions(e)
 
         self.d_list.clear()
 
@@ -1022,7 +1029,7 @@ class MainWindow:
                 # linux
                 os.system('xdg-open "%s"' % folder)
         except Exception as e:
-                handle_exceptions(e)
+            handle_exceptions(e)
 
     def refresh_link_btn(self):
         if self.selected_row_num is None:
@@ -1250,7 +1257,7 @@ class MainWindow:
         self.set_status(f'{len(self.playlist)} videos in Playlist: {self.pl_title}')
 
         # update playlist menu items
-        self.pl_menu  = [str(i + 1) + '- ' + video.title for i, video in enumerate(self.playlist)]
+        self.pl_menu = [str(i + 1) + '- ' + video.title for i, video in enumerate(self.playlist)]
 
         # choose current item
         self.video = self.playlist[0]
@@ -1351,6 +1358,7 @@ class MainWindow:
             d = DownloadItem(url=video.webpage_url, eff_url=video.url, name=video.name, size=video.size,
                              folder=self.d.folder, max_connections=self.max_connections, resumable=resume_support)
             self.start_download(d, silent=True)
+
     # endregion
 
     # region General
@@ -1437,7 +1445,7 @@ class DownloadWindow:
 
             [sg.ProgressBar(max_value=100, key='progress_bar', size=(35, 15), border_width=3)],
 
-            [sg.T(' '*45), sg.Button('Hide', key='hide'), sg.Button('Cancel', key='cancel')],
+            [sg.T(' ' * 45), sg.Button('Hide', key='hide'), sg.Button('Cancel', key='cancel')],
 
         ]
 
@@ -1454,7 +1462,8 @@ class DownloadWindow:
         # trim name and folder length
         length = 17
         name = self.d.name[:length] + ' ... ' + self.d.name[-length:] if len(self.d.name) > 40 else self.d.name
-        folder = self.d.folder[:length] + ' ... ' + self.d.folder[-length:] if len(self.d.folder) > 40 else self.d.folder
+        folder = self.d.folder[:length] + ' ... ' + self.d.folder[-length:] if len(
+            self.d.folder) > 40 else self.d.folder
 
         out = (f"File: {name}\n"
                f"Folder: {folder}\n"
@@ -1507,6 +1516,7 @@ class DownloadWindow:
     def close(self):
         self.event = None
         self.window.Close()
+
 
 # endregion
 
@@ -1822,7 +1832,6 @@ class DownloadItem:
     def __init__(self, d_id=0, name='', size=0, mime_type='', folder='', url='', eff_url='', pl_url='',
                  max_connections=1, live_connections=0, resumable=False, progress=0, speed=0, time_left='',
                  downloaded=0, status='cancelled', remaining_parts=0, part_size=1048576):
-
         self.q = None  # queue
         self._id = d_id
         self.num = d_id + 1 if d_id else ''
@@ -1849,8 +1858,6 @@ class DownloadItem:
         self.i = ''  # animation image
         self._part_size = part_size
 
-
-
     @property
     def id(self):
         return self._id
@@ -1876,9 +1883,7 @@ class DownloadItem:
     @part_size.setter
     def part_size(self, value):
         self._part_size = value if value <= self.size else self.size
-        print('part size = ', self._part_size )
-
-
+        print('part size = ', self._part_size)
 
 
 # region video classes
@@ -2071,7 +2076,8 @@ class Stream:
         if self.mediatype == 'audio':
             r = f'{self.mediatype}: {self.extension} - abr {self.abr} - {size_format(self.filesize)}'
         else:
-            r = f'{self.mediatype}: {self.extension} - {self.height}p - {self.resolution} - {size_format(self.filesize)}'
+            r = f'{self.mediatype}: {self.extension} - {self.height}p - {self.resolution} ' \
+                f'- {size_format(self.filesize)}'
         return r
 
     def get_type(self):
@@ -2237,7 +2243,6 @@ def brain(d=None, speed_limit=0):
 
             time_left = (d.size - downloaded) / avg_speed if avg_speed else -1
 
-
             # update download item "d"
             d.progress = progress
             d.speed = avg_speed
@@ -2246,7 +2251,6 @@ def brain(d=None, speed_limit=0):
             d.remaining_parts = num_jobs
             d.time_left = time_left
             d.status = status
-
 
             # reset sample and timer
             sample = 0
@@ -2304,15 +2308,17 @@ def brain(d=None, speed_limit=0):
         log(f'brain {d.num} error!, bypassing barrier... {e}')
         handle_exceptions(e)
 
-    # delete queue
-    d.q = None
+    # reset queue and delete un-necessary data
+    d.q.reset()
 
     # remove item index from active downloads
     active_downloads.remove(d.id)
+    log(f'\nbrain {d.num}: removed item from active downloads')
 
     # report quitting
     q.log('brain: quitting')
     log(f'\nbrain {d.num}: quitting')
+
 
 def thread_manager(d, barrier, speed_limit):
     q = d.q
@@ -2612,6 +2618,7 @@ def notify(msg, title='HanashDM', timeout=5):
         app_name=app_title,
         # app_icon='icons/icon.ico'
     )
+
 
 def image_file_to_bytes(image_file, size):
     # image_file = io.BytesIO(base64.b64decode(image64))
