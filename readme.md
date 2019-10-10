@@ -24,7 +24,7 @@ Python 3+
 
 you can run one line command to install required packages:
 ```python
-pip pycurl certifi PySimpleGUI mimetypes pyperclip plyer pillow youtube_dl
+pip install pycurl certifi PySimpleGUI mimetypes pyperclip plyer pillow youtube_dl
 ```
 **note for pyperclip:**
 
