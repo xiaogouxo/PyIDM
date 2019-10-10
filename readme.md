@@ -31,7 +31,9 @@ pip install pycurl certifi PySimpleGUI mimetypes pyperclip plyer pillow youtube_
 Pyperclip is a cross-platform Python module for copy and paste clipboard functions. it is being used if you want to monitor clipboard for files urls and it will be processed automatically by Hanash DM.
 On Linux, this module makes use of the xclip or xsel commands, which should come with the os. Otherwise run "sudo apt-get install xclip" on Debian like or "sudo pacman -S xclip" on archlinux
 
-also a windows executable / installer available: https://github.com/Aboghazala/Hanash/tree/master/windows_exe
+**Windows:
+
+a windows executable / installer available: https://github.com/Aboghazala/Hanash/tree/master/windows_exe
 
 your feedback is most welcomed by filling an issue on https://github.com/Aboghazala/Hanash
 
