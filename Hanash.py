@@ -2,8 +2,11 @@
 
 import copy
 import os, sys
+import py_compile
 import pycurl
+import shutil
 import subprocess
+import zipfile
 from queue import Queue
 from threading import Thread, Barrier, Timer, Lock
 import re
@@ -18,14 +21,11 @@ from PIL import Image
 from collections import deque
 import plyer  # for os notification messages
 
-version = '2.7.3'
+version = '3.0.0'
 test = False  # when active all exceptions will be re-raised
 
 about_notes = """Hanash is a general purpose multi-connections download manager based on python, 
-it downloads any file type, plus videos, and playlists from youtube.
-
-please note "Hanash DM" uses PycURL, a Python interface to libcurl which will try to use your max internet speed, you can use "limit speed" option in setting window 
-
+it downloads general files, also support downloading videos, and playlists from youtube. <br>
 Developed in Python, based on "pyCuRL/curl", "youtube_dl", and designed by "PySimpleGUI"
 
 your feedback is most welcomed on 
@@ -211,7 +211,7 @@ class MainWindow:
         # settings
         self.setting = dict()
         self.max_concurrent_downloads = 3
-        self.hide_download_window = False
+        self.show_download_window = True
         self.theme = 'Green'  # default to Green
 
         # log
@@ -299,8 +299,8 @@ class MainWindow:
                            sg.T('kb/s  *zero or blank means no limit')],
                           [sg.Checkbox('Monitor copied urls in clipboard', default=monitor_clipboard, key='monitor',
                                        enable_events=True)],
-                          [sg.Checkbox("Don't show download window", key='hide_download_window',
-                                       default=self.hide_download_window, enable_events=True)],
+                          [sg.Checkbox("Show download window", key='show_download_window',
+                                       default=self.show_download_window, enable_events=True)],
                           [sg.Text('Max concurrent downloads:'),
                            sg.Combo(values=[x for x in range(1, 101)], size=(5, 1), enable_events=True,
                                     key='max_concurrent_downloads', default_value=self.max_concurrent_downloads)],
@@ -310,6 +310,8 @@ class MainWindow:
                           [sg.Text('file part size:'), sg.Input(default_text=1024, size=(6, 1),
                                                                 enable_events=True, key='part_size'),
                            sg.Text('KBytes   *affects new downloads only')],
+                          [sg.T('')],
+                          [sg.Button('update youtube-dl module', key='update_youtube_dl')]
                           ]
 
         log_layout = [[sg.T('Details events:')], [sg.Multiline(default_text=self.log_text, size=(70, 16), key='log')],
@@ -342,8 +344,8 @@ class MainWindow:
     def select_tab(self, index):
         try:
             self.window.Element('tab_group').SelectTab(index)
-        except:
-            pass
+        except Exception as e:
+            print(e)
 
     def update_gui(self):
 
@@ -524,14 +526,30 @@ class MainWindow:
                 monitor_clipboard = values['monitor']
                 clipboard_q.put(('monitor', monitor_clipboard))
 
-            elif event == 'hide_download_window':
-                self.hide_download_window = values['hide_download_window']
+            elif event == 'show_download_window':
+                self.show_download_window = values['show_download_window']
 
             elif event == 'part_size':
                 try:
                     self.d.part_size = int(values['part_size']) * 1024
                 except:
                     pass
+
+            elif event == 'update_youtube_dl':
+                # select log tab
+                self.select_tab(3)
+
+                sg.popup('will try to download latest youtube-dl module from github and update this application\n'
+                         'if you are on linux you should update via terminal using:\n'
+                         'python -m pip install youtube_dl --upgrade \n'
+                         'check log tab for progress', title='youtube-dl module update')
+
+                try:
+                    Thread(target=update_youtube_dl).start()
+                except Exception as e:
+                    log('failed to update youtube-dl module:', e)
+
+
 
             # log
             elif event == 'Clear Log':
@@ -713,7 +731,7 @@ class MainWindow:
             self.max_concurrent_downloads = self.setting.get('max_concurrent_downloads', 3)
 
             # download window
-            self.hide_download_window = self.setting.get('hide_download_window', False)
+            self.show_download_window = self.setting.get('show_download_window', True)
 
             # theme
             self.theme = self.setting.get('theme', 'Green')
@@ -722,7 +740,7 @@ class MainWindow:
         self.setting['folder'] = self.d.folder
         self.setting['monitor'] = monitor_clipboard
         self.setting['max_concurrent_downloads'] = self.max_concurrent_downloads
-        self.setting['hide_download_window'] = self.hide_download_window
+        self.setting['show_download_window'] = self.show_download_window
         self.setting['theme'] = self.theme
 
         try:
@@ -732,8 +750,6 @@ class MainWindow:
                 log('setting saved')
         except Exception as e:
             handle_exceptions(e)
-
-    # endregion
 
     # endregion
 
@@ -791,7 +807,7 @@ class MainWindow:
 
         d.max_connections = self.max_connections if d.resumable else 1
         if silent is None:
-            silent = self.hide_download_window
+            silent = self.show_download_window
 
         # check if file with the same name exist in destination
         if os.path.isfile(os.path.join(d.folder, d.name)):
@@ -2092,7 +2108,7 @@ class Stream:
 # endregion
 
 
-# region brain, thread, file manager functions
+# region brain, thread manager, file manager
 def brain(d=None, speed_limit=0):
     """main brain for a single download, it controls thread manger, file manager, and get data from workers
     and communicate with download window Gui, Main frame gui"""
@@ -2612,12 +2628,7 @@ def singleApp():
 # region helper functions
 def notify(msg, title='HanashDM', timeout=5):
     # show os notification at tray icon area
-    plyer.notification.notify(
-        title=title,
-        message=msg,
-        app_name=app_title,
-        # app_icon='icons/icon.ico'
-    )
+    plyer.notification.notify(title=title, message=msg, app_name=app_title)
 
 
 def image_file_to_bytes(image_file, size):
@@ -2735,6 +2746,30 @@ def get_headers(url):
     return curl_headers
 
 
+def download(url, file_name):
+    """simple file download, return False if failed"""
+    with open(file_name, 'wb') as file:
+        c = pycurl.Curl()
+        c.setopt(c.URL, url)
+        c.setopt(c.WRITEDATA, file)
+
+        # re-directions
+        c.setopt(pycurl.FOLLOWLOCATION, 1)
+        c.setopt(pycurl.MAXREDIRS, 10)
+
+        c.setopt(pycurl.NOSIGNAL, 1)  # option required for multithreading safety
+        c.setopt(pycurl.NOPROGRESS, 0)  # will use a progress function
+        c.setopt(pycurl.CAINFO, certifi.where())  # for https sites and ssl cert handling
+        try:
+            c.perform()
+            log(file_name, 'downloaded')
+        except Exception as e:
+            log(e)
+            return False
+        finally:
+            c.close()
+
+
 def size_format(size, tail=''):
     # 1 kb = 1024 byte, 1MB = 1024 KB, 1GB = 1024 MB
     # 1 MB = 1024 * 1024 = 1_048_576 bytes
@@ -2836,10 +2871,10 @@ def size_splitter(size, part_size):
 
 
 def delete_folder(folder):
-    for file in os.listdir(folder):
-        os.unlink(os.path.join(folder, file))
-
-    os.removedirs(folder)
+    try:
+        shutil.rmtree(folder)
+    except Exception as e:
+        log(e)
 
 
 def get_seg_size(seg):
@@ -2847,6 +2882,71 @@ def get_seg_size(seg):
     a, b = int(seg.split('-')[0]), int(seg.split('-')[1])
     size = b - a + 1 if b > 0 else 0
     return size
+
+
+# endregion
+
+
+# region youtube-dl module update
+def update_youtube_dl():
+    """This block for updating youtube-dl module in the freezed application folder in windows"""
+    # make temp folder
+    if 'temp' not in os.listdir(current_directory):
+        os.mkdir(os.path.join(current_directory, 'temp'))
+
+    # paths
+    old_module = os.path.join(current_directory, 'lib/youtube_dl')
+    new_module = os.path.join(current_directory, 'temp/youtube-dl-master/youtube_dl')
+
+    def compile_file(file):
+        if file.endswith('.py'):
+            py_compile.compile(file, cfile=file + 'c')
+            os.remove(file)
+        else:
+            print(file, 'not .py file')
+
+    def compile_all():
+        for item in os.listdir(new_module):
+            item = os.path.join(new_module, item)
+
+            if os.path.isfile(item):
+                file = item
+                compile_file(file)
+            else:
+                folder = item
+                for file in os.listdir(folder):
+                    file = os.path.join(folder, file)
+                    compile_file(file)
+        log('new youtube-dl module compiled to .pyc files')
+
+    def overwrite_module():
+        delete_folder(old_module)
+        shutil.move(new_module, old_module)
+        log('new module copied to:', new_module)
+
+    # download from github
+    log('start downloading youtube-dl module from github')
+    url = 'https://github.com/ytdl-org/youtube-dl/archive/master.zip'
+    response = download(url, 'temp/youtube-dl.zip')
+    if response is False:
+        log('failed to download youtube-dl, abort update')
+        return
+
+    # extract zip file
+    with zipfile.ZipFile('temp/youtube-dl.zip', 'r') as zip_ref:
+        zip_ref.extractall(path=os.path.join(current_directory, 'temp'))
+
+    log('youtube-dl.zip extracted to: ', current_directory + '/temp')
+
+    # compile files from py to pyc
+    compile_all()
+
+    # delete old youtube-dl module and replace it with new one
+    overwrite_module()
+
+    # clean old files
+    delete_folder('temp')
+    log('delete temp folder')
 
 
 # endregion
