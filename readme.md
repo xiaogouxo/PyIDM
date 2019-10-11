@@ -1,10 +1,12 @@
 Hanash is a general purpose multi-connections download manager based on python, 
 it downloads general files, also support downloading videos, and playlists from youtube.
-![main window](https://github.com/Aboghazala/Hanash/blob/master/images/main.PNG)
-
 Developed in Python, based on "pyCuRL/curl", "youtube_dl", and designed by "PySimpleGUI"
 
+
 **snapshots**
+
+![main window](https://github.com/Aboghazala/Hanash/blob/master/images/main.PNG)
+
 
 ![downloads_tab](https://github.com/Aboghazala/Hanash/blob/master/images/downloads.PNG)
 ![setting_tab](https://github.com/Aboghazala/Hanash/blob/master/images/setting.PNG)
