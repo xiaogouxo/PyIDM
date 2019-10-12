@@ -807,7 +807,7 @@ class MainWindow:
 
         d.max_connections = self.max_connections if d.resumable else 1
         if silent is None:
-            silent = self.show_download_window
+            silent = not self.show_download_window
 
         # check if file with the same name exist in destination
         if os.path.isfile(os.path.join(d.folder, d.name)):
@@ -1328,7 +1328,8 @@ class MainWindow:
             self.pl_quality = self.video.allstreams[index]  # as a chosen quality sample
             log('Selected quality:', choice)
             quality_window.Close()
-            self.window.Element('tab_group').SelectTab(1)
+            #self.window.Element('tab_group').SelectTab(1)
+            self.select_tab(1)
         else:
             quality_window.Close()
             return
@@ -2890,6 +2891,14 @@ def get_seg_size(seg):
 # region youtube-dl module update
 def update_youtube_dl():
     """This block for updating youtube-dl module in the freezed application folder in windows"""
+    # check if the application runs from a windows executable "folder contains lib subfolder"
+    if 'lib' not in os.listdir(current_directory):
+        msg = ('Looks like you are not running this application from its executable standalone folder, \n' 
+        'if you are running from source you need to update python libs by: \n'
+        'python -m pip install youtube_dl --upgrade')
+        log(msg)
+        sg.Popup(msg)
+        
     # make temp folder
     if 'temp' not in os.listdir(current_directory):
         os.mkdir(os.path.join(current_directory, 'temp'))
