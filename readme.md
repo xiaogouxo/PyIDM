@@ -20,7 +20,9 @@ example multi-downloading with speed limit of 10 KB/sec as a test
 **-----Requirements -------**
 ```python
 Python 3+
-ffmpg : for merging audio with youtube DASH videos
+ffmpeg : for merging audio with youtube DASH videos
+python packages: pycurl, certifi, PySimpleGUI, mimetypes, pyperclip, plyer, pillow, youtube_dl
+
 ```
 
 you can run one line command to install required packages:
@@ -43,19 +45,19 @@ On Linux, this module makes use of the xclip or xsel commands, which should come
 a standalone compressed version available on: https://github.com/Aboghazala/Hanash/tree/master/windows
 
 
-your feedback is most welcomed by filling an issue on https://github.com/Aboghazala/Hanash <br>
-
+<br><br>
 
 **Versions change log**: <br>
 3.1.0:
 1. added functionality to download youtube DASH videos with audio merged using ffmpg <br>
 
-
+<br><br>
 
 **Future Plans**:
 1. use native video library for merging audio and video, will check libav, or possibility with youtube_dl  <br>
 
 <br><br><br>
+your feedback is most welcomed by filling an issue on https://github.com/Aboghazala/Hanash <br>
 Cheers, <br>
 Mahmoud Elshahat, <br>
 2019
