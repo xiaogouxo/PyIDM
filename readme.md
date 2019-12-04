@@ -47,15 +47,15 @@ your feedback is most welcomed by filling an issue on https://github.com/Aboghaz
 
 
 versions: <br>
-3.1.0: <br>
+3.1.0:
 1. added functionality to download youtube DASH videos with audio merged using ffmpg <br>
 
 
 
-Future Plans: <br>
+Future Plans:
 1. use native video library for merging audio and video, will check libav, or possibility with youtube_dl  <br>
 
-
+<br><br><br>
 Cheers, <br>
 Mahmoud Elshahat, <br>
 2019
