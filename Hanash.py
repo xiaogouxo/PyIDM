@@ -2962,12 +2962,9 @@ def merge_video_audio(video, audio, output):
     cmd2 = f'ffmpeg -i "{video}" -i "{audio}" "{output}"'
 
     try:
-        # param = r'explorer /select, ' + '"' + file + '"'
-        # subprocess.Popen(param)
-        # proc = subprocess.Popen(cmd2, shell=True)
-        # os.system(cmd1)
-        subprocess.call(cmd2, shell=True)
-        # proc.wait(timeout=120)
+        # subprocess.call will block until process finished
+        subprocess.call(cmd1, shell=True)
+
     except Exception as e:
         print(e)
         return repr(e)
