@@ -21,7 +21,7 @@ from PIL import Image
 from collections import deque
 import plyer  # for os notification messages
 
-version = '3.0.0'
+version = '3.1.0' # added functionality to download youtube video with audio merged
 test = False  # when active all exceptions will be re-raised
 
 about_notes = """Hanash is a general purpose multi-connections download manager based on python, 
@@ -1292,6 +1292,18 @@ class MainWindow:
         self.d.type = self.video.type
         self.d.resumable = True
 
+        # check if video type has no audio
+        if stream.mediatype == 'video':
+            audio_stream = [a for a in self.video.audiostreams if a.extension == stream.extension
+                            or (a.extension == 'm4a' and stream.extension == 'mp4')][0]
+            d_copy = copy.deepcopy(self.d)
+            d_copy.audio = None
+            self.d.audio = d_copy
+            self.d.audio.eff_url=self.d.audio.url=audio_stream.url
+            self.d.audio.size=audio_stream.filesize
+            self.d.audio.type = audio_stream.extension
+
+
     def update_stream_menu(self):
         self.stream_menu = [repr(stream) for stream in self.video.allstreams]
 
@@ -1595,7 +1607,7 @@ class Communication:
 class Connection:
     """worker connection, it will download individual segment and write it to disk"""
 
-    def __init__(self, tag=0, url='', temp_folder='', q=None, resumable=False):
+    def __init__(self, tag=0, url='', temp_folder='', q=None, resumable=False, report=True):
         self.url = url
         self.tag = tag  # instant number
         self.q = q
@@ -1603,8 +1615,8 @@ class Connection:
         self.resumable = resumable
 
         # General parameters
-        self.seg = '0-0'  # segment name it must be formatted as 'start_byte-end_byte' example '100-600'
-        self.seg_range = '0-0'  # byte range
+        self.seg = '0-0'  # segment name
+        self.seg_range = '0-0'  # byte range it must be formatted as 'start_byte-end_byte' example '100-600'
         self.target_size = 0  # target size calculated from segment name
         self.start_size = 0  # initial file size before start resuming
 
@@ -1615,6 +1627,7 @@ class Connection:
         self.buff = 0
 
         # reporting parameters
+        self.report = report
         self.done_before = False
         self.timer1 = 0
         self.reporting_rate = 0.5  # rate of reporting download progress every n seconds
@@ -1634,8 +1647,8 @@ class Connection:
         self.reset()
 
         # assign new values
-        self.seg = seg  # segment name it must be formatted as 'start_byte-end_byte' example '100-600'
-        self.seg_range = seg  # byte range
+        self.seg = seg  # segment name
+        self.seg_range = seg  # byte range it must be formatted as 'start_byte-end_byte' example '100-600'
         self.target_size = get_seg_size(seg)
         self.f_name = os.path.join(self.temp_folder, seg)  # segment name with full path
         self.speed_limit = speed_limit
@@ -1667,10 +1680,11 @@ class Connection:
             self.q.log('Thread', self.tag, ': File', self.seg, 'already completed before')
 
             # send downloaded value to brain, -1 means this data from local disk, not from server side
-            self.q.data[self.tag].put((-1, self.target_size))
+            # self.q.data[self.tag].put((-1, self.target_size))
+            self.report_to_brain((-1, self.target_size))
             self.done_before = True
 
-        # in case the server sent extra bytes from last session by mistake, start over
+        # in case the server sent extra bytes from last session by mistake, truncate file
         elif self.actual_size > self.target_size:
             self.q.log(f'found seg {self.seg} oversized {self.actual_size}')
             # self.mode = 'wb'  # open file for re-write
@@ -1681,7 +1695,8 @@ class Connection:
             self.report_completed()
 
             # send downloaded value to brain, -1 means this data from local disk, not from server side
-            self.q.data[self.tag].put((-1, self.target_size))
+            # self.q.data[self.tag].put((-1, self.target_size))
+            self.report_to_brain((-1, self.target_size))
             self.done_before = True
 
         else:  # should resume
@@ -1694,11 +1709,17 @@ class Connection:
             # report
             self.q.log('Thread', self.tag, ': File', self.seg, 'resuming, new range:', self.seg_range,
                        'actual size:', self.actual_size)
-            self.q.data[self.tag].put((-1, self.actual_size))  # send downloaded value to brain
+            # self.q.data[self.tag].put((-1, self.actual_size))  # send downloaded value to brain
+            self.report_to_brain((-1, self.actual_size))
+
+    def report_to_brain(self, msg):
+        # if self.report:
+        self.q.data[self.tag].put(msg)
 
     def report_every(self, seconds=0.0):
         if time.time() - self.timer1 >= seconds:
-            self.q.data[self.tag].put((self.tag, self.buff))  # report the downloaded data length
+            # self.q.data[self.tag].put((self.tag, self.buff))  # report the downloaded data length
+            self.report_to_brain((self.tag, self.buff))
             self.downloaded += self.buff
             self.buff = 0
             self.timer1 = time.time()
@@ -1718,11 +1739,13 @@ class Connection:
         self.report_now()  # report data remained in buffer now
 
         # remove the previously reported download size and put unfinished job back to queue
-        self.q.data[self.tag].put((-1, - self.actual_size))
+        # self.q.data[self.tag].put((-1, - self.actual_size))
+        self.report_to_brain((-1, - self.actual_size))
         self.q.jobs.put(self.seg)
 
     def report_completed(self):
-        self.q.completed_jobs.put(self.seg)
+        if self.report:
+            self.q.completed_jobs.put(self.seg)
 
     def set_options(self):
         agent = "Hanash Download Manager"
@@ -1848,7 +1871,7 @@ class DownloadItem:
 
     def __init__(self, d_id=0, name='', size=0, mime_type='', folder='', url='', eff_url='', pl_url='',
                  max_connections=1, live_connections=0, resumable=False, progress=0, speed=0, time_left='',
-                 downloaded=0, status='cancelled', remaining_parts=0, part_size=1048576):
+                 downloaded=0, status='cancelled', remaining_parts=0, part_size=1048576, audio=None):
         self.q = None  # queue
         self._id = d_id
         self.num = d_id + 1 if d_id else ''
@@ -1856,10 +1879,11 @@ class DownloadItem:
         self.size = size
         self.type = mime_type
         self.folder = folder
+        self._full_name = None  # containing path
         self.temp_folder = ''
         self.url = url
         self.eff_url = eff_url
-        self.pl_url = pl_url
+        self.pl_url = pl_url # playlist url
         self.Max_connections = max_connections
         self.live_connections = live_connections
         self.resumable = resumable
@@ -1874,6 +1898,7 @@ class DownloadItem:
                                Status.cancelled: '--'}
         self.i = ''  # animation image
         self._part_size = part_size
+        self.audio = audio # to be used with ffmpeg to merge audio with video
 
     @property
     def id(self):
@@ -1901,6 +1926,10 @@ class DownloadItem:
     def part_size(self, value):
         self._part_size = value if value <= self.size else self.size
         print('part size = ', self._part_size)
+
+    @property
+    def full_name(self):
+        return os.path.join(self.folder, self.name)
 
 
 # region video classes
@@ -2068,6 +2097,7 @@ class Stream:
         self.res = stream_info.get('resolution', None)
         self.downloader_options = stream_info.get('downloader_options', None)
         self.format = stream_info.get('format', None)
+        self.container = stream_info.get('container', None)
 
         # calculate some values
         self.rawbitrate = stream_info.get('abr', 0) * 1024
@@ -2091,7 +2121,7 @@ class Stream:
 
     def __repr__(self):
         if self.mediatype == 'audio':
-            r = f'{self.mediatype}: {self.extension} - abr {self.abr} - {size_format(self.filesize)}'
+            r = f'{self.mediatype}: {self.extension} - abr {self.abr} - {size_format(self.filesize)} '
         else:
             r = f'{self.mediatype}: {self.extension} - {self.height}p - {self.resolution} ' \
                 f'- {size_format(self.filesize)}'
@@ -2149,6 +2179,8 @@ def brain(d=None, speed_limit=0):
     d.temp_folder = os.path.join(d.folder, f'{d.name}_parts')
     if not os.path.exists(d.temp_folder):
         os.mkdir(d.temp_folder)
+
+
 
     # divide the main file into ranges of bytes (segments) and add it to the job queue list
     if d.resumable:
@@ -2308,8 +2340,25 @@ def brain(d=None, speed_limit=0):
 
                 # os notify message
                 if status == Status.completed:
+
+                    # check for audio file - for videos with no audio
+                    if d.audio:
+                        d.audio.max_connections = d.max_connections
+                        d.audio.name = '_' + d.name
+                        brain(d.audio)
+                        out_file = os.path.join(d.folder, f'out_{d.name}')
+                        merge_video_audio(d.full_name, d.audio.full_name, out_file)
+                        os.unlink(d.full_name)
+                        os.unlink(d.audio.full_name)
+                        # Rename main file name
+                        os.rename(out_file, d.full_name)
+                        d.audio=None
+                        return
+
                     notification = f"File: {d.name} \nsaved at: {d.folder}"
                     notify(notification, title='HanashDm - Download completed')
+
+
                 break
 
         old_status = status
@@ -2498,14 +2547,17 @@ def file_mngr(d, barrier, seg_list):
 
         # check if all parts already finished
         if completed_parts == all_parts:
-            q.brain.put(('status', Status.completed))
 
             # Rename main file name
             os.rename(temp_file, target_file)
 
             # delete temp files
             delete_folder(d.temp_folder)
+
+            # inform brain
+            q.brain.put(('status', Status.completed))
             break
+
 
     # wait for thread manager and brain to quit
     try:
@@ -2884,7 +2936,21 @@ def get_seg_size(seg):
     size = b - a + 1 if b > 0 else 0
     return size
 
+def merge_video_audio(video, audio, output):
+    # very fast audio just copied, format must match [mp4, m4a] and [webm, webm]
+    cmd1 = f'ffmpeg -i "{video}" -i "{audio}" -c copy "{output}"'
 
+    # slow, mix different formats
+    cmd2 = "ffmpeg -i {video} -i {audio} {output}"
+
+    try:
+        # param = r'explorer /select, ' + '"' + file + '"'
+        # subprocess.Popen(param)
+        # subprocess.Popen(cmd1) #, shell=True)
+        os.system(cmd1)
+    except Exception as e:
+        print(e)
+        return repr(e)
 # endregion
 
 
