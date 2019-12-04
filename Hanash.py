@@ -1893,6 +1893,7 @@ class DownloadItem:
         self.downloaded = downloaded
         self._status = status
         self.remaining_parts = remaining_parts
+        self.ready_for_merge = False  # if the download file an audio to be merged with another video file
         # animation
         self.animation_icon = {Status.downloading: '►►', Status.pending: 'P', Status.completed: '✔',
                                Status.cancelled: '--'}
@@ -2337,28 +2338,6 @@ def brain(d=None, speed_limit=0):
                 d.live_connections = 0
                 d.remaining_parts = 0
                 d.time_left = '---'
-
-                # os notify message
-                if status == Status.completed:
-
-                    # check for audio file - for videos with no audio
-                    if d.audio:
-                        d.audio.max_connections = d.max_connections
-                        d.audio.name = '_' + d.name
-                        brain(d.audio)
-                        out_file = os.path.join(d.folder, f'out_{d.name}')
-                        merge_video_audio(d.full_name, d.audio.full_name, out_file)
-                        os.unlink(d.full_name)
-                        os.unlink(d.audio.full_name)
-                        # Rename main file name
-                        os.rename(out_file, d.full_name)
-                        d.audio=None
-                        return
-
-                    notification = f"File: {d.name} \nsaved at: {d.folder}"
-                    notify(notification, title='HanashDm - Download completed')
-
-
                 break
 
         old_status = status
@@ -2384,6 +2363,45 @@ def brain(d=None, speed_limit=0):
     # report quitting
     q.log('brain: quitting')
     log(f'\nbrain {d.num}: quitting')
+
+    # os notify message
+    if status == Status.completed:
+
+        # check for audio file - for videos with no audio
+        if d.audio:
+            d.audio.max_connections = d.max_connections
+            d.audio.name = '_' + d.name
+            d.audio.ready_for_merge = True
+
+            video_file, audio_file, out_file = d.full_name, d.audio.full_name, os.path.join(d.folder, f'out_{d.name}')
+            d.audio.file_names = [video_file, audio_file, out_file ]
+
+            print('start downloading audio file, id=', d.audio.id)
+            brain(d.audio)
+
+            d.audio = None
+
+            return # quit current function
+
+        if d.ready_for_merge: # an audio file ready for merge
+            # out_file = os.path.join(d.folder, f'out_{d.name}')
+
+            print('start merging video and audio files')
+            video_file, audio_file, out_file = d.file_names
+            merge_video_audio(video_file, audio_file, out_file)
+            print('finished merging video and audio files')
+
+            os.unlink(video_file)
+            os.unlink(audio_file)
+
+            # Rename main file name
+            os.rename(out_file, video_file)
+
+
+
+        # os notification popup
+        notification = f"File: {d.name} \nsaved at: {d.folder}"
+        notify(notification, title='HanashDm - Download completed')
 
 
 def thread_manager(d, barrier, speed_limit):
@@ -2941,13 +2959,15 @@ def merge_video_audio(video, audio, output):
     cmd1 = f'ffmpeg -i "{video}" -i "{audio}" -c copy "{output}"'
 
     # slow, mix different formats
-    cmd2 = "ffmpeg -i {video} -i {audio} {output}"
+    cmd2 = f'ffmpeg -i "{video}" -i "{audio}" "{output}"'
 
     try:
         # param = r'explorer /select, ' + '"' + file + '"'
         # subprocess.Popen(param)
-        # subprocess.Popen(cmd1) #, shell=True)
-        os.system(cmd1)
+        # proc = subprocess.Popen(cmd2, shell=True)
+        # os.system(cmd1)
+        subprocess.call(cmd2, shell=True)
+        # proc.wait(timeout=120)
     except Exception as e:
         print(e)
         return repr(e)
