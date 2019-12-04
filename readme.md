@@ -20,17 +20,20 @@ example multi-downloading with speed limit of 10 KB/sec as a test
 **-----Requirements -------**
 ```python
 Python 3+
+ffmpg : for merging audio with youtube DASH videos
 ```
 
 you can run one line command to install required packages:
 ```python
-pip install pycurl certifi PySimpleGUI mimetypes pyperclip plyer pillow youtube_dl
+python -m pip install pycurl certifi PySimpleGUI mimetypes pyperclip plyer pillow youtube_dl
 ```
 
 **note for Youtube-dl:** <br>
 youtube website changes frequently, if this application failed to retrieve video/playlist data
 you should update youtube-dl module https://github.com/ytdl-org/youtube-dl
-
+```
+python -m pip install youtube_dl --upgrade
+```
 
 **note for pyperclip:** <br>
 Pyperclip is a cross-platform Python module for copy and paste clipboard functions. it is being used if you want to monitor clipboard for files urls and it will be processed automatically by Hanash DM.
@@ -41,6 +44,12 @@ a standalone compressed version available on: https://github.com/Aboghazala/Hana
 
 
 your feedback is most welcomed by filling an issue on https://github.com/Aboghazala/Hanash <br>
+
+
+versions: <br>
+3.1.0: <br>
+1. added functionality to download youtube DASH videos with audio merged using ffmpg <br>
+
 
 Cheers, <br>
 Mahmoud Elshahat, <br>
