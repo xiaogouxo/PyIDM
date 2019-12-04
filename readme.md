@@ -46,13 +46,13 @@ a standalone compressed version available on: https://github.com/Aboghazala/Hana
 your feedback is most welcomed by filling an issue on https://github.com/Aboghazala/Hanash <br>
 
 
-versions: <br>
+**Versions change log**: <br>
 3.1.0:
 1. added functionality to download youtube DASH videos with audio merged using ffmpg <br>
 
 
 
-Future Plans:
+**Future Plans**:
 1. use native video library for merging audio and video, will check libav, or possibility with youtube_dl  <br>
 
 <br><br><br>
