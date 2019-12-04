@@ -51,6 +51,11 @@ versions: <br>
 1. added functionality to download youtube DASH videos with audio merged using ffmpg <br>
 
 
+
+Future Plans: <br>
+1. use native video library for merging audio and video, will check libav, or possibility with youtube_dl  <br>
+
+
 Cheers, <br>
 Mahmoud Elshahat, <br>
 2019
