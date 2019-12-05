@@ -379,7 +379,8 @@ class MainWindow:
 
         # update Elements
         try:
-            self.window.Element('name').Update(self.d.name)
+            if self.window['name'].Get() != self.d.name:
+                self.window['name'].Update(self.d.name)
             self.window.Element('size').Update(size_format(self.d.size))
             self.window.Element('type').Update(self.d.type)
             self.window.Element('resumable').Update('Yes' if self.d.resumable else 'No')
