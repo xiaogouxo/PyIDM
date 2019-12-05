@@ -21,7 +21,7 @@ from PIL import Image
 from collections import deque
 import plyer  # for os notification messages
 
-version = '3.1.0' # added functionality to download youtube video with audio merged
+version = '3.1.1' # added functionality to download youtube video with audio merged
 test = False  # when active all exceptions will be re-raised
 
 about_notes = """Hanash is a general purpose multi-connections download manager based on python, 
@@ -1302,6 +1302,7 @@ class MainWindow:
             self.d.audio.eff_url=self.d.audio.url=audio_stream.url
             self.d.audio.size=audio_stream.filesize
             self.d.audio.type = audio_stream.extension
+            self.d.audio.is_audio = True
 
 
     def update_stream_menu(self):
@@ -1864,6 +1865,7 @@ class Status:
     cancelled = 'cancelled'
     completed = 'completed'
     pending = 'pending'
+    merging_audio = 'merging_audio'
 
 
 # Download Item Class
@@ -1893,6 +1895,7 @@ class DownloadItem:
         self.downloaded = downloaded
         self._status = status
         self.remaining_parts = remaining_parts
+        self.is_audio = False
         self.ready_for_merge = False  # if the download file an audio to be merged with another video file
         # animation
         self.animation_icon = {Status.downloading: '►►', Status.pending: 'P', Status.completed: '✔',
@@ -2328,16 +2331,58 @@ def brain(d=None, speed_limit=0):
 
             # check if jobs completed
             elif status == Status.completed:
+                if d.is_audio and status == Status.completed:  # an audio file ready for merge, should quit here
+                    d.ready_for_merge = True
+                    return
+
+                # now video file completed and check for audio file
+                if d.audio: # this means a video file needs an audio file to be downloaded
+                    # correct status because operation not finished yet
+                    d.status = Status.merging_audio
+                    d.progress = 99
+
+                    d.audio.max_connections = d.max_connections
+                    d.audio.name = '_' + d.name
+
+
+                    video_file, audio_file, out_file = d.full_name, d.audio.full_name, os.path.join(d.folder,
+                                                                                                    f'out_{d.name}')
+                    print('start downloading audio file, id=', d.audio.num)
+                    brain(d.audio)
+
+
+                    if d.audio.ready_for_merge:  # an audio file already downloaded and ready for merge
+
+                        print('start merging video and audio files')
+                        # video_file, audio_file, out_file = d.file_names
+                        merge_video_audio(video_file, audio_file, out_file)
+                        print('finished merging video and audio files')
+
+                        os.unlink(video_file)
+                        os.unlink(audio_file)
+
+                        # Rename main file name
+                        os.rename(out_file, video_file)
+                    else:
+                        log('audio file download error for video #', d.num)
+
+                    d.audio = None # delete audio object
+
                 # getting remaining buff value
                 downloaded += buff
 
                 # update download item "d"
+                d.status = Status.completed
                 d.progress = 100
                 d.speed = '---'
                 d.downloaded = round(downloaded, 2)
                 d.live_connections = 0
                 d.remaining_parts = 0
                 d.time_left = '---'
+
+                # os notification popup
+                notification = f"File: {d.name} \nsaved at: {d.folder}"
+                notify(notification, title='HanashDm - Download completed')
                 break
 
         old_status = status
@@ -2353,8 +2398,18 @@ def brain(d=None, speed_limit=0):
         log(f'brain {d.num} error!, bypassing barrier... {e}')
         handle_exceptions(e)
 
+
+
     # reset queue and delete un-necessary data
     d.q.reset()
+
+
+
+
+    if status == Status.completed:
+
+        pass
+
 
     # remove item index from active downloads
     active_downloads.remove(d.id)
@@ -2363,45 +2418,6 @@ def brain(d=None, speed_limit=0):
     # report quitting
     q.log('brain: quitting')
     log(f'\nbrain {d.num}: quitting')
-
-    # os notify message
-    if status == Status.completed:
-
-        # check for audio file - for videos with no audio
-        if d.audio:
-            d.audio.max_connections = d.max_connections
-            d.audio.name = '_' + d.name
-            d.audio.ready_for_merge = True
-
-            video_file, audio_file, out_file = d.full_name, d.audio.full_name, os.path.join(d.folder, f'out_{d.name}')
-            d.audio.file_names = [video_file, audio_file, out_file ]
-
-            print('start downloading audio file, id=', d.audio.id)
-            brain(d.audio)
-
-            d.audio = None
-
-            return # quit current function
-
-        if d.ready_for_merge: # an audio file ready for merge
-            # out_file = os.path.join(d.folder, f'out_{d.name}')
-
-            print('start merging video and audio files')
-            video_file, audio_file, out_file = d.file_names
-            merge_video_audio(video_file, audio_file, out_file)
-            print('finished merging video and audio files')
-
-            os.unlink(video_file)
-            os.unlink(audio_file)
-
-            # Rename main file name
-            os.rename(out_file, video_file)
-
-
-
-        # os notification popup
-        notification = f"File: {d.name} \nsaved at: {d.folder}"
-        notify(notification, title='HanashDm - Download completed')
 
 
 def thread_manager(d, barrier, speed_limit):
