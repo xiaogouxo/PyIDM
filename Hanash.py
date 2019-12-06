@@ -442,10 +442,11 @@ class MainWindow:
                 self.restart_window()
 
             elif event == 'table':
-                item_num = values['table'][0]
-                self.selected_row_num = item_num
-                self.selected_d = self.d_list[self.selected_row_num]
+
                 try:
+                    item_num = values['table'][0]
+                    self.selected_row_num = item_num
+                    self.selected_d = self.d_list[self.selected_row_num]
                     self.window.Element('selected_row_num').Update('---' if item_num is None else item_num + 1)
                 except:
                     pass
@@ -979,7 +980,7 @@ class MainWindow:
 
         # confirm to delete
         msg = "Warninig!!!\nAre you sure you want to delete!\n%s?" % self.selected_d.name
-        r = sg.PopupYesNo(msg, title='Delete file?')
+        r = sg.PopupYesNo(msg, title='Delete file?', keep_on_top=True)
         if r == 'No': return
 
         try:

@@ -6,8 +6,6 @@ Developed in Python, based on "pyCuRL/curl", "youtube_dl", and designed by "PySi
 **snapshots**
 
 ![main window](https://github.com/Aboghazala/Hanash/blob/master/images/main.PNG)
-
-
 ![downloads_tab](https://github.com/Aboghazala/Hanash/blob/master/images/downloads.PNG)
 ![setting_tab](https://github.com/Aboghazala/Hanash/blob/master/images/setting.PNG)
 ![d_window](https://github.com/Aboghazala/Hanash/blob/master/images/d_window.PNG)
@@ -47,19 +45,24 @@ a standalone compressed version available on: https://github.com/Aboghazala/Hana
 
 <br><br>
 
-**Versions change log**: <br>
+# Versions change log:
 3.1.0:
-1. added functionality to download youtube DASH videos with audio merged using ffmpg <br>
+- added functionality to download youtube DASH videos with audio merged using ffmpg.
+- bug fixes.
 
 <br><br>
 
-**Future Plans**:
-1. use native video library for merging audio and video, will check libav, or possibility with youtube_dl  <br>
+# Future Plans :
+- use native video library for merging audio and video, will check libav, or possibility with youtube_dl.
 
-<br><br><br>
-your feedback is most welcomed by filling an issue on https://github.com/Aboghazala/Hanash <br>
-Cheers, <br>
-Mahmoud Elshahat, <br>
+
+
+<br><br>
+
+# Feedback:
+your feedback is most welcomed by filling an issue on https://github.com/Aboghazala/Hanash
+Cheers,
+Mahmoud Elshahat,
 2019
 
 
