@@ -311,7 +311,8 @@ class MainWindow:
                                                                 enable_events=True, key='part_size'),
                            sg.Text('KBytes   *affects new downloads only')],
                           [sg.T('')],
-                          [sg.Button('update youtube-dl module', key='update_youtube_dl')]
+                          [sg.Button('update youtube-dl module', key='update_youtube_dl'),
+                           sg.T('** for Windows standalone executable only')]
                           ]
 
         log_layout = [[sg.T('Details events:')], [sg.Multiline(default_text=self.log_text, size=(70, 16), key='log')],
@@ -540,15 +541,27 @@ class MainWindow:
                 # select log tab
                 self.select_tab('Log')
 
-                sg.popup('will try to download latest youtube-dl module from github and update this application\n'
-                         'if you are on linux you should update via terminal using:\n'
-                         'python -m pip install youtube_dl --upgrade \n'
-                         'check log tab for progress', title='youtube-dl module update')
+                response = sg.popup_ok_cancel(
+                    'will try to download latest youtube-dl module from github and update this application\n'
+                     'check log tab for progress \n'
+                    'Proceed?',
+                    title='youtube-dl module update')
+                print(response)
 
-                try:
-                    Thread(target=update_youtube_dl).start()
-                except Exception as e:
-                    log('failed to update youtube-dl module:', e)
+                if response == 'OK':
+                    # check if the application runs from a windows executable "folder contains lib subfolder"
+                    if 'lib' not in os.listdir(current_directory):
+                        msg = ('Looks like you are not running this application from its executable standalone folder, \n'
+                               'if you are running from source you need to update python libs by: \n'
+                               'python -m pip install youtube_dl --upgrade')
+                        log(msg)
+                        sg.Popup(msg)
+
+                    else:
+                        try:
+                            Thread(target=update_youtube_dl).start()
+                        except Exception as e:
+                            log('failed to update youtube-dl module:', e)
 
 
 
@@ -2990,13 +3003,7 @@ def merge_video_audio(video, audio, output):
 # region youtube-dl module update
 def update_youtube_dl():
     """This block for updating youtube-dl module in the freezed application folder in windows"""
-    # check if the application runs from a windows executable "folder contains lib subfolder"
-    if 'lib' not in os.listdir(current_directory):
-        msg = ('Looks like you are not running this application from its executable standalone folder, \n' 
-        'if you are running from source you need to update python libs by: \n'
-        'python -m pip install youtube_dl --upgrade')
-        log(msg)
-        sg.Popup(msg)
+
         
     # make temp folder
     if 'temp' not in os.listdir(current_directory):
