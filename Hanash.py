@@ -341,9 +341,9 @@ class MainWindow:
 
         self.start_window()
 
-    def select_tab(self, index):
+    def select_tab(self, tab_name):
         try:
-            self.window.Element('tab_group').SelectTab(index)
+            self.window[tab_name].Select()
         except Exception as e:
             print(e)
 
@@ -538,7 +538,7 @@ class MainWindow:
 
             elif event == 'update_youtube_dl':
                 # select log tab
-                self.select_tab(3)
+                self.select_tab('Log')
 
                 sg.popup('will try to download latest youtube-dl module from github and update this application\n'
                          'if you are on linux you should update via terminal using:\n'
@@ -908,7 +908,7 @@ class MainWindow:
         r = self.start_download(copy.deepcopy(self.d))
 
         if r is not BlockingIOError:
-            self.select_tab(1)
+            self.select_tab('Downloads')
 
     # endregion
 
@@ -1058,7 +1058,7 @@ class MainWindow:
 
         self.d = copy.deepcopy(d)
         self.window.Element('folder').Update(self.d.folder)
-        self.select_tab(0)
+        self.select_tab('Main')
 
     # endregion
 
@@ -1342,8 +1342,7 @@ class MainWindow:
             self.pl_quality = self.video.allstreams[index]  # as a chosen quality sample
             log('Selected quality:', choice)
             quality_window.Close()
-            #self.window.Element('tab_group').SelectTab(1)
-            self.select_tab(1)
+            self.select_tab('Downloads')
         else:
             quality_window.Close()
             return
@@ -1395,7 +1394,7 @@ class MainWindow:
     # region General
     def url_text_change(self):
         # Focus and select main app page in case text changed from script
-        self.select_tab(0)
+        self.select_tab('Main')
         self.window.BringToFront()
 
         self.reset()
