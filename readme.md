@@ -24,7 +24,7 @@ example multi-downloading with speed limit of 10 KB/sec as a test
 python packages: 
 - pycurl: is a Python interface to libcurl / curl as our download engine,
 - PySimpleGUI: a beautiful gui builder, 
-- youtube_dl: famous youtube downloader, limited use for meta information extraction only but videos are downloade using pycurl 
+- youtube_dl: famous youtube downloader, limited use for meta information extraction only but videos are downloaded using pycurl 
 - certifi: required by 'pycurl' for validating the trustworthiness of SSL certificates,
 - mimetypes: converts between a filename or URL and the MIME type associated with the filename extension.,
 - pyperclip: A cross-platform clipboard module for monitoring url copied to clipboard,
@@ -38,8 +38,33 @@ python -m pip install pycurl certifi PySimpleGUI mimetypes pyperclip plyer youtu
 
 ### Alternative to IDM (Internet Download Manager):
 The main reason for making this application is the lack of free open source download
-managers has the high download speed and resume capability, also can download youtube
-videos.
+managers which has multi-connection, high download speed, and resume capability, also can download youtube
+videos, in same time has a good gui design, to achieve that, decision made to use the high speed
+library 'pycurl', a threading module for multi-connection, youtube_dl, and an easy and beautiful PySimpleGUI 
+module for designing the gui user interface
+
+### How does it work??
+- once you copy any url in clipboard the application start processing this url
+- pycurl get url headers and follow redirections to get the effective download url.
+- headers get processed and data get extracted and create a download_item object 
+containing attributes like name, size, url, etc... for the target file
+- update gui accordingly.
+- if user click start download button, the download_item object added to download queue.
+- depending on user setting objects in download queue get prcessed concurrently
+- each download object will be passed to a brain function
+- brain function will prepare a segment list or parts list " file will be downloaded in chunks concurrently" for 
+example a 100MB file will be splitted into 100 parts with part size of 1MB each, each part will be downloaded 
+separately in a dedicated thread, Number of threads, and part size can be changed in user setting.
+- brain will start a thread manager to make a worker thread for each file segment / part.
+- brain will start file manager to collect segments and write it to a temp file, in same time write completed 
+segments names in a file for resume later function.
+- Thread manager will report operation completed to brain once finished downloading all file segments
+- brain will order both thread manager and file manager to quit and report completed download to main window, then quit
+- and so on for all downloads
+- example if you have a 3 concurrent downloads with 10 concurrent connections for each download you will have 30 running threads 
+concurrently.
+- communications between threads based heavily on queues which shows best fit for this job.
+- some websites doesn't support range requests, so downloads will not be resumable nor multi-connection will be available.
 
 ### note for Youtube-dl: <br>
 youtube website changes frequently, if this application failed to retrieve video/playlist data
