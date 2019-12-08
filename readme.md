@@ -36,20 +36,21 @@ you can run one line command to install required packages:
 python -m pip install pycurl certifi PySimpleGUI mimetypes pyperclip plyer youtube_dl
 ```
 
+
+### Naming, What does Hanash means??
+Hanash is an Arabic name for some kind of snakes / pythons called a
+black racer, reference wiki pages: <br>
+[Hanash](https://ar.wikipedia.org/wiki/حنش) <br>
+[Eastern_racer](https://en.wikipedia.org/wiki/Eastern_racer)
+
+![Hanash_image](https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Coluber_constrictorPCCP20030612-1115B.jpg/220px-Coluber_constrictorPCCP20030612-1115B.jpg)
+
 ### Alternative to IDM (Internet Download Manager):
 The main reason for making this application is the lack of free open source download
 managers which has multi-connection, high download speed, and resume capability, also can download youtube
 videos, in same time has a good gui design, to achieve that, decision made to use the high speed
 library 'pycurl', a threading module for multi-connection, youtube_dl, and an easy and beautiful PySimpleGUI 
 module for designing the gui user interface
-
-
-### Naming, What does Hanash means??
-Hanash is an Arabic name for some kind of snakes / pythons, reference
-wiki pages: <br> [Hanash](https://ar.wikipedia.org/wiki/حنش) <br>
-[Eastern_racer](https://en.wikipedia.org/wiki/Eastern_racer)
-
-![Hanash_image](https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Coluber_constrictorPCCP20030612-1115B.jpg/220px-Coluber_constrictorPCCP20030612-1115B.jpg)
 
 
 ### How does Hanash work??
