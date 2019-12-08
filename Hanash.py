@@ -17,7 +17,7 @@ import mimetypes
 import pyperclip
 import pickle, json
 import io
-from PIL import Image
+# from PIL import Image
 from collections import deque
 import plyer  # for os notification messages
 
@@ -2732,14 +2732,14 @@ def notify(msg, title='HanashDM', timeout=5):
     plyer.notification.notify(title=title, message=msg, app_name=app_title)
 
 
-def image_file_to_bytes(image_file, size):
-    # image_file = io.BytesIO(base64.b64decode(image64))
-    img = Image.open(image_file)
-    img.thumbnail(size, Image.ANTIALIAS)
-    bio = io.BytesIO()
-    img.save(bio, format='PNG')
-    imgbytes = bio.getvalue()
-    return imgbytes
+# def image_file_to_bytes(image_file, size):
+#     # image_file = io.BytesIO(base64.b64decode(image64))
+#     img = Image.open(image_file)
+#     img.thumbnail(size, Image.ANTIALIAS)
+#     bio = io.BytesIO()
+#     img.save(bio, format='PNG')
+#     imgbytes = bio.getvalue()
+#     return imgbytes
 
 
 def handle_exceptions(error):
@@ -3069,7 +3069,7 @@ def update_youtube_dl():
 
 
 if __name__ == '__main__':
-    icon = image_file_to_bytes(app_icon, (50, 50))
+    icon = app_icon #image_file_to_bytes(app_icon, (50, 50))
     print('starting application')
     if singleApp():
         Thread(target=import_ytdl, daemon=True).start()

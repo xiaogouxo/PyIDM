@@ -19,12 +19,19 @@ example multi-downloading with speed limit of 10 KB/sec as a test
 ```python
 Python 3+
 ffmpeg : for merging audio with youtube DASH videos
-python packages: pycurl, certifi, PySimpleGUI, mimetypes, pyperclip, plyer, pillow, youtube_dl
+python packages: 
+pycurl: is a Python interface to libcurl / curl as our download engine,
+PySimpleGUI: a beautiful gui builder, 
+youtube_dl: famous youtube downloader, limited use for meta information extraction only but videos are downloade using pycurl 
+certifi: required by 'pycurl' for validating the trustworthiness of SSL certificates,
+mimetypes: converts between a filename or URL and the MIME type associated with the filename extension.,
+pyperclip: A cross-platform clipboard module for monitoring url copied to clipboard,
+plyer: for systray area notification,
 ```
 
 you can run one line command to install required packages:
 ```python
-python -m pip install pycurl certifi PySimpleGUI mimetypes pyperclip plyer pillow youtube_dl
+python -m pip install pycurl certifi PySimpleGUI mimetypes pyperclip plyer youtube_dl
 ```
 
 ### note for Youtube-dl: <br>
@@ -51,6 +58,7 @@ a standalone compressed version available on: https://github.com/Aboghazala/Hana
 3.1.0:
 - added functionality to download youtube DASH videos with audio merged using ffmpg.
 - bug fixes.
+- remove Pillow module from requirements
 
 <br><br>
 
@@ -62,7 +70,7 @@ a standalone compressed version available on: https://github.com/Aboghazala/Hana
 <br><br>
 
 # Feedback:
-your feedback is most welcomed by filling an issue on https://github.com/Aboghazala/Hanash
+your feedback is most welcomed by filling an issue on https://github.com/Aboghazala/Hanash <br>
 Cheers, <br>
 Mahmoud Elshahat, <br>
 2019
