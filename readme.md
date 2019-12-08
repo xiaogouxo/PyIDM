@@ -43,8 +43,17 @@ videos, in same time has a good gui design, to achieve that, decision made to us
 library 'pycurl', a threading module for multi-connection, youtube_dl, and an easy and beautiful PySimpleGUI 
 module for designing the gui user interface
 
-### How does it work??
-- once you copy any url in clipboard the application start processing this url
+
+### Naming, What does Hanash means??
+Hanash is an Arabic name for some kind of snakes / pythons, reference
+wiki pages: <br> [Hanash](https://ar.wikipedia.org/wiki/حنش) <br>
+[Eastern_racer](https://en.wikipedia.org/wiki/Eastern_racer)
+
+![Hanash_image](https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Coluber_constrictorPCCP20030612-1115B.jpg/220px-Coluber_constrictorPCCP20030612-1115B.jpg)
+
+
+### How does Hanash work??
+- once you copy any url in clipboard the application start processing this url automatically "you can disable this in user setting"
 - pycurl get url headers and follow redirections to get the effective download url.
 - headers get processed and data get extracted and create a download_item object 
 containing attributes like name, size, url, etc... for the target file
