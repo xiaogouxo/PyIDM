@@ -65,6 +65,12 @@ segments names in a file for resume later function.
 concurrently.
 - communications between threads based heavily on queues which shows best fit for this job.
 - some websites doesn't support range requests, so downloads will not be resumable nor multi-connection will be available.
+- 
+- for youtube video url, a youtube_dl module starts in a separate threads to get playlist videos and available streams for each video
+- video streams are three types (normal videos, video only, audio only) if user decided to download a video only stream, the application
+will choose an audio stream with the same format, then download both streams as explained above (by brain function) then once completed
+the audio will be merged into video file using FFMPEG external application "subprocess".  
+
 
 ### note for Youtube-dl: <br>
 youtube website changes frequently, if this application failed to retrieve video/playlist data
