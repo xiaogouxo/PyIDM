@@ -1,6 +1,7 @@
-Hanash is a general purpose multi-connections download manager based on python, 
-it downloads general files, also support downloading videos, and playlists from youtube. <br>
-Developed in Python, based on "pyCuRL/curl", "youtube_dl", and designed by "PySimpleGUI"
+Hanash is a python open source alternative to IDM (Internet Download Manager) 
+with multi-connections, high speed engine, 
+it downloads general files, also videos, and playlists from youtube. <br>
+Developed in Python, based on "pyCuRL/curl", "youtube_dl", and "PySimpleGUI"
 
 
 **snapshots**
@@ -16,23 +17,29 @@ example multi-downloading with speed limit of 10 KB/sec as a test
 
 
 # Requirements:
-```python
-Python 3+
-ffmpeg : for merging audio with youtube DASH videos
+
+- Python 3+
+- ffmpeg : for merging audio with youtube DASH videos
+
 python packages: 
-pycurl: is a Python interface to libcurl / curl as our download engine,
-PySimpleGUI: a beautiful gui builder, 
-youtube_dl: famous youtube downloader, limited use for meta information extraction only but videos are downloade using pycurl 
-certifi: required by 'pycurl' for validating the trustworthiness of SSL certificates,
-mimetypes: converts between a filename or URL and the MIME type associated with the filename extension.,
-pyperclip: A cross-platform clipboard module for monitoring url copied to clipboard,
-plyer: for systray area notification,
-```
+- pycurl: is a Python interface to libcurl / curl as our download engine,
+- PySimpleGUI: a beautiful gui builder, 
+- youtube_dl: famous youtube downloader, limited use for meta information extraction only but videos are downloade using pycurl 
+- certifi: required by 'pycurl' for validating the trustworthiness of SSL certificates,
+- mimetypes: converts between a filename or URL and the MIME type associated with the filename extension.,
+- pyperclip: A cross-platform clipboard module for monitoring url copied to clipboard,
+- plyer: for systray area notification,
+
 
 you can run one line command to install required packages:
 ```python
 python -m pip install pycurl certifi PySimpleGUI mimetypes pyperclip plyer youtube_dl
 ```
+
+### Alternative to IDM (Internet Download Manager):
+The main reason for making this application is the lack of free open source download
+managers has the high download speed and resume capability, also can download youtube
+videos.
 
 ### note for Youtube-dl: <br>
 youtube website changes frequently, if this application failed to retrieve video/playlist data
@@ -49,7 +56,9 @@ On Linux, this module makes use of the xclip or xsel commands, which should come
 <br>
 
 ### Windows: <br>
-a standalone compressed version available on: https://github.com/Aboghazala/Hanash/tree/master/windows
+a standalone compressed version available on: https://github.com/Aboghazala/Hanash/tree/master/windows <br>
+note that these builds are old and might not working as expected regarding 
+youtube videos, for most recent versions, you can run from the source with most recent youtube_dl module
 
 
 <br><br>
