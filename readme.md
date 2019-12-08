@@ -7,7 +7,7 @@ Developed in Python, based on "pyCuRL/curl", "youtube_dl", and "PySimpleGUI"
 ### Naming, What does Hanash means??
 Hanash is an Arabic name for some kind of snakes / pythons called a
 black racer, reference wiki pages: <br>
-[Hanash](https://ar.wikipedia.org/wiki/حنش) <br>
+[حنش](https://ar.wikipedia.org/wiki/حنش) <br>
 [Eastern_racer](https://en.wikipedia.org/wiki/Eastern_racer)
 
 ![Hanash_image](https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Coluber_constrictorPCCP20030612-1115B.jpg/220px-Coluber_constrictorPCCP20030612-1115B.jpg)
