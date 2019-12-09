@@ -110,6 +110,8 @@ youtube videos, for most recent versions, you can run from the source with most 
 - added functionality to download youtube DASH videos with audio merged using ffmpg.
 - bug fixes.
 - remove Pillow module from requirements
+- new themes added from PySimpleGUI module are available for use in user
+  setting (total of 105 themes)
 
 <br><br>
 

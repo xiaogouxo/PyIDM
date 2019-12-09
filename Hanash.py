@@ -291,10 +291,10 @@ class MainWindow:
                             ]
 
         # setting tab
-        setting_layout = [[sg.T('Setting:')],
+        setting_layout = [[sg.T('User Setting:')],
                           [sg.Text('Select Theme:'),
                            sg.Combo(values=themes, default_value=self.theme, size=(15, 1), enable_events=True,
-                                    key='themes')],
+                                    key='themes'), sg.Text(f' Total of {len(themes)} Themes')],
                           [sg.T('Speed Limit:'), sg.Input('', size=(4, 1), key='speed_limit', enable_events=True),
                            sg.T('kb/s  *zero or blank means no limit')],
                           [sg.Checkbox('Monitor copied urls in clipboard', default=monitor_clipboard, key='monitor',
