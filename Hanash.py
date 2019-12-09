@@ -42,7 +42,7 @@ current_directory = os.path.dirname(os.path.abspath(sys.argv[0]))  # get the dir
 os.chdir(current_directory)
 
 app_title = f'Hanash Download Manager version: {version}'
-app_icon = os.path.join(current_directory, 'icons', 'icon4.png')
+app_icon = os.path.join(current_directory, 'icons', '5.png')
 
 themes = list(sg.LOOK_AND_FEEL_TABLE.keys())
 sg.SetOptions(font='Helvetica 11', auto_size_buttons=True, progress_meter_border_depth=0, border_width=1)
