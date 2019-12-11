@@ -317,8 +317,10 @@ class MainWindow:
                        [sg.Text('File name:'), sg.Input('', size=(65, 1), key='name', enable_events=True)],
                        [sg.T('File size:'), sg.T('-' * 30, key='size'), sg.T('Type:'), sg.T('-' * 35, key='type'),
                         sg.T('Resumable:'), sg.T('-----', key='resumable')],
-                       [sg.Text('Save To:'), sg.Input(self.d.folder, size=(55, 1), key='folder', enable_events=True),
-                        sg.FolderBrowse(initial_folder=self.d.folder, key='browse')],
+                       # [sg.Text('Save To:'), sg.Input(self.d.folder, size=(55, 1), key='folder', enable_events=True,
+                       #                                disabled=True, use_readonly_for_disable=True),
+                       [sg.Text('Save To:'), sg.T(self.d.folder, size=(55, 1), key='save_to'),
+                        sg.FolderBrowse(key='browse')], #initial_folder=self.d.folder,
 
                        # download button
                        [sg.T('', size=(29, 1)), sg.Button('Download', font='Helvetica 14', border_width=1)],
@@ -507,12 +509,11 @@ class MainWindow:
             elif event == 'Download':
                 self.download_btn()
 
-            elif event == 'folder':
-                if values['folder']:
-                    self.d.folder = values['folder']
+            elif event == 'save_to':
+                if values['save_to']:
+                    self.d.folder = values['save_to']
                 else: # in case of empty entries
-                    self.window.Element('folder').Update(self.d.folder)
-
+                    self.window.Element('save_to').Update(self.d.folder)
 
             elif event == 'name':
                 self.d.name = validate_file_name(values['name'])
