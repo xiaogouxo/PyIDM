@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
+# standard modules
 import copy
 import os, sys
 import py_compile
-import pycurl
 import shutil
 import subprocess
 import zipfile
@@ -11,24 +11,74 @@ from queue import Queue
 from threading import Thread, Barrier, Timer, Lock
 import re
 import time
+# import io
+from collections import deque
+# import pip
+import importlib.util
+
+# external modules, should be updated in case we need to use new package / module
+ext_packages = "PySimpleGUI pyperclip plyer certifi mimetypes pycurl youtube_dl"
+sg = None # global variable for pysimplegui
+
+def install(package_name):
+    global sg
+    
+    try:
+        # try importing pysimplegui
+        if 'PySimpleGUI' not in sys.modules.keys():
+            import PySimpleGUI as sg
+
+        response = sg.popup_yes_no(
+            "Looks like you have missing modules / packages: ", package_name, "will try to install it automatically",
+            "Yes- proceed",
+            "No- terminate application",
+            title='Missing modules error')
+        # print('user chose', response)
+        if response == 'No':
+            exit() # exit application
+            # raise SystemExit
+    except Exception as e:
+        print('PySimpleGUI error', e)
+        
+
+    r = subprocess.run([sys.executable, "-m", "pip", "install", package_name, '--user'])
+    if r.returncode != 0:
+        print(f'{package_name} failed to get installed')
+    else:
+        print(f'{package_name} installed successfully')
+
+
+
+for package_name in ext_packages.split():
+    spec = importlib.util.find_spec(package_name)
+    if spec is None:
+        print(package_name, " is not installed")
+        install(package_name)
+
+
+# try importing pysimplegui
+if 'PySimpleGUI' not in sys.modules.keys():
+    import PySimpleGUI as sg
+
+import pycurl
 import certifi
-import PySimpleGUI as sg
 import mimetypes
 import pyperclip
 import pickle, json
-import io
 # from PIL import Image
-from collections import deque
 import plyer  # for os notification messages
+
 
 version = '3.1.1' # added functionality to download youtube video with audio merged
 test = False  # when active all exceptions will be re-raised
 
 about_notes = """Hanash is a general purpose multi-connections download manager based on python, 
-it downloads general files, also support downloading videos, and playlists from youtube. <br>
-Developed in Python, based on "pyCuRL/curl", "youtube_dl", and designed by "PySimpleGUI"
+it downloads general files, also support downloading videos, and playlists from youtube.
+Developed in Python, based on "pyCuRL/curl", "youtube_dl", and "PySimpleGUI"
 
 your feedback is most welcomed on 
+
+https://github.com/Aboghazala/Hanash
 email: mahmoud_elshahhat@yahoo.com
 
 Thanks,
@@ -460,8 +510,9 @@ class MainWindow:
             elif event == 'folder':
                 if values['folder']:
                     self.d.folder = values['folder']
-                else:
+                else: # in case of empty entries
                     self.window.Element('folder').Update(self.d.folder)
+
 
             elif event == 'name':
                 self.d.name = validate_file_name(values['name'])
@@ -626,7 +677,7 @@ class MainWindow:
                 name += ext
 
         # check for resume support
-        resumable = self.headers.get('accept-ranges', 'none') is not 'none'
+        resumable = self.headers.get('accept-ranges', 'none') != 'none'
 
         # update current download item
         self.d.name = validate_file_name(name)
@@ -770,7 +821,7 @@ class MainWindow:
 
     # region headers
     def refresh_headers(self, url):
-        if self.d.url is not '':
+        if self.d.url != '':
             self.changeCursor('busy')
             Thread(target=self.get_header, args=[url], daemon=True).start()
 
@@ -2508,7 +2559,7 @@ def thread_manager(d, barrier, speed_limit):
 
         # Monitor active threads and add the offline to a free_workers
         for t in live_threads:
-            if not t.isAlive():
+            if not t.is_alive():
                 worker_num = int(t.name)
                 live_threads.remove(t)
                 busy_workers.remove(worker_num)
