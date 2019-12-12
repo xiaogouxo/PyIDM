@@ -15,20 +15,22 @@ import time
 from collections import deque
 import importlib.util
 
-# external modules, should be updated in case we need to use new package / module
+# external modules, should be kept updated.
 ext_packages = "PySimpleGUI pyperclip plyer certifi mimetypes pycurl youtube_dl"
 
 # installing missing packages 
 def install(package_name):
     # return False
     print('start installing', package_name)
-    r = subprocess.run([sys.executable, "-m", "pip", "install", package_name, '--user'])
+    r = subprocess.run([sys.executable, "-m", "pip", "install", package_name, '--user'],
+                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    log = r.stdout.decode('utf-8')
     if r.returncode != 0:
         print(package_name, 'failed to get installed')
-        return False
+        return False, log
     else:
         print(package_name, 'installed successfully')
-        return True
+        return True, log
 
 missing_packages = [pkg for pkg in ext_packages.split() if importlib.util.find_spec(pkg) is None]
 
@@ -53,7 +55,8 @@ if missing_packages:
     layout = [
         [sg.T(msg)],
         [sg.T('Installation status:')],
-        [sg.Multiline('', key='missing_pkg_status', size=(50, 10), autoscroll=True)],
+        [sg.Multiline('', key='missing_pkg_status', size=(50, 8), autoscroll=True)],
+        [sg.Multiline('', key='log', size=(50, 8), autoscroll=True, )],
         [sg.B('Proceed', key='Proceed'), sg.Cancel()]
     ]
 
@@ -71,8 +74,9 @@ if missing_packages:
 
             failed_packages = []
             for package_name in missing_packages[:]:
-                done = install(package_name)
+                done, log = install(package_name)
                 window['missing_pkg_status'](f"{package_name} .......... {'Done' if done else 'Failed'} \n", append=True)
+                window['log'](log, append=True)
                 window.Refresh()
 
                 if done:
@@ -394,7 +398,7 @@ class MainWindow:
                            sg.Text('KBytes   *affects new downloads only')],
                           [sg.T('')],
                           [sg.Button('update youtube-dl module', key='update_youtube_dl'),
-                           sg.T('** for Windows standalone executable only')]
+                           sg.T('')]
                           ]
 
         log_layout = [[sg.T('Details events:')], [sg.Multiline(default_text=self.log_text, size=(70, 16), key='log')],
@@ -633,19 +637,20 @@ class MainWindow:
                 print(response)
 
                 if response == 'OK':
-                    # check if the application runs from a windows executable "folder contains lib subfolder"
-                    if 'lib' not in os.listdir(current_directory):
-                        msg = ('Looks like you are not running this application from its executable standalone folder, \n'
-                               'if you are running from source you need to update python libs by: \n'
-                               'python -m pip install youtube_dl --upgrade')
-                        log(msg)
-                        sg.Popup(msg)
+                    # # check if the application runs from a windows executable "folder contains lib subfolder"
+                    # # if run from source code, we will update installed package
+                    # if 'lib' not in os.listdir(current_directory):
+                    #     subprocess.run([sys.executable, "-m", "pip", "install", 'youtube_dl', '--upgrade'])
+                        # msg = ('Looks like you are not running this application from its executable standalone folder, \n'
+                        #        'if you are running from source you need to update python libs by: \n'
+                        #        'python -m pip install youtube_dl --upgrade')
+                        # log(msg)
+                        # sg.Popup(msg)
 
-                    else:
-                        try:
-                            Thread(target=update_youtube_dl).start()
-                        except Exception as e:
-                            log('failed to update youtube-dl module:', e)
+                    try:
+                        Thread(target=update_youtube_dl).start()
+                    except Exception as e:
+                        log('failed to update youtube-dl module:', e)
 
 
 
@@ -3024,9 +3029,17 @@ def merge_video_audio(video, audio, output):
 # region youtube-dl module update
 def update_youtube_dl():
     """This block for updating youtube-dl module in the freezed application folder in windows"""
+    # check if the application runs from a windows cx_freeze executable "folder contains lib subfolder"
+    # if run from source code, we will update system installed package and exit
+    if 'lib' not in os.listdir(current_directory):
+        log('running command: python -m pip install youtube_dl --upgrade')
+        r = subprocess.run([sys.executable, "-m", "pip", "install", 'youtube_dl', '--upgrade'],
+                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        log(r.stdout.decode('utf-8'))
+        return
 
-        
     # make temp folder
+    log('making temp folder in:', current_directory)
     if 'temp' not in os.listdir(current_directory):
         os.mkdir(os.path.join(current_directory, 'temp'))
 
@@ -3075,6 +3088,7 @@ def update_youtube_dl():
     log('youtube-dl.zip extracted to: ', current_directory + '/temp')
 
     # compile files from py to pyc
+    log('compile files')
     compile_all()
 
     # delete old youtube-dl module and replace it with new one
@@ -3083,6 +3097,7 @@ def update_youtube_dl():
     # clean old files
     delete_folder('temp')
     log('delete temp folder')
+    log('youtube_dl module ..... done updating')
 
 
 # endregion
