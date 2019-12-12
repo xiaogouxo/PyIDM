@@ -13,50 +13,79 @@ import re
 import time
 # import io
 from collections import deque
-# import pip
 import importlib.util
 
 # external modules, should be updated in case we need to use new package / module
 ext_packages = "PySimpleGUI pyperclip plyer certifi mimetypes pycurl youtube_dl"
-sg = None # global variable for pysimplegui
 
 def install(package_name):
-    global sg
-    
-    try:
-        # try importing pysimplegui
-        if 'PySimpleGUI' not in sys.modules.keys():
-            import PySimpleGUI as sg
-
-        response = sg.popup_yes_no(
-            "Looks like you have missing modules / packages: ", package_name, "will try to install it automatically",
-            "Yes- proceed",
-            "No- terminate application",
-            title='Missing modules error')
-        # print('user chose', response)
-        if response == 'No':
-            exit() # exit application
-            # raise SystemExit
-    except Exception as e:
-        print('PySimpleGUI error', e)
-        
-
+    # return False
+    print('start installing', package_name)
     r = subprocess.run([sys.executable, "-m", "pip", "install", package_name, '--user'])
     if r.returncode != 0:
-        print(f'{package_name} failed to get installed')
+        print(package_name, 'failed to get installed')
+        return False
     else:
-        print(f'{package_name} installed successfully')
+        print(package_name, 'installed successfully')
+        return True
 
+missing_packages = [pkg for pkg in ext_packages.split() if importlib.util.find_spec(pkg) is None]
 
+if 'PySimpleGUI' in missing_packages:
+    print('PySimpleGUI is missing, will try to install it')
+    install('PySimpleGUI')
+    missing_packages.remove('PySimpleGUI')
 
-for package_name in ext_packages.split():
-    spec = importlib.util.find_spec(package_name)
-    if spec is None:
-        print(package_name, " is not installed")
-        install(package_name)
+if missing_packages:
+    # try importing PySimpleGUI
+    if 'PySimpleGUI' not in sys.modules.keys():
+        import PySimpleGUI as sg
+        sg.change_look_and_feel('Kayak')
 
+    msg = (f"Looks like you have missing modules / packages:\n"
+           f"\n"
+           f"{missing_packages},\n"
+           f"\n"
+           f"will try to install them automatically,\n"
+           f"proceed: go ahead and install missing modules,\n"
+           f"cancel- terminate application")
+    layout = [
+        [sg.T(msg)],
+        [sg.T('Installation status:')],
+        [sg.Multiline('', key='missing_pkg_status', size=(50, 10), autoscroll=True)],
+        [sg.B('Proceed', key='Proceed'), sg.Cancel()]
+    ]
 
-# try importing pysimplegui
+    window = sg.Window(title='Hanash ... Missing packages installation', layout=layout)
+    while True:
+        event, values = window()
+
+        if event in (None, 'Cancel'):
+            window.Close()
+            exit() # quit application
+        if event == 'Proceed':
+            if not missing_packages:
+                window.Close()
+                break
+
+            failed_packages = []
+            for package_name in missing_packages[:]:
+                done = install(package_name)
+                window['missing_pkg_status'](f"{package_name} .......... {'Done' if done else 'Failed'} \n", append=True)
+                window.Refresh()
+
+                if done:
+                    missing_packages.remove(package_name)
+                else:
+                    failed_packages.append(package_name)
+
+            if failed_packages:
+                window['missing_pkg_status'](f"\nFailed to install some packages, {failed_packages} 'press cancel to terminate application",
+                                             append=True, text_color='red')
+            else:
+                window['missing_pkg_status']('\nAll - ok, click proceed to continue' , append=True, text_color='green')
+
+# try importing PySimpleGUI
 if 'PySimpleGUI' not in sys.modules.keys():
     import PySimpleGUI as sg
 
