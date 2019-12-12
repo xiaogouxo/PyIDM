@@ -18,6 +18,7 @@ import importlib.util
 # external modules, should be updated in case we need to use new package / module
 ext_packages = "PySimpleGUI pyperclip plyer certifi mimetypes pycurl youtube_dl"
 
+# installing missing packages 
 def install(package_name):
     # return False
     print('start installing', package_name)
@@ -346,9 +347,9 @@ class MainWindow:
                        [sg.Text('File name:'), sg.Input('', size=(65, 1), key='name', enable_events=True)],
                        [sg.T('File size:'), sg.T('-' * 30, key='size'), sg.T('Type:'), sg.T('-' * 35, key='type'),
                         sg.T('Resumable:'), sg.T('-----', key='resumable')],
-                       # [sg.Text('Save To:'), sg.Input(self.d.folder, size=(55, 1), key='folder', enable_events=True,
-                       #                                disabled=True, use_readonly_for_disable=True),
-                       [sg.Text('Save To:'), sg.T(self.d.folder, size=(55, 1), key='save_to'),
+                       [sg.Text('Save To:'), sg.Input(self.d.folder, size=(55, 1), key='folder', enable_events=True,
+                                                      disabled=True, use_readonly_for_disable=True),
+                       # [sg.Text('Save To:'), sg.T(self.d.folder, size=(55, 1), key='folder'),
                         sg.FolderBrowse(key='browse')], #initial_folder=self.d.folder,
 
                        # download button
@@ -538,11 +539,12 @@ class MainWindow:
             elif event == 'Download':
                 self.download_btn()
 
-            elif event == 'save_to':
-                if values['save_to']:
-                    self.d.folder = values['save_to']
+            elif event == 'folder':
+                if values['folder']:
+                    self.d.folder = values['folder']
                 else: # in case of empty entries
-                    self.window.Element('save_to').Update(self.d.folder)
+                    self.window.Element('folder').Update(self.d.folder)
+                # self.window['browse'](initial_folder=self.d.folder)
 
             elif event == 'name':
                 self.d.name = validate_file_name(values['name'])
@@ -2734,6 +2736,7 @@ def clipboard_listener():
 
 
 def singleApp():
+    """send a message thru clipboard to check if an app instance already running"""
     original = pyperclip.paste()
     pyperclip.copy('any one there?')
     time.sleep(0.3)
@@ -2749,61 +2752,6 @@ def singleApp():
     pyperclip.copy(original)
     return True
 
-
-# class TaskBarIcon(wx.adv.TaskBarIcon):
-#     def __init__(self, frame):
-#         super(TaskBarIcon, self).__init__()
-#         self.frame = frame
-#         self.SetIcon(wx.Icon('icons/icon.ico'), 'Hanash download manager')  # icon, tooltip
-#
-#         # get new id's for menu items
-#         self.MONITOR_ID = wx.NewId()
-#         self.SHOW_ID = wx.NewId()
-#         self.EXIT_ID = wx.NewId()
-#
-#         # bind actions with menuItems
-#         self.Bind(wx.adv.EVT_TASKBAR_LEFT_DOWN, self.on_left_down)
-#         self.Bind(wx.EVT_MENU, self.set_monitor, id=self.MONITOR_ID)
-#         self.Bind(wx.EVT_MENU, self.on_Show_window, id=self.SHOW_ID)
-#         self.Bind(wx.EVT_MENU, self.on_exit, id=self.EXIT_ID)
-#
-#     def CreatePopupMenu(self, evt=None):
-#         # This method is called by the base class
-#         menu = wx.Menu()
-#
-#         # menu items
-#         menu.AppendCheckItem(self.MONITOR_ID, "Monitor copied links")
-#         menu.Append(self.SHOW_ID, "Show window")
-#         menu.AppendSeparator()
-#         menu.Append(self.EXIT_ID, "Exit")
-#
-#         # check / uncheck menu items
-#         global monitor_clipboard
-#         menu.Check(self.MONITOR_ID, monitor_clipboard)
-#
-#         return menu
-#
-#     def set_monitor(self, event):
-#         global monitor_clipboard
-#         monitor_clipboard = not monitor_clipboard
-#         clipboard_q.put(('monitor', monitor_clipboard))
-#         m_frame_q.put(('monitor', monitor_clipboard))
-#
-#     def on_left_down(self, event):
-#         m_frame_q.put(('visibility', 'show'))
-#
-#     def on_Show_window(self, event):
-#         m_frame_q.put(('visibility', 'show'))
-#
-#     def on_exit(self, event):
-#         m_frame_q.put(('exit', True))
-#
-#         wx.CallAfter(self.Destroy)  # check for better way to exit
-#         #
-#         # self.frame.Close()  # close main frame
-#         # self.Close()
-
-
 # endregion
 
 
@@ -2811,16 +2759,6 @@ def singleApp():
 def notify(msg, title='HanashDM', timeout=5):
     # show os notification at tray icon area
     plyer.notification.notify(title=title, message=msg, app_name=app_title)
-
-
-# def image_file_to_bytes(image_file, size):
-#     # image_file = io.BytesIO(base64.b64decode(image64))
-#     img = Image.open(image_file)
-#     img.thumbnail(size, Image.ANTIALIAS)
-#     bio = io.BytesIO()
-#     img.save(bio, format='PNG')
-#     imgbytes = bio.getvalue()
-#     return imgbytes
 
 
 def handle_exceptions(error):
@@ -3064,6 +3002,7 @@ def get_seg_size(seg):
     a, b = int(seg.split('-')[0]), int(seg.split('-')[1])
     size = b - a + 1 if b > 0 else 0
     return size
+
 
 def merge_video_audio(video, audio, output):
     # very fast audio just copied, format must match [mp4, m4a] and [webm, webm]
