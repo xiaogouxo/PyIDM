@@ -45,6 +45,9 @@ you can run one line command to install required packages:
 python -m pip install pycurl certifi PySimpleGUI mimetypes pyperclip plyer youtube_dl
 ```
 
+Or, simply run Hanash application and it will install missing packages automatically
+
+
 
 ### Alternative to IDM (Internet Download Manager):
 The main reason for making this application is the lack of free open source download
@@ -106,6 +109,11 @@ youtube videos, for most recent versions, you can run from the source with most 
 <br><br>
 
 # Versions change log:
+3.2.0:
+- Automatically install required python packages to run the application.
+- better log text newer entries are now at the bottom.
+
+
 3.1.0:
 - added functionality to download youtube DASH videos with audio merged using ffmpg.
 - bug fixes.
