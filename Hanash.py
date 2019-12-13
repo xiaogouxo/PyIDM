@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+version = '3.1.3' # autoscroll log multiline text with append=True
 
 # standard modules
 import copy
@@ -103,7 +104,7 @@ import pickle, json
 import plyer  # for os notification messages
 
 
-version = '3.1.1' # added functionality to download youtube video with audio merged
+
 test = False  # when active all exceptions will be re-raised
 
 about_notes = """Hanash is a general purpose multi-connections download manager based on python, 
@@ -304,6 +305,7 @@ class MainWindow:
         # initial setup
         self.setup()
 
+
     def setup(self):
         """initial setup"""
         # get setting from disk
@@ -401,7 +403,8 @@ class MainWindow:
                            sg.T('')]
                           ]
 
-        log_layout = [[sg.T('Details events:')], [sg.Multiline(default_text=self.log_text, size=(70, 16), key='log')],
+        log_layout = [[sg.T('Details events:')], [sg.Multiline(default_text=self.log_text, size=(70, 16), key='log',
+                                                               autoscroll=True)],
                       [sg.Button('Clear Log')]]
 
         layout = [[sg.TabGroup(
@@ -419,6 +422,7 @@ class MainWindow:
     def start_window(self):
         self.window = self.create_window()
         self.window.Finalize()
+        # self.window['url'].expand(expand_x=True)
 
     def restart_window(self):
         try:
@@ -435,17 +439,19 @@ class MainWindow:
             print(e)
 
     def update_gui(self):
-
         # read incoming messages from queue
         for _ in range(m_frame_q.qsize()):
             k, v = m_frame_q.get()
             if k == 'log':
                 # add msg to log_txt
-                self.log_text = v + self.log_text
-                self.log_text = self.log_text[:20000]  # limit text size to save memory
+                # self.log_text = v + self.log_text
+                # self.log_text = self.log_text[:20000]  # limit text size to save memory
 
                 try:
-                    self.window.Element('log').Update(self.log_text)
+                    if len(self.window['log'].get()) > 3000:
+                        self.window['log'](self.window['log'].get()[:2000])
+                    # self.window.Element('log').Update(self.log_text)
+                    self.window['log'](v, append=True)
                 except:
                     pass
 
@@ -631,22 +637,12 @@ class MainWindow:
 
                 response = sg.popup_ok_cancel(
                     'will try to download latest youtube-dl module from github and update this application\n'
-                     'check log tab for progress \n'
+                    'check log tab for progress \n'
                     'Proceed?',
                     title='youtube-dl module update')
                 print(response)
 
                 if response == 'OK':
-                    # # check if the application runs from a windows executable "folder contains lib subfolder"
-                    # # if run from source code, we will update installed package
-                    # if 'lib' not in os.listdir(current_directory):
-                    #     subprocess.run([sys.executable, "-m", "pip", "install", 'youtube_dl', '--upgrade'])
-                        # msg = ('Looks like you are not running this application from its executable standalone folder, \n'
-                        #        'if you are running from source you need to update python libs by: \n'
-                        #        'python -m pip install youtube_dl --upgrade')
-                        # log(msg)
-                        # sg.Popup(msg)
-
                     try:
                         Thread(target=update_youtube_dl).start()
                     except Exception as e:
@@ -1582,7 +1578,7 @@ class DownloadWindow:
         ]
 
         log_layout = [[sg.T('Details events:')],
-                      [sg.Multiline(default_text=self.log_text, size=(70, 16), font='any 8', key='log')],
+                      [sg.Multiline(default_text=self.log_text, size=(70, 16), font='any 8', key='log', autoscroll=True)],
                       [sg.Button('Clear Log')]]
 
         layout = [[sg.TabGroup([[sg.Tab('Main', main_layout), sg.Tab('Log', log_layout)]])]]
@@ -1611,12 +1607,17 @@ class DownloadWindow:
             k, v = self.d.q.d_window.get()
             print(k, v)
             if k == 'log':
-                self.log_text = v + self.log_text
-                self.log_text = self.log_text[:20000]  # limit text size to save memory
+                # self.log_text = v + self.log_text
+                # self.log_text = self.log_text[:20000]  # limit text size to save memory
                 try:
-                    self.window.Element('log').Update(self.log_text)
+                    # self.window.Element('log').Update(self.log_text)
+                    if len(self.window['log'].get()) > 3000:
+                        self.window['log'](self.window['log'].get()[:2000])
+                    # self.window.Element('log').Update(self.log_text)
+                    self.window['log'](v, append=True)
                 except:
                     pass
+
 
         try:
             self.window.Element('out').Update(value=out)
