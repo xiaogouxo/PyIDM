@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-version = '3.1.3' # autoscroll log multiline text with append=True
+version = '3.2.0' # correct version number since 3.1.1 add of "automatically install missing python packages"
 
 # standard modules
 import copy
