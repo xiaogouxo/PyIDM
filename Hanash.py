@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-version = '3.2.0' # correct version number since 3.1.1 add of "automatically install missing python packages"
+version = '3.2.1' # app_icon selected as icon.ico for windows and icon.png for linux
 
 # standard modules
 import copy
@@ -127,7 +127,8 @@ current_directory = os.path.dirname(os.path.abspath(sys.argv[0]))  # get the dir
 os.chdir(current_directory)
 
 app_title = f'Hanash Download Manager version: {version}'
-app_icon = os.path.join(current_directory, 'icons', '5.png')
+icon_name = 'icon.ico' if os.name == 'nt' else 'icon.png'
+app_icon = os.path.join(current_directory, 'icons', icon_name)
 
 themes = list(sg.LOOK_AND_FEEL_TABLE.keys())
 sg.SetOptions(font='Helvetica 11', auto_size_buttons=True, progress_meter_border_depth=0, border_width=1)
@@ -3011,11 +3012,16 @@ def get_seg_size(seg):
 
 
 def merge_video_audio(video, audio, output):
+    # print('pause for 20 seconds')
+    # time.sleep(20)
+	# ffmpeg
+    ffmpeg = 'ffmpeg' #os.path.join(current_directory, 'ffmpeg', 'ffmpeg')
+
     # very fast audio just copied, format must match [mp4, m4a] and [webm, webm]
-    cmd1 = f'ffmpeg -i "{video}" -i "{audio}" -c copy "{output}"'
+    cmd1 = f'{ffmpeg} -i "{video}" -i "{audio}" -c copy "{output}"'
 
     # slow, mix different formats
-    cmd2 = f'ffmpeg -i "{video}" -i "{audio}" "{output}"'
+    cmd2 = f'{ffmpeg} -i "{video}" -i "{audio}" "{output}"'
 
     try:
         # subprocess.call will block until process finished
@@ -3027,7 +3033,6 @@ def merge_video_audio(video, audio, output):
 # endregion
 
 
-# region youtube-dl module update
 def update_youtube_dl():
     """This block for updating youtube-dl module in the freezed application folder in windows"""
     # check if the application runs from a windows cx_freeze executable "folder contains lib subfolder"
