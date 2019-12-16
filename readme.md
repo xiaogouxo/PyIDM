@@ -42,11 +42,10 @@ python packages:
 
 you can run one line command to install required packages:
 ```python
-python -m pip install pycurl certifi PySimpleGUI mimetypes pyperclip plyer youtube_dl
+python -m pip install certifi PySimpleGUI mimetypes pyperclip plyer youtube_dl pycurl
 ```
 
 Or, simply run Hanash application and it will install missing packages automatically
-
 
 
 ### Alternative to IDM (Internet Download Manager):
@@ -86,6 +85,13 @@ will choose an audio stream with the same format, then download both streams as 
 the audio will be merged into video file using FFMPEG external application "subprocess".  
 
 
+### note for pycurl: <br>
+last checked on 16-12-2019 pycurl [website](http://pycurl.io/docs/latest/index.html) support python Python 3.4 through 3.6, no mention 
+for 3.7 or 3.8
+normal pip install i.e `python -m pip install pycurl` will fail on windows because you need to build libcurl on your system first which is a headach or you can download a wheel, zip file, or even a windows installer for pycurl from its official download [link](https://dl.bintray.com/pycurl/pycurl/), find the file that meets your windows system and python version installed on your system.
+<br>
+
+
 ### note for Youtube-dl: <br>
 youtube website changes frequently, if this application failed to retrieve video/playlist data
 you should update youtube-dl module https://github.com/ytdl-org/youtube-dl
@@ -102,19 +108,19 @@ On Linux, this module makes use of the xclip or xsel commands, which should come
 
 ### Windows: <br>
 a standalone compressed version available on: https://github.com/Aboghazala/Hanash/tree/master/windows <br>
-note that these builds are old and might not working as expected regarding 
-youtube videos, for most recent versions, you can run from the source with most recent youtube_dl module
-
+prepared by cx_freeze, last updated file is version 3.2, 
+note that these builds might be older than source code, for most recent versions, you can run from the source
 
 <br><br>
 
 # Versions change log:
-3.2.0:
+3.2:
 - Automatically install required python packages to run the application.
 - better log text newer entries are now at the bottom.
+- correct app. icon not appearing in windows
 
 
-3.1.0:
+3.1:
 - added functionality to download youtube DASH videos with audio merged using ffmpg.
 - bug fixes.
 - remove Pillow module from requirements
@@ -132,6 +138,7 @@ youtube videos, for most recent versions, you can run from the source with most 
 
 # Feedback:
 your feedback is most welcomed by filling an issue on https://github.com/Aboghazala/Hanash <br>
+or email me: mahmoud_elshahhat@yahoo.com
 Cheers, <br>
 Mahmoud Elshahat, <br>
 2019
