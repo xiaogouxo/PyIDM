@@ -1,36 +1,28 @@
-Hanash is a python open source alternative to IDM (Internet Download Manager) 
+pyIDM is a python open source alternative to IDM (Internet Download Manager) 
 with multi-connections, high speed engine, 
 it downloads general files, also videos, and playlists from youtube. <br>
 Developed in Python, based on "pyCuRL/curl", "youtube_dl", and "PySimpleGUI"
 
 
-### Naming, What does Hanash means??
-Hanash is an Arabic name for some kind of snakes / pythons called a
-black racer, reference wiki pages: <br>
-[حنش](https://ar.wikipedia.org/wiki/حنش) <br>
-[Eastern_racer](https://en.wikipedia.org/wiki/Eastern_racer)
-
-![Hanash_image](https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Coluber_constrictorPCCP20030612-1115B.jpg/220px-Coluber_constrictorPCCP20030612-1115B.jpg)
-
 
 **snapshots**
 
-![main window](https://github.com/Aboghazala/Hanash/blob/master/images/main.PNG)
-![downloads_tab](https://github.com/Aboghazala/Hanash/blob/master/images/downloads.PNG)
-![setting_tab](https://github.com/Aboghazala/Hanash/blob/master/images/setting.PNG)
-![d_window](https://github.com/Aboghazala/Hanash/blob/master/images/d_window.PNG)
+![main window](https://github.com/Aboghazala/pyIDM/blob/master/images/main.PNG)
+![downloads_tab](https://github.com/Aboghazala/pyIDM/blob/master/images/downloads.PNG)
+![setting_tab](https://github.com/Aboghazala/pyIDM/blob/master/images/setting.PNG)
+![d_window](https://github.com/Aboghazala/pyIDM/blob/master/images/d_window.PNG)
 
-example multi-downloading with speed limit of 10 KB/sec as a test
+example multi-downloading with speed limit of 20 KB/sec as a test
 
-![concurrent windows](https://github.com/Aboghazala/Hanash/blob/master/images/concurrent_windows.PNG)
+![concurrent windows](https://github.com/Aboghazala/pyIDM/blob/master/images/concurrent_windows.PNG)
 
 
 # Requirements:
-
-- Python 3+
+To run from source you will need to install python and some packages as follows:
+- Python 3+: tested with python 3.6 on windows, and 3.7, 3.8 on linux
 - ffmpeg : for merging audio with youtube DASH videos
 
-python packages: 
+Required python packages: 
 - pycurl: is a Python interface to libcurl / curl as our download engine,
 - PySimpleGUI: a beautiful gui builder, 
 - youtube_dl: famous youtube downloader, limited use for meta information extraction only but videos are downloaded using pycurl 
@@ -40,23 +32,44 @@ python packages:
 - plyer: for systray area notification,
 
 
-you can run one line command to install required packages:
+pyIDM application will do its best to install missing packages automatically once you run it. or you can install required packages manually using:
 ```python
 python -m pip install certifi PySimpleGUI mimetypes pyperclip plyer youtube_dl pycurl
 ```
+on linux you should add `--user` argument for pip or use `sudo pip ...`
 
-Or, simply run Hanash application and it will install missing packages automatically
+### Windows binaries: <br>
+a standalone frozen version prepared by cx_freeze is available on: https://github.com/Aboghazala/pyIDM/tree/master/windows <br>
+note that these builds might be older than source code, for most recent versions, you can run from the source
 
 
 ### Alternative to IDM (Internet Download Manager):
-The main reason for making this application is the lack of free open source download
-managers which has multi-connection, high download speed, and resume capability, also can download youtube
-videos, in same time has a good gui design, to achieve that, decision made to use the high speed
-library 'pycurl', a threading module for multi-connection, youtube_dl, and an easy and beautiful PySimpleGUI 
-module for designing the gui user interface
+The main reason for making this application is the lack of free open source download managers which has multi-connection, high download speed, and resume capability, also can download youtube videos, in same time has a good gui design, to achieve that, decision made to use the high speed library 'pycurl', a threading module for multi-connection, youtube_dl, and an easy and beautiful PySimpleGUI module for designing the gui user interface
 
 
-### How does Hanash work??
+
+### note for pycurl: <br>
+last checked on 16-12-2019 pycurl [website](http://pycurl.io/docs/latest/index.html) support python Python 3.4 through 3.6, no mention 
+for 3.7 or 3.8
+normal pip install i.e `python -m pip install pycurl` will fail on windows because you need to build libcurl on your system first which is a headach or you can download a wheel, zip file, or even a windows installer for pycurl from its official download [link](https://dl.bintray.com/pycurl/pycurl/), find the file that meets your windows system and python version installed on your system.
+<br>
+
+
+### note for Youtube-dl: <br>
+youtube website changes frequently, if this application failed to retrieve video/playlist data
+you should update youtube-dl module https://github.com/ytdl-org/youtube-dl
+```
+python -m pip install youtube_dl --upgrade
+```
+<br>
+
+### note for pyperclip: <br>
+Pyperclip is a cross-platform Python module for copy and paste clipboard functions. it is being used if you want to monitor clipboard for files urls and it will be processed automatically by pyIDM DM.
+On Linux, this module makes use of the xclip or xsel commands, which should come with the os. Otherwise run "sudo apt-get install xclip" on Debian like or "sudo pacman -S xclip" on archlinux
+
+<br>
+
+### How does pyIDM work??
 - once you copy any url in clipboard the application start processing this url automatically "you can disable this in user setting"
 - pycurl get url headers and follow redirections to get the effective download url.
 - headers get processed and data get extracted and create a download_item object 
@@ -85,35 +98,12 @@ will choose an audio stream with the same format, then download both streams as 
 the audio will be merged into video file using FFMPEG external application "subprocess".  
 
 
-### note for pycurl: <br>
-last checked on 16-12-2019 pycurl [website](http://pycurl.io/docs/latest/index.html) support python Python 3.4 through 3.6, no mention 
-for 3.7 or 3.8
-normal pip install i.e `python -m pip install pycurl` will fail on windows because you need to build libcurl on your system first which is a headach or you can download a wheel, zip file, or even a windows installer for pycurl from its official download [link](https://dl.bintray.com/pycurl/pycurl/), find the file that meets your windows system and python version installed on your system.
-<br>
-
-
-### note for Youtube-dl: <br>
-youtube website changes frequently, if this application failed to retrieve video/playlist data
-you should update youtube-dl module https://github.com/ytdl-org/youtube-dl
-```
-python -m pip install youtube_dl --upgrade
-```
-<br>
-
-### note for pyperclip: <br>
-Pyperclip is a cross-platform Python module for copy and paste clipboard functions. it is being used if you want to monitor clipboard for files urls and it will be processed automatically by Hanash DM.
-On Linux, this module makes use of the xclip or xsel commands, which should come with the os. Otherwise run "sudo apt-get install xclip" on Debian like or "sudo pacman -S xclip" on archlinux
-
-<br>
-
-### Windows: <br>
-a standalone compressed version available on: https://github.com/Aboghazala/Hanash/tree/master/windows <br>
-prepared by cx_freeze, last updated file is version 3.2, 
-note that these builds might be older than source code, for most recent versions, you can run from the source
-
 <br><br>
 
 # Versions change log:
+3.3:
+- Change application name to pyIDM instead of Hanash.
+
 3.2:
 - Automatically install required python packages to run the application.
 - better log text newer entries are now at the bottom.
@@ -131,13 +121,14 @@ note that these builds might be older than source code, for most recent versions
 
 # Future Plans :
 - use native video library for merging audio and video, will check libav, or possibility with youtube_dl.
+- Design different user interface.
 
 
 
 <br><br>
 
 # Feedback:
-your feedback is most welcomed by filling an issue on https://github.com/Aboghazala/Hanash <br>
+your feedback is most welcomed by filling an issue on https://github.com/Aboghazala/pyIDM <br>
 or email me: mahmoud_elshahhat@yahoo.com
 Cheers, <br>
 Mahmoud Elshahat, <br>
