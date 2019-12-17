@@ -7,14 +7,14 @@ Developed in Python, based on "pyCuRL/curl", "youtube_dl", and "PySimpleGUI"
 
 **snapshots**
 
-![main window](https://github.com/Aboghazala/pyIDM/blob/master/images/main.PNG)
-![downloads_tab](https://github.com/Aboghazala/pyIDM/blob/master/images/downloads.PNG)
-![setting_tab](https://github.com/Aboghazala/pyIDM/blob/master/images/setting.PNG)
-![d_window](https://github.com/Aboghazala/pyIDM/blob/master/images/d_window.PNG)
+![main window](https://github.com/Aboghazala/pyIDM/blob/master/screenshots/main_reds.png)
+![downloads_tab](https://github.com/Aboghazala/pyIDM/blob/master/screenshots/downloads_reds.PNG)
+![setting_tab](https://github.com/Aboghazala/pyIDM/blob/master/screenshots/setting_reds.PNG)
+![d_window](https://github.com/Aboghazala/pyIDM/blob/master/screenshots/dwindow.PNG)
 
 example multi-downloading with speed limit of 20 KB/sec as a test
 
-![concurrent windows](https://github.com/Aboghazala/pyIDM/blob/master/images/concurrent_windows.PNG)
+![concurrent windows](https://github.com/Aboghazala/pyIDM/blob/master/screenshots/multi-1.png)
 
 
 # Requirements:
