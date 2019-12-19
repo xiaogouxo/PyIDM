@@ -355,9 +355,7 @@ class MainWindow:
                        [sg.Text('File name:'), sg.Input('', size=(65, 1), key='name', enable_events=True)],
                        [sg.T('File size:'), sg.T('-' * 30, key='size'), sg.T('Type:'), sg.T('-' * 35, key='type'),
                         sg.T('Resumable:'), sg.T('-----', key='resumable')],
-                       [sg.Text('Save To:'), sg.Input(self.d.folder, size=(55, 1), key='folder', enable_events=True,
-                                                      disabled=True, use_readonly_for_disable=True),
-                       # [sg.Text('Save To:'), sg.T(self.d.folder, size=(55, 1), key='folder'),
+                       [sg.Text('Save To:'), sg.Input(self.d.folder, size=(55, 1), key='folder', enable_events=True),
                         sg.FolderBrowse(key='browse')], #initial_folder=self.d.folder,
 
                        # download button
@@ -894,20 +892,20 @@ class MainWindow:
         if d is None:
             return
 
-        # validate save folder
+        # validate destination folder for existence and permission 
         try:
             with open(os.path.join(d.folder, 'test'), 'w') as test_file:
                 test_file.write('0')
             os.unlink(os.path.join(d.folder, 'test'))
         except FileNotFoundError:
             sg.Popup(f'destination folder {d.folder} does not exist', title='folder error')
-            return BlockingIOError
+            return # BlockingIOError
         except PermissionError:
             sg.Popup(f"you don't have enough permission for destination folder {d.folder}", title='folder error')
-            return BlockingIOError
+            return # BlockingIOError
         except Exception as e:
             sg.Popup(f'problem in destination folder {repr(e)}', title='folder error')
-            return BlockingIOError
+            return # BlockingIOError
 
         d.max_connections = self.max_connections if d.resumable else 1
         if silent is None:
