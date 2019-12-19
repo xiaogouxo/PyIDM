@@ -131,7 +131,7 @@ app_title = f'{app_name} .. an open source download manager version {version}'
 icon_name = 'icon.ico' if os.name == 'nt' else 'icon.png'
 app_icon = os.path.join(current_directory, 'icons', icon_name)
 
-themes = list(sg.LOOK_AND_FEEL_TABLE.keys())
+themes = sorted(list(sg.LOOK_AND_FEEL_TABLE.keys()))
 sg.SetOptions(font='Helvetica 11', auto_size_buttons=True, progress_meter_border_depth=0, border_width=1)
 
 m_frame_q = Queue()  # queue for Main application window
