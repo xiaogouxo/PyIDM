@@ -1,35 +1,37 @@
 pyIDM is a python open source alternative to IDM (Internet Download Manager) 
 with multi-connections, high speed engine, 
-it downloads general files, also videos, and playlists from youtube. <br>
+it downloads general files with good youtube support (such as downloading videos, whole playlists at once, or just an audio file for a video stream) . <br>
 Developed in Python, based on "pyCuRL/curl", "youtube_dl", and "PySimpleGUI"
 
 
 
 **snapshots**
 
-![main window](https://github.com/Aboghazala/pyIDM/blob/master/screenshots/main_reds.png)
-![downloads_tab](https://github.com/Aboghazala/pyIDM/blob/master/screenshots/downloads_reds.PNG)
-![setting_tab](https://github.com/Aboghazala/pyIDM/blob/master/screenshots/setting_reds.PNG)
-![d_window](https://github.com/Aboghazala/pyIDM/blob/master/screenshots/dwindow.PNG)
+![main window](https://github.com/pyIDM/pyIDM/blob/master/screenshots/main_reds.png)
+![downloads_tab](https://github.com/pyIDM/pyIDM/blob/master/screenshots/downloads_reds.PNG)
+![setting_tab](https://github.com/pyIDM/pyIDM/blob/master/screenshots/setting_reds.PNG)
+![d_window](https://github.com/pyIDM/pyIDM/raw/master/screenshots/dwindow.png)
 
 example multi-downloading with speed limit of 20 KB/sec as a test
 
-![concurrent windows](https://github.com/Aboghazala/pyIDM/blob/master/screenshots/multi-1.png)
+![concurrent windows](https://github.com/pyIDM/pyIDM/blob/master/screenshots/multi-1.png)
 
 
 # Requirements:
 To run from source you will need to install python and some packages as follows:
 - Python 3+: tested with python 3.6 on windows, and 3.7, 3.8 on linux
-- ffmpeg : for merging audio with youtube DASH videos
+- [ffmpeg](https://www.ffmpeg.org/) : for merging audio with youtube DASH videos 
 
 Required python packages: 
-- pycurl: is a Python interface to libcurl / curl as our download engine,
-- PySimpleGUI: a beautiful gui builder, 
-- youtube_dl: famous youtube downloader, limited use for meta information extraction only but videos are downloaded using pycurl 
+- [pycurl](http://pycurl.io/docs/latest/index.html): is a Python interface to libcurl / curl as our download engine,
+- [PySimpleGUI](https://github.com/PySimpleGUI/PySimpleGUI): a beautiful gui builder, 
+- [youtube_dl](https://github.com/ytdl-org/youtube-dl): famous youtube downloader, limited use for meta information extraction only but videos are downloaded using pycurl 
 - certifi: required by 'pycurl' for validating the trustworthiness of SSL certificates,
 - mimetypes: converts between a filename or URL and the MIME type associated with the filename extension.,
 - pyperclip: A cross-platform clipboard module for monitoring url copied to clipboard,
 - plyer: for systray area notification,
+
+** please read notes below
 
 
 pyIDM application will do its best to install missing packages automatically once you run it. or you can install required packages manually using:
@@ -39,7 +41,7 @@ python -m pip install certifi PySimpleGUI mimetypes pyperclip plyer youtube_dl p
 on linux you should add `--user` argument for pip or use `sudo pip ...`
 
 ### Windows binaries: <br>
-a standalone frozen version prepared by cx_freeze is available on: https://github.com/Aboghazala/pyIDM/tree/master/windows <br>
+a standalone frozen version prepared by cx_freeze will be available soon on: https://github.com/pyIDM/pyIDM/releases <br>
 note that these builds might be older than source code, for most recent versions, you can run from the source
 
 
@@ -49,22 +51,27 @@ The main reason for making this application is the lack of free open source down
 
 
 ### note for pycurl: <br>
+for windows users:
 last checked on 16-12-2019 pycurl [website](http://pycurl.io/docs/latest/index.html) support python Python 3.4 through 3.6, no mention 
 for 3.7 or 3.8
-normal pip install i.e `python -m pip install pycurl` will fail on windows because you need to build libcurl on your system first which is a headach or you can download a wheel, zip file, or even a windows installer for pycurl from its official download [link](https://dl.bintray.com/pycurl/pycurl/), find the file that meets your windows system and python version installed on your system.
+normal pip install i.e `python -m pip install pycurl` will fail on windows because you need to build libcurl on your system first which is a headach. 
+your best choice if pip fail is to download a wheel, zip file, or even a windows installer for pycurl from its official download [link](https://dl.bintray.com/pycurl/pycurl/), find the file that match your windows system and python version installed on your system.
+
+for linux users:
+there is no issues, since most linux distros have curl preinstalled, so pycurl will link with libcurl library to get built with no issues, checked with python versions 3.6, 3.7, and 3.8 working with no problems.
 <br>
 
 
-### note for Youtube-dl: <br>
+### note for [Youtube-dl](https://github.com/ytdl-org/youtube-dl): <br>
 youtube website changes frequently, if this application failed to retrieve video/playlist data
-you should update youtube-dl module https://github.com/ytdl-org/youtube-dl
+you should update youtube-dl module thru pyIDM setting tab or manually by
 ```
 python -m pip install youtube_dl --upgrade
 ```
 <br>
 
 ### note for pyperclip: <br>
-Pyperclip is a cross-platform Python module for copy and paste clipboard functions. it is being used if you want to monitor clipboard for files urls and it will be processed automatically by pyIDM DM.
+Pyperclip is a cross-platform Python module for copy and paste clipboard functions. it is being used if you want to monitor clipboard for files urls and it will be processed automatically by the application.
 On Linux, this module makes use of the xclip or xsel commands, which should come with the os. Otherwise run "sudo apt-get install xclip" on Debian like or "sudo pacman -S xclip" on archlinux
 
 <br>
@@ -102,7 +109,7 @@ the audio will be merged into video file using FFMPEG external application "subp
 
 # Versions change log:
 3.3:
-- Change application name to pyIDM instead of Hanash.
+- Change application name to pyIDM instead of old name Hanash.
 
 3.2:
 - Automatically install required python packages to run the application.
@@ -128,10 +135,8 @@ the audio will be merged into video file using FFMPEG external application "subp
 <br><br>
 
 # Feedback:
-your feedback is most welcomed by filling an issue on https://github.com/Aboghazala/pyIDM <br>
+your feedback is most welcomed by filling an issue on https://github.com/pyIDM/pyIDM <br>
 or email me: mahmoud_elshahhat@yahoo.com
 Cheers, <br>
 Mahmoud Elshahat, <br>
 2019
-
-
