@@ -121,9 +121,14 @@ Thanks,
 Mahmoud Elshahat 
 2019"""
 
-ytdl = None  # youtube-dl will be imported in a separate thread to save loading time
+# aliases
+clipboard = pyperclip
+clipboard.read = pyperclip.paste
+clipboard.write = pyperclip.copy
 
 # region public
+ytdl = None  # youtube-dl will be imported in a separate thread to save loading time
+
 current_directory = os.path.dirname(os.path.abspath(sys.argv[0]))  # get the directory of this script
 os.chdir(current_directory)
 
@@ -2735,48 +2740,40 @@ def clipboard_listener():
 
     while True:
 
-        new_data = pyperclip.paste()
+        new_data = clipboard.read()
 
-        if new_data == f'show_my_{app_name}':  # wake up call
-            m_frame_q.put(('visibility', 'show'))
-            # pyperclip.copy('')
-        elif new_data == 'any one there?':
-            pyperclip.copy('yes')
+        if new_data == 'any one there?': # a possible message comming from new inistace of this script
+            clipboard.write('yes') # it will be read by singleApp() as an exit signal
+            m_frame_q.put(('visibility', 'show')) # restore main window if minimized
 
-        if monitor:
-            if new_data != old_data:
-                old_data = new_data
-
-                if new_data.startswith('http') and ' ' not in new_data:
-                    m_frame_q.put(('url', new_data))
+        if monitor and new_data != old_data:
+            if new_data.startswith('http') and ' ' not in new_data:
+                m_frame_q.put(('url', new_data))
+            
+            old_data = new_data
 
         if clipboard_q.qsize() > 0:
             k, v = clipboard_q.get()
-            if k == 'status':
-                if v == Status.cancelled:
-                    break
-            elif k == 'monitor':
-                monitor = v
+            if k == 'status' and v == Status.cancelled: break
+            elif k == 'monitor': monitor = v
 
         time.sleep(0.2)
 
 
 def singleApp():
     """send a message thru clipboard to check if an app instance already running"""
-    original = pyperclip.paste()
-    pyperclip.copy('any one there?')
+    original = clipboard.read() # get original clipboard value
+    clipboard.write('any one there?')
     time.sleep(0.3)
-    answer = pyperclip.paste()
+    answer = clipboard.read()
+    clipboard.write(original) # restore clipboard original value
+
     if answer == 'yes':
         print('previous instance already running')
-        pyperclip.copy(f'show_my_{app_name}')
-        time.sleep(0.3)
-        pyperclip.copy(original)
         return False
+    else:
+        return True
 
-    # time.sleep(0.3)
-    pyperclip.copy(original)
-    return True
 
 # endregion
 
