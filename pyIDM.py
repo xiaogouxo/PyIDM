@@ -4,7 +4,7 @@ version = '3.3.0' # Change application name to pyIDM
 
 # standard modules
 import copy
-import os, sys
+import os, sys, platform
 import py_compile
 import shutil
 import subprocess
@@ -751,22 +751,38 @@ class MainWindow:
 
         self._speed_limit = value
 
-    # endregion
+    # endregion 
 
     # region config files
     @property
     def sett_folder(self):
-        if os.name == 'nt':
+        home_folder = os.path.expanduser('~')
+
+        if platform.system() == 'Windows':
             roaming = os.getenv('APPDATA')  # return APPDATA\Roaming\ under windows
             _sett_folder = os.path.join(roaming, f'.{app_name}')
-            if f'.{app_name}' not in os.listdir(roaming):
-                os.mkdir(_sett_folder)
-            return _sett_folder
+          
+        elif platform.system() == 'Linux':
+            _sett_folder = f'{home_folder}/.config/{app_name}/'
+
+        elif platform.system() == 'Darwin':
+            _sett_folder = f'{home_folder}/Library/Application Support/{app_name}/'
+
         else:
-            return current_directory
+            _sett_folder = current_directory
+
+        if not os.path.exists(_sett_folder):
+            try:
+                os.mkdir(_sett_folder)
+            except Exception as e:
+                _sett_folder = current_directory
+                print('setting folder error:', e)
+
+        return _sett_folder
 
     def load_d_list(self):
         try:
+            log('Load previous downloads items from', self.sett_folder)
             file = os.path.join(self.sett_folder, 'downloads.cfg')
             with open(file, 'rb') as f:
                 d_list = pickle.load(f)
@@ -805,6 +821,7 @@ class MainWindow:
 
     def load_setting(self):
         try:
+            log('Load Application setting from', self.sett_folder)
             file = os.path.join(self.sett_folder, 'setting.cfg')
             with open(file, 'r') as f:
                 self.setting = json.load(f)
@@ -1509,7 +1526,7 @@ class MainWindow:
             self.url_timer = Timer(0.5, self.refresh_headers, args=[self.d.url])
             self.url_timer.start()  # start new timer
 
-            print('url text changed', self.d.url)
+            # print('url text changed', self.d.url)
         except:
             pass
 
