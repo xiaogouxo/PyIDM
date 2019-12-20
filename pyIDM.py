@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 app_name = 'pyIDM'
-version = '3.3.0.1' # stop selecting downloads tab on start_download() error 
+version = '3.3.0.2' # update eff_url for items in downloads tab if it gets redownloaded 
 
 # standard modules
 import copy
@@ -951,20 +951,26 @@ class MainWindow:
 
             if response == 'No':
                 log('Download cancelled by user')
-                return
+                return 'cancelled'
             else:
-                os.unlink(os.path.join(d.folder, d.name))
+                log('deleting existing file:', d.full_name)
+                os.unlink(d.full_name)
 
         # check if file already existed in download list
         i = self.file_in_d_list(d.name, d.folder)
         if i is not None:  # file already exist in d_list
-            d = self.d_list[i]
-            log(f'start download fn> file exist in d_list, num {d.num}')
+            _d = self.d_list[i]
+            log(f'start download fn> file exist in d_list, num {_d.num}')
 
             # if item in active downloads, quit or if status is downloading, quit
-            if d.id in active_downloads or self.d_list[d.id].status == Status.downloading:
+            if _d.id in active_downloads or self.d_list[d.id].status == Status.downloading:
                 log('start download fn> file is being downloaded already, abort mission, taking no action')
                 return
+            else:
+                # update url
+                _d.eff_url = d.eff_url
+                d = _d 
+
         else:  # new file
             # generate unique id number for each download
             d.id = len(self.d_list)
@@ -1040,7 +1046,7 @@ class MainWindow:
 
         r = self.start_download(copy.deepcopy(self.d))
 
-        if r != 'error':
+        if r not in ('error', 'cancelled'):
             self.select_tab('Downloads')
 
     # endregion
@@ -2071,6 +2077,7 @@ class DownloadItem:
 
     @property
     def full_name(self):
+        """return file name including path"""
         return os.path.join(self.folder, self.name)
 
 
