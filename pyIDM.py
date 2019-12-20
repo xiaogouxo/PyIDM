@@ -17,6 +17,7 @@ import time
 from collections import deque
 import importlib.util
 
+
 # external modules, should be kept updated.
 ext_packages = "PySimpleGUI pyperclip plyer certifi mimetypes pycurl youtube_dl"
 
@@ -430,7 +431,7 @@ class MainWindow:
         # expand elements to fit 
         elements = ['url', 'name', 'folder', 'youtube_frame', 'pl_menu', 'm_bar'] # elements to be expanded
         for e in elements:
-        	self.window[e].expand(expand_x=True)
+            self.window[e].expand(expand_x=True)
 
     def restart_window(self):
         try:
@@ -914,6 +915,15 @@ class MainWindow:
         if d is None:
             return
 
+        # check for ffmpeg availability in case this is a video only stream
+        if d.audio:
+            cmd = 'where ffmpeg' if platform.system() == 'Windows' else 'which ffmpeg'
+            error, output = run_command(cmd)
+            if error:
+                 sg.popup_error(self.d.name, 'The video stream has no audio, and "ffmpeg" is required to merge an audio stream with your video',
+                'please install ffmpeg to your system and try again', 'https://www.ffmpeg.org/download.html', title='ffmpeg is missing')
+                 return # quit
+
         # validate destination folder for existence and permission 
         try:
             with open(os.path.join(d.folder, 'test'), 'w') as test_file:
@@ -1006,7 +1016,7 @@ class MainWindow:
         return None
 
     def download_btn(self):
-
+    	
         if self.disabled: return
 
         # search current list for previous item with same name, folder
@@ -3030,7 +3040,7 @@ def get_seg_size(seg):
 def merge_video_audio(video, audio, output):
     # print('pause for 20 seconds')
     # time.sleep(20)
-	# ffmpeg
+    # ffmpeg
     ffmpeg = 'ffmpeg' #os.path.join(current_directory, 'ffmpeg', 'ffmpeg')
 
     # very fast audio just copied, format must match [mp4, m4a] and [webm, webm]
@@ -3046,7 +3056,8 @@ def merge_video_audio(video, audio, output):
     except Exception as e:
         print(e)
         return repr(e)
-# endregion
+
+
 
 
 def update_youtube_dl():
@@ -3122,6 +3133,20 @@ def update_youtube_dl():
     log('youtube_dl module ..... done updating')
 
 
+def run_command(cmd, verbose=True):
+    log('running command:', cmd)
+    error, output = True, f'error running command {cmd}'
+    try:
+        r = subprocess.run(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        error = True if r.returncode != 0 else False
+        output = r.stdout.decode('utf-8')
+        if verbose: log(output)
+
+    except Exception as e:
+        log('error running command {cmd}', e)
+        pass
+
+    return error, output	
 # endregion
 
 
@@ -3133,3 +3158,4 @@ if __name__ == '__main__':
         Thread(target=clipboard_listener, daemon=True).start()
         main_window = MainWindow()
         main_window.run()
+
