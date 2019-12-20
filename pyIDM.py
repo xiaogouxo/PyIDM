@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 app_name = 'pyIDM'
-version = '3.3.0.2' # update eff_url for items in downloads tab if it gets redownloaded 
+version = '3.3.0.3' # fix popup message for download button 
 
 # standard modules
 import copy
@@ -1033,7 +1033,7 @@ class MainWindow:
                 'Yes ==> resume ... \n' 'No ==> cancel ... \n' \
                 'note: "if you need fresh download, you have to change file name \n' \
                 'or target folder or delete same entry from download list'
-            response = sg.PopupOKCancel(msg)
+            response = sg.PopupYesNo(msg)
             if response == 'No':
                 log('Download cancelled by user')
                 return
