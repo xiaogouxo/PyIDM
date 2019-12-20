@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 app_name = 'pyIDM'
-version = '3.3.0' # Change application name to pyIDM
+version = '3.3.0.1' # stop selecting downloads tab on start_download() error 
 
 # standard modules
 import copy
@@ -922,7 +922,7 @@ class MainWindow:
             if error:
                  sg.popup_error(self.d.name, 'The video stream has no audio, and "ffmpeg" is required to merge an audio stream with your video',
                 'please install ffmpeg to your system and try again', 'https://www.ffmpeg.org/download.html', title='ffmpeg is missing')
-                 return # quit
+                 return 'error'
 
         # validate destination folder for existence and permission 
         try:
@@ -931,13 +931,13 @@ class MainWindow:
             os.unlink(os.path.join(d.folder, 'test'))
         except FileNotFoundError:
             sg.Popup(f'destination folder {d.folder} does not exist', title='folder error')
-            return # BlockingIOError
+            return 'error'
         except PermissionError:
             sg.Popup(f"you don't have enough permission for destination folder {d.folder}", title='folder error')
-            return # BlockingIOError
+            return 'error'
         except Exception as e:
             sg.Popup(f'problem in destination folder {repr(e)}', title='folder error')
-            return # BlockingIOError
+            return 'error'
 
         d.max_connections = self.max_connections if d.resumable else 1
         if silent is None:
@@ -1040,7 +1040,7 @@ class MainWindow:
 
         r = self.start_download(copy.deepcopy(self.d))
 
-        if r is not BlockingIOError:
+        if r != 'error':
             self.select_tab('Downloads')
 
     # endregion
