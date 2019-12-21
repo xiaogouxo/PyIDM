@@ -19,7 +19,7 @@ example multi-downloading with speed limit of 20 KB/sec as a test
 
 # Requirements:
 To run from source you will need to install python and some packages as follows:
-- Python 3+: tested with python 3.6 on windows, and 3.7, 3.8 on linux
+- Python 3.6+: tested with python 3.6 on windows, and 3.7, 3.8 on linux
 - [ffmpeg](https://www.ffmpeg.org/) : for merging audio with youtube DASH videos 
 
 Required python packages: 
