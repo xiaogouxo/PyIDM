@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 app_name = 'pyIDM'
-version = '3.3.0.3' # fix popup message for download button 
+version = '3.3.0.4' # reset audio field in d item if url changed
 
 # standard modules
 import copy
@@ -1564,6 +1564,9 @@ class MainWindow:
         self.status_code = ''
         self.set_status('')
 
+        # reset audio field
+        self.d.audio = None
+
         # widgets
         self.disable()
         self.disable_video_controls()
@@ -2476,6 +2479,7 @@ def brain(d=None, speed_limit=0):
 
             # check if jobs completed
             elif status == Status.completed:
+
                 if d.is_audio and status == Status.completed:  # an audio file ready for merge, should quit here
                     d.ready_for_merge = True
                     return
