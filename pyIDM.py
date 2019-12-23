@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 app_name = 'pyIDM'
-version = '3.3.0.4' # reset audio field in d item if url changed
+version = '3.3.0.5' # bug fixes for audio merge
 
 # standard modules
 import copy
@@ -21,7 +21,7 @@ import importlib.util
 # external modules, should be kept updated.
 ext_packages = "PySimpleGUI pyperclip plyer certifi mimetypes pycurl youtube_dl"
 
-# installing missing packages 
+# installing missing packages
 def install(package_name):
     # return False
     print('start installing', package_name)
@@ -109,17 +109,17 @@ import plyer  # for os notification messages
 
 test = False  # when active all exceptions will be re-raised
 
-about_notes = f"""{app_name} is an open source multi-connections download manager based on python, 
+about_notes = f"""{app_name} is an open source multi-connections download manager based on python,
 it downloads general files, also support downloading videos, and playlists from youtube.
 Developed in Python, based on "pyCuRL/curl", "youtube_dl", and "PySimpleGUI"
 
-your feedback is most welcomed on 
+your feedback is most welcomed on
 
 https://github.com/Aboghazala/{app_name}
 email: mahmoud_elshahhat@yahoo.com
 
 Thanks,
-Mahmoud Elshahat 
+Mahmoud Elshahat
 2019"""
 
 # aliases
@@ -332,7 +332,7 @@ class MainWindow:
     # region gui design
     def create_window(self):
         # main tab
-        main_layout = [[sg.Text(f'{app_name}', font='Helvetica 20', size=(37, 1), justification='center')], 
+        main_layout = [[sg.Text(f'{app_name}', font='Helvetica 20', size=(37, 1), justification='center')],
                         # [sg.T('an open source download manager', size=(60, 1), font='Helvetica 15', justification='center')],
 
                        # url
@@ -428,7 +428,7 @@ class MainWindow:
     def start_window(self):
         self.window = self.create_window()
         self.window.Finalize()
-        # expand elements to fit 
+        # expand elements to fit
         elements = ['url', 'name', 'folder', 'youtube_frame', 'pl_menu', 'm_bar'] # elements to be expanded
         for e in elements:
             self.window[e].expand(expand_x=True)
@@ -757,7 +757,7 @@ class MainWindow:
 
         self._speed_limit = value
 
-    # endregion 
+    # endregion
 
     # region config files
     @property
@@ -767,7 +767,7 @@ class MainWindow:
         if platform.system() == 'Windows':
             roaming = os.getenv('APPDATA')  # return APPDATA\Roaming\ under windows
             _sett_folder = os.path.join(roaming, f'.{app_name}')
-          
+
         elif platform.system() == 'Linux':
             _sett_folder = f'{home_folder}/.config/{app_name}/'
 
@@ -924,7 +924,7 @@ class MainWindow:
                 'please install ffmpeg to your system and try again', 'https://www.ffmpeg.org/download.html', title='ffmpeg is missing')
                  return 'error'
 
-        # validate destination folder for existence and permission 
+        # validate destination folder for existence and permission
         try:
             with open(os.path.join(d.folder, 'test'), 'w') as test_file:
                 test_file.write('0')
@@ -969,7 +969,7 @@ class MainWindow:
             else:
                 # update url
                 _d.eff_url = d.eff_url
-                d = _d 
+                d = _d
 
         else:  # new file
             # generate unique id number for each download
@@ -1022,7 +1022,7 @@ class MainWindow:
         return None
 
     def download_btn(self):
-    	
+
         if self.disabled: return
 
         # search current list for previous item with same name, folder
@@ -1436,13 +1436,15 @@ class MainWindow:
         if stream.mediatype == 'video':
             audio_stream = [a for a in self.video.audiostreams if a.extension == stream.extension
                             or (a.extension == 'm4a' and stream.extension == 'mp4')][0]
-            d_copy = copy.deepcopy(self.d)
-            d_copy.audio = None
-            self.d.audio = d_copy
+            audio = copy.deepcopy(self.d)
+            audio.audio = None
+            self.d.audio = audio
             self.d.audio.eff_url=self.d.audio.url=audio_stream.url
             self.d.audio.size=audio_stream.filesize
             self.d.audio.type = audio_stream.extension
             self.d.audio.is_audio = True
+        else:
+            self.d.audio = None
 
 
     def update_stream_menu(self):
@@ -2029,7 +2031,7 @@ class DownloadItem:
         self.type = mime_type
         self.folder = folder
         self._full_name = None  # containing path
-        self.temp_folder = ''
+        # self.temp_folder = ''
         self.url = url
         self.eff_url = eff_url
         self.pl_url = pl_url # playlist url
@@ -2042,14 +2044,15 @@ class DownloadItem:
         self.downloaded = downloaded
         self._status = status
         self.remaining_parts = remaining_parts
-        self.is_audio = False
-        self.ready_for_merge = False  # if the download file an audio to be merged with another video file
         # animation
         self.animation_icon = {Status.downloading: '►►', Status.pending: 'P', Status.completed: '✔',
                                Status.cancelled: '--'}
         self.i = ''  # animation image
         self._part_size = part_size
+
         self.audio = audio # to be used with ffmpeg to merge audio with video
+        self.is_audio = False
+        self.ready_for_merge = False  # if the download file an audio to be merged with another video file
 
     @property
     def id(self):
@@ -2082,6 +2085,10 @@ class DownloadItem:
     def full_name(self):
         """return file name including path"""
         return os.path.join(self.folder, self.name)
+
+    @property
+    def temp_folder(self):
+        return self.full_name + '_parts'
 
 
 # region video classes
@@ -2296,6 +2303,16 @@ def brain(d=None, speed_limit=0):
     """main brain for a single download, it controls thread manger, file manager, and get data from workers
     and communicate with download window Gui, Main frame gui"""
 
+    # initiate queue
+    d.q = Communication()  # create new com queue
+    q = d.q
+
+    # debug
+    if d.is_audio:
+        log("start downloading", d.name)
+        print('initial audio stream value')
+        print_object(d)
+
     # set status
     if d.status == Status.downloading:
         log('another brain thread may be running')
@@ -2304,14 +2321,12 @@ def brain(d=None, speed_limit=0):
         d.status = Status.downloading
 
     # add item index to active downloads
-    active_downloads.add(d.id)
+    if d.is_audio == False:
+        active_downloads.add(d.id)
 
     # define barrier used by brain to make sure file manager and thread manager exit first
     barrier = Barrier(3)
 
-    # initiate queue
-    d.q = Communication()  # create new com queue
-    q = d.q
 
     def send_msg(*qs, **kwargs):
         """add msgs to queues"""
@@ -2328,7 +2343,7 @@ def brain(d=None, speed_limit=0):
     # region Setup
 
     # temp folder to store file segments
-    d.temp_folder = os.path.join(d.folder, f'{d.name}_parts')
+    # d.temp_folder = os.path.join(d.folder, f'{d.name}_parts')
     if not os.path.exists(d.temp_folder):
         os.mkdir(d.temp_folder)
 
@@ -2480,8 +2495,13 @@ def brain(d=None, speed_limit=0):
             # check if jobs completed
             elif status == Status.completed:
 
-                if d.is_audio and status == Status.completed:  # an audio file ready for merge, should quit here
+                if d.is_audio:  # an audio file ready for merge, should quit here
                     d.ready_for_merge = True
+                    d.q = None # delete q for audio object
+                    log('done downloading', d.name)
+                    # debug
+                    print('status.completed: audio stream value')
+                    print_object(d)
                     return
 
                 # now video file completed and check for audio file
@@ -2491,48 +2511,57 @@ def brain(d=None, speed_limit=0):
                     d.progress = 99
 
                     d.audio.max_connections = d.max_connections
-                    d.audio.name = '_' + d.name
+                    d.audio.name = f'audio_for_{d.name}'
 
+                    video_file = d.full_name
+                    audio_file = os.path.join(d.folder, d.audio.name)
+                    out_file = os.path.join(d.folder,f'out_{d.name}')
 
-                    video_file, audio_file, out_file = d.full_name, d.audio.full_name, os.path.join(d.folder,
-                                                                                                    f'out_{d.name}')
-                    print('start downloading audio file, id=', d.audio.num)
+                    # print('start downloading audio file, id=', d.audio.num)
                     brain(d.audio)
 
 
                     if d.audio.ready_for_merge:  # an audio file already downloaded and ready for merge
+                        log('start merging video and audio files')
+                        error, output = merge_video_audio(video_file, audio_file, out_file)
+                        if error:
+                           msg = f'Failed to merge {d.audio.name} \n {output}'
+                           log(msg)
+                           # sg.popup_error(msg, title='Merge error')
+                           status == Status.cancelled
+                        else:
 
-                        print('start merging video and audio files')
-                        # video_file, audio_file, out_file = d.file_names
-                        merge_video_audio(video_file, audio_file, out_file)
-                        print('finished merging video and audio files')
+                            log('finished merging video and audio files')
 
-                        os.unlink(video_file)
-                        os.unlink(audio_file)
+                            os.unlink(video_file)
+                            os.unlink(audio_file)
 
-                        # Rename main file name
-                        os.rename(out_file, video_file)
+                            # Rename main file name
+                            os.rename(out_file, video_file)
+
+                            d.status = Status.completed
                     else:
-                        log('audio file download error for video #', d.num)
+                        msg = 'Failed to download' + d.audio.name
+                        log(msg)
+                        # sg.popup_error(msg, title='audio file download error')
+                        status == Status.cancelled
 
-                    d.audio = None # delete audio object
+                if status == Status.completed:
+                    # getting remaining buff value
+                    downloaded += buff
 
-                # getting remaining buff value
-                downloaded += buff
+                    # update download item "d"
+                    d.progress = 100
+                    d.speed = '---'
+                    d.downloaded = round(downloaded, 2)
+                    d.live_connections = 0
+                    d.remaining_parts = 0
+                    d.time_left = '---'
 
-                # update download item "d"
-                d.status = Status.completed
-                d.progress = 100
-                d.speed = '---'
-                d.downloaded = round(downloaded, 2)
-                d.live_connections = 0
-                d.remaining_parts = 0
-                d.time_left = '---'
-
-                # os notification popup
-                notification = f"File: {d.name} \nsaved at: {d.folder}"
-                notify(notification, title=f'{app_name} - Download completed')
-                break
+                    # os notification popup
+                    notification = f"File: {d.name} \nsaved at: {d.folder}"
+                    notify(notification, title=f'{app_name} - Download completed')
+                    break
 
         old_status = status
 
@@ -2770,7 +2799,7 @@ def clipboard_listener():
         if monitor and new_data != old_data:
             if new_data.startswith('http') and ' ' not in new_data:
                 m_frame_q.put(('url', new_data))
-            
+
             old_data = new_data
 
         if clipboard_q.qsize() > 0:
@@ -2985,6 +3014,7 @@ def log(*args):
         s += str(arg)
         s += ' '
     s = s[:-1]  # remove last space
+    s = '>> ' + s
 
     print(s)
 
@@ -3060,13 +3090,17 @@ def merge_video_audio(video, audio, output):
     # slow, mix different formats
     cmd2 = f'{ffmpeg} -i "{video}" -i "{audio}" "{output}"'
 
-    try:
-        # subprocess.call will block until process finished
-        subprocess.call(cmd1, shell=True)
+    error, output = run_command(cmd1, shell=True)
 
-    except Exception as e:
-        print(e)
-        return repr(e)
+    return error, output
+
+    # try:
+    #     # subprocess.call will block until process finished
+    #     subprocess.call(cmd1, shell=True)
+    #
+    # except Exception as e:
+    #     print(e)
+    #     return repr(e)
 
 
 
@@ -3144,11 +3178,15 @@ def update_youtube_dl():
     log('youtube_dl module ..... done updating')
 
 
-def run_command(cmd, verbose=True):
+def run_command(cmd, verbose=True, shell=False):
     log('running command:', cmd)
     error, output = True, f'error running command {cmd}'
     try:
-        r = subprocess.run(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        if shell==True:
+            r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+        else:
+            r = subprocess.run(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
         error = True if r.returncode != 0 else False
         output = r.stdout.decode('utf-8')
         if verbose: log(output)
@@ -3157,7 +3195,17 @@ def run_command(cmd, verbose=True):
         log('error running command {cmd}', e)
         pass
 
-    return error, output	
+    return error, output
+
+def print_object(obj):
+    if obj is None:
+        print(obj, 'is None')
+        return
+    for k, v in vars(obj).items():
+        try:
+            print(k, '=', v)
+        except:
+            pass
 # endregion
 
 
@@ -3169,4 +3217,3 @@ if __name__ == '__main__':
         Thread(target=clipboard_listener, daemon=True).start()
         main_window = MainWindow()
         main_window.run()
-
