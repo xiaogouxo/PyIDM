@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 app_name = 'pyIDM'
-version = '3.3.0.7' # bug fixes for audio download
+version = '3.3.0.8' # bug fixes for refresh_link_btn
 
 # standard modules
 import copy
@@ -916,7 +916,7 @@ class MainWindow:
             return
 
         # check for ffmpeg availability in case this is a video only stream
-        if d.audio:
+        if d.audio_url:
             cmd = 'where ffmpeg' if platform.system() == 'Windows' else 'which ffmpeg'
             error, output = run_command(cmd)
             if error:
@@ -949,7 +949,7 @@ class MainWindow:
             msg = 'File with the same name already exist in ' + self.d.folder + '\n Do you want to overwrite file?'
             response = sg.PopupYesNo(msg)
 
-            if response == 'No':
+            if response != 'Yes':
                 log('Download cancelled by user')
                 return 'cancelled'
             else:
@@ -1022,19 +1022,39 @@ class MainWindow:
         return None
 
     def download_btn(self):
+        d = copy.deepcopy(self.d)
 
         if self.disabled: return
 
         # search current list for previous item with same name, folder
-        if self.file_in_d_list(self.d.name, self.d.folder):
+        found_index = self.file_in_d_list(self.d.name, self.d.folder)
+        if found_index is not None: # might be zero
             #  show dialogue
             msg = f'File with the same name: \n{self.d.name},\n already exist in download list\n' \
                 'Do you want to resume this file?\n' \
-                'Yes ==> resume ... \n' 'No ==> cancel ... \n' \
+                'Resume ==> continue if it has been partially downloaded ... \n' \
+                'Overwrite ==> delete old downloads and overwrite existing item... \n' \
                 'note: "if you need fresh download, you have to change file name \n' \
                 'or target folder or delete same entry from download list'
-            response = sg.PopupYesNo(msg)
-            if response == 'No':
+            # response = sg.PopupYesNo(msg)
+            window = sg.Window(title='', layout=[[sg.T(msg)], [sg.B('Resume'), sg.B('Overwrite'), sg.B('Cancel')]])
+            response, _ = window()
+            window.close()
+            if response == 'Resume':
+                eff_url = self.d.eff_url
+                d = self.d_list[found_index]
+                d.eff_url = eff_url
+
+            elif response == 'Overwrite':
+                _d = self.d_list[found_index]
+
+                # delete temp folder on disk
+                delete_folder(_d.temp_folder)
+                os.unlink(_d.temp_file)
+
+                d.id = _d.id
+
+            else:
                 log('Download cancelled by user')
                 return
 
@@ -1044,7 +1064,7 @@ class MainWindow:
             msg = 'File has been added to pending list'
             sg.Popup(msg)
 
-        r = self.start_download(copy.deepcopy(self.d))
+        r = self.start_download(d)
 
         if r not in ('error', 'cancelled'):
             self.select_tab('Downloads')
@@ -1106,7 +1126,7 @@ class MainWindow:
         # confirm to delete
         msg = "Warninig!!!\nAre you sure you want to delete!\n%s?" % self.selected_d.name
         r = sg.PopupYesNo(msg, title='Delete file?', keep_on_top=True)
-        if r == 'No': return
+        if r != 'Yes': return
 
         try:
             # pop item
@@ -1192,10 +1212,16 @@ class MainWindow:
             return
 
         d = self.selected_d
-        self.window.Element('url').Update(d.url)
+
+        # update current d
+        self.d.size = d.size
+        self.part_size = d.part_size
+        self.d.folder = d.folder
+
+        self.window['url'](d.url)
         self.url_text_change()
 
-        self.d = copy.deepcopy(d)
+        # self.d = copy.deepcopy(d)
         self.window['folder'](self.d.folder)
         self.select_tab('Main')
 
@@ -1571,7 +1597,7 @@ class MainWindow:
         self.set_status('')
 
         # reset audio field
-        self.d.audio = None
+        self.d.audio_url = None
 
         # widgets
         self.disable()
@@ -2031,7 +2057,7 @@ class DownloadItem:
         self.q = None  # queue
         self._id = d_id
         self.num = d_id + 1 if d_id else ''
-        self.name = name
+        self._name = name
         self.size = size
         self.type = mime_type
         self.folder = folder
@@ -2062,6 +2088,15 @@ class DownloadItem:
         self.audio = None # to be used with ffmpeg to merge audio with video
         self.is_audio = False
         self.ready_for_merge = False  # if the download file an audio to be merged with another video file
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, new_value):
+        # validate new name
+        self._name = new_value #validate_file_name(new_value)
 
     @property
     def id(self):
@@ -2528,7 +2563,7 @@ def brain(d=None, speed_limit=0):
                     audio.url = audio.eff_url = d.audio_url
                     audio.folder = d.folder
                     audio.is_audio = True
-                    audio.id = f'{d.id}_audio'# (d.id + 1 ) * 1000 - 1
+                    audio.id = f'{d.num}_audio'# (d.id + 1 ) * 1000 - 1
 
                     # print_object(audio)
 
@@ -3040,9 +3075,17 @@ def log(*args):
     s = s[:-1]  # remove last space
     s = '>> ' + s
 
-    print(s)
+    try:
+        print(s)
+    except Exception as e:
+        print(e)
 
-    m_frame_q.put(('log', '\n' + s))
+    try:
+        m_frame_q.put(('log', '\n' + s))
+    except Exception as e:
+        print(e)
+
+
 
 
 def validate_file_name(f_name):
@@ -3114,7 +3157,7 @@ def merge_video_audio(video, audio, output):
     # slow, mix different formats
     cmd2 = f'{ffmpeg} -i "{video}" -i "{audio}" "{output}"'
 
-    error, output = run_command(cmd1, shell=True)
+    error, output = run_command(cmd1, shell=True, verbose=True)
 
     return error, output
 
@@ -3203,7 +3246,7 @@ def update_youtube_dl():
 
 
 def run_command(cmd, verbose=True, shell=False):
-    log('running command:', cmd)
+    if verbose: log('running command:', cmd)
     error, output = True, f'error running command {cmd}'
     try:
         if shell==True:
