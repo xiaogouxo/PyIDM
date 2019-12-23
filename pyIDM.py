@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 app_name = 'pyIDM'
-version = '3.3.0.5' # bug fixes for audio merge
+version = '3.3.0.7' # bug fixes for audio download
 
 # standard modules
 import copy
@@ -1196,7 +1196,7 @@ class MainWindow:
         self.url_text_change()
 
         self.d = copy.deepcopy(d)
-        self.window.Element('folder').Update(self.d.folder)
+        self.window['folder'](self.d.folder)
         self.select_tab('Main')
 
     # endregion
@@ -1436,15 +1436,19 @@ class MainWindow:
         if stream.mediatype == 'video':
             audio_stream = [a for a in self.video.audiostreams if a.extension == stream.extension
                             or (a.extension == 'm4a' and stream.extension == 'mp4')][0]
-            audio = copy.deepcopy(self.d)
-            audio.audio = None
-            self.d.audio = audio
-            self.d.audio.eff_url=self.d.audio.url=audio_stream.url
-            self.d.audio.size=audio_stream.filesize
-            self.d.audio.type = audio_stream.extension
-            self.d.audio.is_audio = True
+            # audio = copy.deepcopy(self.d)
+            # audio.audio = None
+            # self.d.audio = audio
+            # self.d.audio.eff_url=self.d.audio.url=audio_stream.url
+            # self.d.audio.size=audio_stream.filesize
+            # self.d.audio.type = audio_stream.extension
+            # self.d.audio.is_audio = True
+
+            self.d.audio_url = audio_stream.url
+            self.d.audio_size = audio_stream.filesize
         else:
-            self.d.audio = None
+            # self.d.audio = None
+            self.d.audio_url = None
 
 
     def update_stream_menu(self):
@@ -2020,9 +2024,10 @@ class Status:
 # Download Item Class
 class DownloadItem:
 
-    def __init__(self, d_id=0, name='', size=0, mime_type='', folder='', url='', eff_url='', pl_url='',
-                 max_connections=1, live_connections=0, resumable=False, progress=0, speed=0, time_left='',
-                 downloaded=0, status='cancelled', remaining_parts=0, part_size=1048576, audio=None):
+    def __init__(self, d_id=0, name='', size=0, mime_type='', folder='', url='',
+     eff_url='', pl_url='', max_connections=1, live_connections=0, resumable=False,
+     progress=0, speed=0, time_left='', downloaded=0, status='cancelled',
+     remaining_parts=0, part_size=1048576, audio=None):
         self.q = None  # queue
         self._id = d_id
         self.num = d_id + 1 if d_id else ''
@@ -2050,7 +2055,11 @@ class DownloadItem:
         self.i = ''  # animation image
         self._part_size = part_size
 
-        self.audio = audio # to be used with ffmpeg to merge audio with video
+        # audio
+        self.audio_url = None
+        self.audio_size = 0
+
+        self.audio = None # to be used with ffmpeg to merge audio with video
         self.is_audio = False
         self.ready_for_merge = False  # if the download file an audio to be merged with another video file
 
@@ -2061,7 +2070,7 @@ class DownloadItem:
     @id.setter
     def id(self, new_id):
         self._id = new_id
-        self.num = new_id + 1
+        self.num = new_id + 1 if type(new_id) is int else new_id
 
     @property
     def status(self):
@@ -2307,11 +2316,11 @@ def brain(d=None, speed_limit=0):
     d.q = Communication()  # create new com queue
     q = d.q
 
-    # debug
-    if d.is_audio:
-        log("start downloading", d.name)
-        print('initial audio stream value')
-        print_object(d)
+    # # debug
+    # if d.is_audio:
+    #     log("start downloading", d.name)
+    #     print('initial audio stream value')
+    #     print_object(d)
 
     # set status
     if d.status == Status.downloading:
@@ -2494,34 +2503,48 @@ def brain(d=None, speed_limit=0):
 
             # check if jobs completed
             elif status == Status.completed:
-
+                # log('d.id, d.isaudio:', d.id, d.is_audio)
                 if d.is_audio:  # an audio file ready for merge, should quit here
-                    d.ready_for_merge = True
-                    d.q = None # delete q for audio object
+                    # d.ready_for_merge = True
+                    # d.q = None # delete q for audio object
                     log('done downloading', d.name)
-                    # debug
-                    print('status.completed: audio stream value')
-                    print_object(d)
-                    return
+                    # # debug
+                    # print('status.completed: audio stream value')
+                    # print_object(d)
+                    return True # as indication of success
 
                 # now video file completed and check for audio file
-                if d.audio: # this means a video file needs an audio file to be downloaded
+                if d.audio_url: #d.audio: # this means a video file needs an audio file to be downloaded
                     # correct status because operation not finished yet
                     d.status = Status.merging_audio
                     d.progress = 99
 
-                    d.audio.max_connections = d.max_connections
-                    d.audio.name = f'audio_for_{d.name}'
+                    # create a DownloadItem() object for audio
+                    audio = DownloadItem()
+                    audio.name = f'audio_for_{d.name}'
+                    audio.size = d.audio_size
+                    audio.max_connections = d.max_connections
+                    audio.resumable = True
+                    audio.url = audio.eff_url = d.audio_url
+                    audio.folder = d.folder
+                    audio.is_audio = True
+                    audio.id = f'{d.id}_audio'# (d.id + 1 ) * 1000 - 1
+
+                    # print_object(audio)
+
+                    # d.audio.max_connections = d.max_connections
+                    # d.audio.name = f'audio_for_{d.name}'
 
                     video_file = d.full_name
-                    audio_file = os.path.join(d.folder, d.audio.name)
-                    out_file = os.path.join(d.folder,f'out_{d.name}')
+                    audio_file = audio.full_name #os.path.join(d.folder, d.audio.name)
+                    out_file = os.path.join(d.folder, f'out_{d.name}')
 
-                    # print('start downloading audio file, id=', d.audio.num)
-                    brain(d.audio)
+                    log('start downloading ', audio.name)
+                    # brain(d.audio)
+                    done = brain(audio)
 
 
-                    if d.audio.ready_for_merge:  # an audio file already downloaded and ready for merge
+                    if done: # d.audio.ready_for_merge:  # an audio file already downloaded and ready for merge
                         log('start merging video and audio files')
                         error, output = merge_video_audio(video_file, audio_file, out_file)
                         if error:
@@ -2539,29 +2562,29 @@ def brain(d=None, speed_limit=0):
                             # Rename main file name
                             os.rename(out_file, video_file)
 
-                            d.status = Status.completed
+                            status = d.status = Status.completed
                     else:
-                        msg = 'Failed to download' + d.audio.name
+                        msg = 'Failed to download ' + audio.name
                         log(msg)
                         # sg.popup_error(msg, title='audio file download error')
                         status == Status.cancelled
 
-                if status == Status.completed:
-                    # getting remaining buff value
-                    downloaded += buff
+            if status == Status.completed:
+                # getting remaining buff value
+                downloaded += buff
 
-                    # update download item "d"
-                    d.progress = 100
-                    d.speed = '---'
-                    d.downloaded = round(downloaded, 2)
-                    d.live_connections = 0
-                    d.remaining_parts = 0
-                    d.time_left = '---'
+                # update download item "d"
+                d.progress = 100
+                d.speed = '---'
+                d.downloaded = round(downloaded, 2)
+                d.live_connections = 0
+                d.remaining_parts = 0
+                d.time_left = '---'
 
-                    # os notification popup
-                    notification = f"File: {d.name} \nsaved at: {d.folder}"
-                    notify(notification, title=f'{app_name} - Download completed')
-                    break
+                # os notification popup
+                notification = f"File: {d.name} \nsaved at: {d.folder}"
+                notify(notification, title=f'{app_name} - Download completed')
+                break
 
         old_status = status
 
@@ -2590,7 +2613,8 @@ def brain(d=None, speed_limit=0):
 
 
     # remove item index from active downloads
-    active_downloads.remove(d.id)
+    if d.is_audio == False:
+        active_downloads.remove(d.id)
     log(f'\nbrain {d.num}: removed item from active downloads')
 
     # report quitting
