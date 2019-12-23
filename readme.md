@@ -8,7 +8,7 @@ Developed in Python, based on "pyCuRL/curl", "youtube_dl", and "PySimpleGUI"
 **snapshots**
 
 ![main window](https://github.com/pyIDM/pyIDM/blob/master/screenshots/main_reds.png)
-![downloads_tab](https://github.com/pyIDM/pyIDM/blob/master/screenshots/downloads_reds.PNG)
+![downloads_tab](https://github.com/pyIDM/pyIDM/blob/master/screenshots/downloads_reds_2.PNG)
 ![setting_tab](https://github.com/pyIDM/pyIDM/blob/master/screenshots/setting_reds.PNG)
 ![d_window](https://github.com/pyIDM/pyIDM/raw/master/screenshots/dwindow.png)
 
