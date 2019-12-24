@@ -41,9 +41,8 @@ python -m pip install certifi PySimpleGUI mimetypes pyperclip plyer youtube_dl p
 on linux you should add `--user` argument for pip or use `sudo pip ...`
 
 ### Windows binaries: <br>
-a standalone frozen version prepared by cx_freeze will be available soon on: https://github.com/pyIDM/pyIDM/releases <br>
-note that these builds might be older than source code, for most recent versions, you can run from the source
-
+a standalone frozen version prepared by py2exe or cx_freeze is available on: [latest version](https://github.com/pyIDM/pyIDM/releases/latest) <br>
+for all available build versions you can check https://github.com/pyIDM/pyIDM/releases
 
 ### Alternative to IDM (Internet Download Manager):
 The main reason for making this application is the lack of free open source download managers which has multi-connection, high download speed, and resume capability, also can download youtube videos, in same time has a good gui design, to achieve that, decision made to use the high speed library 'pycurl', a threading module for multi-connection, youtube_dl, and an easy and beautiful PySimpleGUI module for designing the gui user interface
