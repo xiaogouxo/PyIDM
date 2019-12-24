@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 app_name = 'pyIDM'
-version = '3.3.0.9' # handle exception for notify function 
+version = '3.4.0.0' # use json to store downloads list to avoid pickle problems, issue #11
 
 # standard modules
 import copy
@@ -345,7 +345,7 @@ class MainWindow:
                        # youtube playlist
                        [sg.Frame('Youtube Playlist / videos:', key='youtube_frame', layout=[
                            [sg.Combo(values=['Playlist'], size=(30, 1), key='pl_menu', enable_events=True),
-                            sg.Button('', disabled=True, image_filename=r'./icons/pl_download.png',
+                            sg.Button('', disabled=False,  image_filename=r'./icons/pl_download.png',
                                       tooltip='download this playlist', key='pl_download'),
                             sg.Combo(values=['Quality'], size=(30, 1), key='stream_menu', enable_events=True)],
 
@@ -788,10 +788,17 @@ class MainWindow:
         try:
             log('Load previous downloads items from', self.sett_folder)
             file = os.path.join(self.sett_folder, 'downloads.cfg')
-            with open(file, 'rb') as f:
-                d_list = pickle.load(f)
-            # with open(file, 'r') as f:
-            #     d_list = json.load(f)
+
+            with open(file, 'r') as f:
+                # expecting a list of dictionaries
+                data = json.load(f)
+
+            # converting list of dictionaries to list of DownloadItem() objects
+            d_list = []
+            for each_dictionary in data:
+                d = update_object(DownloadItem(), each_dictionary)
+                if d: # if update_object() returned an updated object not None
+                    d_list.append(d)
 
             # clean d_list
             for d in d_list:
@@ -815,15 +822,15 @@ class MainWindow:
 
     def save_d_list(self):
         try:
+            data = []
             for d in self.d_list:
                 d.q = None
+                data.append(d.__dict__) # append object attributes dictionary to data list
 
             file = os.path.join(self.sett_folder, 'downloads.cfg')
-            # save_d_list(self.d_list, file)
-            with open(file, 'wb') as f:
-                pickle.dump(self.d_list, f)
-            # with open(file, 'w') as f:
-            #     json.dump(self.d_list, f)
+        
+            with open(file, 'w') as f:
+                json.dump(data, f)
             log('list saved')
         except Exception as e:
             handle_exceptions(e)
@@ -2089,8 +2096,6 @@ class DownloadItem:
         self.audio_size = 0
         self.is_audio = False
 
-        # self.audio = None # to be used with ffmpeg to merge audio with video
-        # self.ready_for_merge = False  # if the download file an audio to be merged with another video file
 
     @property
     def name(self):
@@ -3237,6 +3242,19 @@ def print_object(obj):
             print(k, '=', v)
         except:
             pass
+
+def update_object(obj, new_values):
+    """update an object attributes from a supplied dictionary"""
+    # avoiding obj.__dict__.update(new_values) as it will set a new attribute if it doesn't exist
+
+    try:
+        for k, v in new_values.items():
+            if hasattr(obj, k):
+                setattr(obj, k, v)
+        return obj
+    except Exception as e:
+        log(f'update_object(): error, {e}')
+
 
 # endregion
 
