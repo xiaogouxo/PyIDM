@@ -19,15 +19,16 @@ example multi-downloading with speed limit of 20 KB/sec as a test
 
 # Run pyIDM:
 You have 2 options to run pyIDM on your operating system:
-1- ## Binary executable:
+1. **Binary executable**:
 currently binary build is available only for windows [here](https://github.com/pyIDM/pyIDM/releases/latest).
 
-2- ## run from open source:
-pyIDM is a python app. sot it can run on any platform that can run python, 
-To run from open source, you have to have a python installed, supported python versions is 3.6, 3.7, and 3.8, then download or clone this repository, and run pyIDM.py (it will install the other required python packages automatically if missing)
+2. **run from the source**:
+pyIDM is a python app. so, it can run on any platform that can run python, 
+To run from source, you have to have a python installed, "supported python versions is 3.6, 3.7, and 3.8", then download or clone this repository, and run pyIDM.py (it will install the other required python packages automatically if missing)
 additionally you have to install 'ffmpeg' for merging audio with youtube DASH videos
 if pyIDM failed to install required packages, you should install it manually, refer to "Dependencies" section below.
 
+---
 
 # Dependencies:
 below are the requirements to run from source:
@@ -47,16 +48,14 @@ Required python packages:
 
 
 pyIDM application will do its best to install missing packages automatically once you run it. or you can install required packages manually using:
-```python
+```
 python -m pip install --user --upgrade certifi PySimpleGUI mimetypes pyperclip plyer youtube_dl pycurl
 ```
 
 ### note for pycurl: <br>
 for windows users:
-last checked on 16-12-2019 pycurl [website](http://pycurl.io/docs/latest/index.html) support python Python 3.4 through 3.6, no mention 
-for 3.7 or 3.8
-normal pip install i.e `python -m pip install pycurl` will fail on windows because you need to build libcurl on your system first which is a headach. 
-your best choice if pip fail is to download a wheel, zip file, or even a windows installer for pycurl from its official download [link](https://dl.bintray.com/pycurl/pycurl/), find the file that match your windows system and python version installed on your system.
+normal pip install i.e `python -m pip install pycurl` will fail on windows because you need to build libcurl on your system first which is a headache. 
+your best choice if pip fail is to download a wheel, zip file, or even a windows installer for pycurl from its official download [link](https://dl.bintray.com/pycurl/pycurl/), find the file that match your windows system and python version installed on your system, last checked on 16-12-2019 available files for Python 3.4 through 3.6, still no wheels or installers for 3.7 or 3.8.
 
 for linux users:
 there is no issues, since most linux distros have curl preinstalled, so pycurl will link with libcurl library to get built with no issues, checked with python versions 3.6, 3.7, and 3.8 working with no problems.
@@ -69,20 +68,23 @@ you should update youtube-dl module thru pyIDM setting tab or manually by
 ```
 python -m pip install youtube_dl --upgrade
 ```
-<br>
 
 ### note for pyperclip: <br>
 Pyperclip is a cross-platform Python module for copy and paste clipboard functions. it is being used if you want to monitor clipboard for files urls and it will be processed automatically by the application.
 On Linux, this module makes use of the xclip or xsel commands, which should come with the os. Otherwise run "sudo apt-get install xclip" on Debian like or "sudo pacman -S xclip" on archlinux
 
-<br>
+---
 
 ### Windows binaries: <br>
 a standalone frozen version prepared by py2exe or cx_freeze is available on: [latest version](https://github.com/pyIDM/pyIDM/releases/latest) <br>
 for all available build versions you can check https://github.com/pyIDM/pyIDM/releases
 
+---
+
 ### Alternative to IDM (Internet Download Manager):
 The main reason for making this application is the lack of free open source download managers which has multi-connection, high download speed, and resume capability, also can download youtube videos, in same time has a good gui design, to achieve that, decision made to use the high speed library 'pycurl', a threading module for multi-connection, youtube_dl, and an easy and beautiful PySimpleGUI module for designing the gui user interface
+
+---
 
 ### How does pyIDM work??
 - once you copy any url in clipboard the application start processing this url automatically "you can disable this in user setting"
@@ -112,11 +114,13 @@ concurrently.
 will choose an audio stream with the same format, then download both streams as explained above (by brain function) then once completed
 the audio will be merged into video file using FFMPEG external application "subprocess".  
 
+---
 
 <br><br>
 
 # Versions change log:
 3.3:
+- the table header colors match the color theme "pySimpleGui addition"
 - sort themes names in setting tabs, 140+ themes
 - proper setting folder location for linux and mac
 - bug fixes for youtube audio track handling
@@ -138,6 +142,8 @@ the audio will be merged into video file using FFMPEG external application "subp
 
 <br><br>
 
+---
+
 # Future Plans :
 - use native video library for merging audio and video, will check libav, or possibility with youtube_dl.
 - Design different user interface.
@@ -146,9 +152,13 @@ the audio will be merged into video file using FFMPEG external application "subp
 
 <br><br>
 
+---
+
 # Feedback:
 your feedback is most welcomed by filling an issue on https://github.com/pyIDM/pyIDM <br>
 or email me: mahmoud_elshahhat@yahoo.com
 Cheers, <br>
 Mahmoud Elshahat, <br>
 2019
+
+---
