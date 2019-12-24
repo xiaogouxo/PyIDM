@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 app_name = 'pyIDM'
-version = '3.3.0.8' # bug fixes for refresh_link_btn
+version = '3.3.0.9' # handle exception for notify function 
 
 # standard modules
 import copy
@@ -257,7 +257,6 @@ def import_ytdl():
 
 # region GUI
 class MainWindow:
-
     def __init__(self):
         # current download_item
         self.d = DownloadItem()
@@ -312,7 +311,6 @@ class MainWindow:
 
         # initial setup
         self.setup()
-
 
     def setup(self):
         """initial setup"""
@@ -385,7 +383,7 @@ class MainWindow:
                             ]
 
         # setting tab
-        setting_layout = [[sg.T('User Setting:'), sg.Button('about', key='about')],
+        setting_layout = [[sg.T('User Setting:'), sg.T(' ', size=(50,1)), sg.Button(' about ', key='about')],
                           [sg.Text('Select Theme:'),
                            sg.Combo(values=themes, default_value=self.theme, size=(15, 1), enable_events=True,
                                     key='themes'), sg.Text(f' Total of {len(themes)} Themes')],
@@ -669,7 +667,7 @@ class MainWindow:
 
             # about window
             elif event == 'about':
-                sg.PopupScrolled(about_notes, title=f'About {app_name} DM', non_blocking=True)
+                sg.PopupNoButtons(about_notes, title=f'About {app_name} DM', non_blocking=True)
 
             # Run every n seconds
             if time.time() - timer1 >= 1:
@@ -792,6 +790,8 @@ class MainWindow:
             file = os.path.join(self.sett_folder, 'downloads.cfg')
             with open(file, 'rb') as f:
                 d_list = pickle.load(f)
+            # with open(file, 'r') as f:
+            #     d_list = json.load(f)
 
             # clean d_list
             for d in d_list:
@@ -808,7 +808,7 @@ class MainWindow:
         except FileNotFoundError:
             log('downloads.cfg file not found')
         except Exception as e:
-            handle_exceptions(e)
+            handle_exceptions(f'load_d_list: {e}')
         finally:
             if type(self.d_list) is not list:
                 self.d_list = []
@@ -819,9 +819,12 @@ class MainWindow:
                 d.q = None
 
             file = os.path.join(self.sett_folder, 'downloads.cfg')
+            # save_d_list(self.d_list, file)
             with open(file, 'wb') as f:
                 pickle.dump(self.d_list, f)
-                log('list saved')
+            # with open(file, 'w') as f:
+            #     json.dump(self.d_list, f)
+            log('list saved')
         except Exception as e:
             handle_exceptions(e)
 
@@ -2053,7 +2056,7 @@ class DownloadItem:
     def __init__(self, d_id=0, name='', size=0, mime_type='', folder='', url='',
      eff_url='', pl_url='', max_connections=1, live_connections=0, resumable=False,
      progress=0, speed=0, time_left='', downloaded=0, status='cancelled',
-     remaining_parts=0, part_size=1048576, audio=None):
+     remaining_parts=0, part_size=1048576):
         self.q = None  # queue
         self._id = d_id
         self.num = d_id + 1 if d_id else ''
@@ -2084,10 +2087,10 @@ class DownloadItem:
         # audio
         self.audio_url = None
         self.audio_size = 0
-
-        self.audio = None # to be used with ffmpeg to merge audio with video
         self.is_audio = False
-        self.ready_for_merge = False  # if the download file an audio to be merged with another video file
+
+        # self.audio = None # to be used with ffmpeg to merge audio with video
+        # self.ready_for_merge = False  # if the download file an audio to be merged with another video file
 
     @property
     def name(self):
@@ -2096,7 +2099,7 @@ class DownloadItem:
     @name.setter
     def name(self, new_value):
         # validate new name
-        self._name = new_value #validate_file_name(new_value)
+        self._name = validate_file_name(new_value)
 
     @property
     def id(self):
@@ -2351,12 +2354,6 @@ def brain(d=None, speed_limit=0):
     d.q = Communication()  # create new com queue
     q = d.q
 
-    # # debug
-    # if d.is_audio:
-    #     log("start downloading", d.name)
-    #     print('initial audio stream value')
-    #     print_object(d)
-
     # set status
     if d.status == Status.downloading:
         log('another brain thread may be running')
@@ -2387,11 +2384,8 @@ def brain(d=None, speed_limit=0):
     # region Setup
 
     # temp folder to store file segments
-    # d.temp_folder = os.path.join(d.folder, f'{d.name}_parts')
     if not os.path.exists(d.temp_folder):
         os.mkdir(d.temp_folder)
-
-
 
     # divide the main file into ranges of bytes (segments) and add it to the job queue list
     if d.resumable:
@@ -2540,16 +2534,11 @@ def brain(d=None, speed_limit=0):
             elif status == Status.completed:
                 # log('d.id, d.isaudio:', d.id, d.is_audio)
                 if d.is_audio:  # an audio file ready for merge, should quit here
-                    # d.ready_for_merge = True
-                    # d.q = None # delete q for audio object
                     log('done downloading', d.name)
-                    # # debug
-                    # print('status.completed: audio stream value')
-                    # print_object(d)
                     return True # as indication of success
 
                 # now video file completed and check for audio file
-                if d.audio_url: #d.audio: # this means a video file needs an audio file to be downloaded
+                if d.audio_url: # this means a video file needs an audio file to be downloaded
                     # correct status because operation not finished yet
                     d.status = Status.merging_audio
                     d.progress = 99
@@ -2565,11 +2554,6 @@ def brain(d=None, speed_limit=0):
                     audio.is_audio = True
                     audio.id = f'{d.num}_audio'# (d.id + 1 ) * 1000 - 1
 
-                    # print_object(audio)
-
-                    # d.audio.max_connections = d.max_connections
-                    # d.audio.name = f'audio_for_{d.name}'
-
                     video_file = d.full_name
                     audio_file = audio.full_name #os.path.join(d.folder, d.audio.name)
                     out_file = os.path.join(d.folder, f'out_{d.name}')
@@ -2578,12 +2562,11 @@ def brain(d=None, speed_limit=0):
                     # brain(d.audio)
                     done = brain(audio)
 
-
                     if done: # d.audio.ready_for_merge:  # an audio file already downloaded and ready for merge
                         log('start merging video and audio files')
                         error, output = merge_video_audio(video_file, audio_file, out_file)
                         if error:
-                           msg = f'Failed to merge {d.audio.name} \n {output}'
+                           msg = f'Failed to merge {audio.name} \n {output}'
                            log(msg)
                            # sg.popup_error(msg, title='Merge error')
                            status == Status.cancelled
@@ -2634,18 +2617,8 @@ def brain(d=None, speed_limit=0):
         log(f'brain {d.num} error!, bypassing barrier... {e}')
         handle_exceptions(e)
 
-
-
     # reset queue and delete un-necessary data
     d.q.reset()
-
-
-
-
-    if status == Status.completed:
-
-        pass
-
 
     # remove item index from active downloads
     if d.is_audio == False:
@@ -2890,7 +2863,10 @@ def singleApp():
 # region helper functions
 def notify(msg, title=f'{app_name}', timeout=5):
     # show os notification at tray icon area
-    plyer.notification.notify(title=title, message=msg, app_name=app_title)
+    try:
+      plyer.notification.notify(title=title, message=msg, app_name=app_title)
+    except Exception as e:
+      handle_exceptions(f'plyer notification: {e}')
 
 
 def handle_exceptions(error):
@@ -3086,8 +3062,6 @@ def log(*args):
         print(e)
 
 
-
-
 def validate_file_name(f_name):
     # filter for tkinter safe character range
     f_name = ''.join([c for c in f_name if ord(c) in range(65536)])
@@ -3146,8 +3120,7 @@ def get_seg_size(seg):
 
 
 def merge_video_audio(video, audio, output):
-    # print('pause for 20 seconds')
-    # time.sleep(20)
+
     # ffmpeg
     ffmpeg = 'ffmpeg' #os.path.join(current_directory, 'ffmpeg', 'ffmpeg')
 
@@ -3160,16 +3133,6 @@ def merge_video_audio(video, audio, output):
     error, output = run_command(cmd1, shell=True, verbose=True)
 
     return error, output
-
-    # try:
-    #     # subprocess.call will block until process finished
-    #     subprocess.call(cmd1, shell=True)
-    #
-    # except Exception as e:
-    #     print(e)
-    #     return repr(e)
-
-
 
 
 def update_youtube_dl():
@@ -3264,6 +3227,7 @@ def run_command(cmd, verbose=True, shell=False):
 
     return error, output
 
+
 def print_object(obj):
     if obj is None:
         print(obj, 'is None')
@@ -3273,6 +3237,7 @@ def print_object(obj):
             print(k, '=', v)
         except:
             pass
+
 # endregion
 
 
