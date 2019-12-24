@@ -17,8 +17,20 @@ example multi-downloading with speed limit of 20 KB/sec as a test
 ![concurrent windows](https://user-images.githubusercontent.com/37757246/71418548-a2a46a00-2673-11ea-8101-c95d29b6a0e4.png)
 
 
-# Requirements:
-To run from source you will need to install python and some packages as follows:
+# Run pyIDM:
+You have 2 options to run pyIDM on your operating system:
+1- ## Binary executable:
+currently binary build is available only for windows [here](https://github.com/pyIDM/pyIDM/releases/latest).
+
+2- ## run from open source:
+pyIDM is a python app. sot it can run on any platform that can run python, 
+To run from open source, you have to have a python installed, supported python versions is 3.6, 3.7, and 3.8, then download or clone this repository, and run pyIDM.py (it will install the other required python packages automatically if missing)
+additionally you have to install 'ffmpeg' for merging audio with youtube DASH videos
+if pyIDM failed to install required packages, you should install it manually, refer to "Dependencies" section below.
+
+
+# Dependencies:
+below are the requirements to run from source:
 - Python 3.6+: tested with python 3.6 on windows, and 3.7, 3.8 on linux
 - [ffmpeg](https://www.ffmpeg.org/) : for merging audio with youtube DASH videos 
 
@@ -28,26 +40,16 @@ Required python packages:
 - [youtube_dl](https://github.com/ytdl-org/youtube-dl): famous youtube downloader, limited use for meta information extraction only but videos are downloaded using pycurl 
 - certifi: required by 'pycurl' for validating the trustworthiness of SSL certificates,
 - mimetypes: converts between a filename or URL and the MIME type associated with the filename extension.,
-- pyperclip: A cross-platform clipboard module for monitoring url copied to clipboard,
-- plyer: for systray area notification,
+- pyperclip: A cross-platform clipboard module for monitoring url copied to clipboard, requires "xclip or xsel to be available on linux"
+- plyer: for systray area notification.
 
 ** please read notes below
 
 
 pyIDM application will do its best to install missing packages automatically once you run it. or you can install required packages manually using:
 ```python
-python -m pip install certifi PySimpleGUI mimetypes pyperclip plyer youtube_dl pycurl
+python -m pip install --user --upgrade certifi PySimpleGUI mimetypes pyperclip plyer youtube_dl pycurl
 ```
-on linux you should add `--user` argument for pip or use `sudo pip ...`
-
-### Windows binaries: <br>
-a standalone frozen version prepared by py2exe or cx_freeze is available on: [latest version](https://github.com/pyIDM/pyIDM/releases/latest) <br>
-for all available build versions you can check https://github.com/pyIDM/pyIDM/releases
-
-### Alternative to IDM (Internet Download Manager):
-The main reason for making this application is the lack of free open source download managers which has multi-connection, high download speed, and resume capability, also can download youtube videos, in same time has a good gui design, to achieve that, decision made to use the high speed library 'pycurl', a threading module for multi-connection, youtube_dl, and an easy and beautiful PySimpleGUI module for designing the gui user interface
-
-
 
 ### note for pycurl: <br>
 for windows users:
@@ -74,6 +76,13 @@ Pyperclip is a cross-platform Python module for copy and paste clipboard functio
 On Linux, this module makes use of the xclip or xsel commands, which should come with the os. Otherwise run "sudo apt-get install xclip" on Debian like or "sudo pacman -S xclip" on archlinux
 
 <br>
+
+### Windows binaries: <br>
+a standalone frozen version prepared by py2exe or cx_freeze is available on: [latest version](https://github.com/pyIDM/pyIDM/releases/latest) <br>
+for all available build versions you can check https://github.com/pyIDM/pyIDM/releases
+
+### Alternative to IDM (Internet Download Manager):
+The main reason for making this application is the lack of free open source download managers which has multi-connection, high download speed, and resume capability, also can download youtube videos, in same time has a good gui design, to achieve that, decision made to use the high speed library 'pycurl', a threading module for multi-connection, youtube_dl, and an easy and beautiful PySimpleGUI module for designing the gui user interface
 
 ### How does pyIDM work??
 - once you copy any url in clipboard the application start processing this url automatically "you can disable this in user setting"
