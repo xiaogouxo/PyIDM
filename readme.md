@@ -7,14 +7,14 @@ Developed in Python, based on "pyCuRL/curl", "youtube_dl", and "PySimpleGUI"
 
 **snapshots**
 
-![main window](https://github.com/pyIDM/pyIDM/blob/master/screenshots/main_reds.png)
-![downloads_tab](https://github.com/pyIDM/pyIDM/blob/master/screenshots/downloads_reds_2.PNG)
-![setting_tab](https://github.com/pyIDM/pyIDM/blob/master/screenshots/setting_reds.PNG)
-![d_window](https://github.com/pyIDM/pyIDM/raw/master/screenshots/dwindow.png)
+![main window](https://user-images.githubusercontent.com/37757246/71418544-a20bd380-2673-11ea-903c-ea5ea17e0e26.png)
+![downloads_tab](https://user-images.githubusercontent.com/37757246/71418538-a0daa680-2673-11ea-82a8-e10e0ca673bd.PNG)
+![setting_tab](https://user-images.githubusercontent.com/37757246/71418549-a2a46a00-2673-11ea-848a-ca5ca82e743b.PNG)
+![d_window](https://user-images.githubusercontent.com/37757246/71418539-a0daa680-2673-11ea-8073-0c217fff7e9a.png)
 
 example multi-downloading with speed limit of 20 KB/sec as a test
 
-![concurrent windows](https://github.com/pyIDM/pyIDM/blob/master/screenshots/multi-1.png)
+![concurrent windows](https://user-images.githubusercontent.com/37757246/71418548-a2a46a00-2673-11ea-8101-c95d29b6a0e4.png)
 
 
 # Requirements:
@@ -108,6 +108,10 @@ the audio will be merged into video file using FFMPEG external application "subp
 
 # Versions change log:
 3.3:
+- sort themes names in setting tabs, 140+ themes
+- proper setting folder location for linux and mac
+- bug fixes for youtube audio track handling
+- handle exception for notify function
 - Change application name to pyIDM instead of old name Hanash.
 
 3.2:
