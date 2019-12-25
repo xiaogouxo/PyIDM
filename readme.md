@@ -119,6 +119,9 @@ the audio will be merged into video file using FFMPEG external application "subp
 <br><br>
 
 # Versions change log:
+3.4:
+- use json to store downloads list to avoid pickle problems in frozen builds, and avoid future problem of pickled downloads.cfg file incompatibility with new version of the app. issue #11
+
 3.3:
 - the table header colors match the color theme "pySimpleGui addition"
 - sort themes names in setting tabs, 140+ themes
