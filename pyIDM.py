@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 app_name = 'pyIDM'
-version = '3.4.0.0' # use json to store downloads list to avoid pickle problems, issue #11
+version = '3.4.1.0' # GUI - use Column() container, and get rid of pl.download btn icon
 
 # standard modules
 import copy
@@ -102,7 +102,6 @@ import certifi
 import mimetypes
 import pyperclip
 import pickle, json
-# from PIL import Image
 import plyer  # for os notification messages
 
 
@@ -329,9 +328,15 @@ class MainWindow:
 
     # region gui design
     def create_window(self):
+        col1 = [[sg.Combo(values=['Playlist'], size=(29, 1), key='pl_menu', enable_events=True)],
+                [sg.ProgressBar(max_value=100, size=(20, 5), key='m_bar')]]
+
+        col2 = [[sg.Combo(values=['Quality'], size=(29, 1), key='stream_menu', enable_events=True)],
+                [sg.ProgressBar(max_value=100, size=(20, 5), key='s_bar')]]
+
         # main tab
-        main_layout = [[sg.Text(f'{app_name}', font='Helvetica 20', size=(37, 1), justification='center')],
-                        # [sg.T('an open source download manager', size=(60, 1), font='Helvetica 15', justification='center')],
+        main_layout = [
+                       [sg.Text(f'{app_name}', font='Helvetica 20', size=(37, 1), justification='center')],
 
                        # url
                        [sg.Text('URL:')],
@@ -343,17 +348,25 @@ class MainWindow:
                        [sg.T('', font='any 1')],
 
                        # youtube playlist
-                       [sg.Frame('Youtube Playlist / videos:', key='youtube_frame', layout=[
-                           [sg.Combo(values=['Playlist'], size=(30, 1), key='pl_menu', enable_events=True),
-                            sg.Button('', disabled=False,  image_filename=r'./icons/pl_download.png',
-                                      tooltip='download this playlist', key='pl_download'),
-                            sg.Combo(values=['Quality'], size=(30, 1), key='stream_menu', enable_events=True)],
+                       # [sg.Frame('Youtube Playlist / videos:', key='youtube_frame', layout=[
+                       #     [sg.Combo(values=['Playlist'], size=(30, 1), key='pl_menu', enable_events=True),
+                       #      sg.Button('⚡', # image_filename=r'./icons/pl_download.png', # ▼ ⬇⬇ ⇓ ⇩ ⤋ ⍔ ᗐ ⚓ ⚡ Ψ ტ Ꭾ Ω
+                       #                disabled=False, tooltip='download this playlist', key='pl_download'),
+                       #      sg.Combo(values=['Quality'], size=(30, 1), key='stream_menu', enable_events=True)],
 
-                           # progress bars
-                           [sg.ProgressBar(max_value=100, size=(24, 5), key='m_bar'), sg.T('', size=(3, 1)),
-                            sg.ProgressBar(max_value=100, size=(24, 5), key='s_bar')],
+                       #     # progress bars
+                       #     [sg.ProgressBar(max_value=100, size=(24, 5), key='m_bar'), sg.T('', size=(3, 1)),
+                       #      sg.ProgressBar(max_value=100, size=(24, 5), key='s_bar')],
 
-                       ])],
+                       # ])],
+
+                       [sg.Frame('Youtube Playlist / videos:', key='youtube_frame', pad=(0, 0), layout=[
+                            [sg.Column(col1, size=(280, 40),  element_justification='left'),
+                            sg.Button('⚡', disabled=False,  pad=(0, 0), tooltip='download this playlist', key='pl_download'),
+                            sg.Column(col2, size=(280, 40), element_justification='left')]]
+                                )
+                        ],
+                      
 
                        # file info
                        [sg.Text('File name:'), sg.Input('', size=(65, 1), key='name', enable_events=True)],
@@ -427,7 +440,7 @@ class MainWindow:
         self.window = self.create_window()
         self.window.Finalize()
         # expand elements to fit
-        elements = ['url', 'name', 'folder', 'youtube_frame', 'pl_menu', 'm_bar'] # elements to be expanded
+        elements = ['url', 'name', 'folder', 'youtube_frame', 'm_bar', 's_bar', 'pl_menu', 'stream_menu'] # elements to be expanded
         for e in elements:
             self.window[e].expand(expand_x=True)
 
@@ -1295,7 +1308,7 @@ class MainWindow:
 
     def disable_video_controls(self):
         try:
-            self.window.Element('pl_download').Update(disabled=True)
+            # self.window.Element('pl_download').Update(disabled=True)
             self.reset_progress_bar()
             self.pl_menu = ['Playlist']
             self.stream_menu = ['Video quality']
