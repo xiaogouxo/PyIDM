@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 app_name = 'pyIDM'
-version = '3.4.1.4' # GUI - Feedback popups for download btn and pl.btn in case of not allowed ops.
+version = '3.4.2.0' # bring application to front if url copied to clipboard or try to run another app. instance
 
 # standard modules
 import copy
@@ -305,9 +305,6 @@ class MainWindow:
         self.show_download_window = True
         self.theme = 'Green'  # default to Green
 
-        # log
-        self.log_text = ''
-
         # initial setup
         self.setup()
 
@@ -339,7 +336,7 @@ class MainWindow:
                        [sg.Text(f'{app_name}', font='Helvetica 20', size=(37, 1), justification='center')],
 
                        # url
-                       [sg.Text('URL:')],
+                       [sg.Text('URL:', pad=(5,1))],
                        [sg.Input('', enable_events=True, change_submits=True, key='url', size=(66, 1)),
                         sg.Button('Retry')],
                        [sg.Text('Status:', size=(70, 1), key='status')],
@@ -347,7 +344,7 @@ class MainWindow:
                        # spacer
                        [sg.T('', font='any 1')],
 
-                       # youtube playlist
+                       # youtube playlist ⚡
                        [sg.Frame('Youtube Playlist / videos:', key='youtube_frame', pad=(5, 5), layout=[
                             [sg.Column(col1, size=(300, 40),  element_justification='center', background_color=None),
                             sg.Button('⚡', disabled=False,  pad=(0, 0), tooltip='download this playlist', key='pl_download'),
@@ -358,9 +355,9 @@ class MainWindow:
 
                        # file info
                        [sg.Text('File name:'), sg.Input('', size=(65, 1), key='name', enable_events=True)],
-                       [sg.T('File size:'), sg.T('-' * 30, key='size'), sg.T('Type:'), sg.T('-' * 35, key='type'),
+                       [sg.T('File size: '), sg.T('-' * 30, key='size'), sg.T('Type:'), sg.T('-' * 35, key='type'),
                         sg.T('Resumable:'), sg.T('-----', key='resumable')],
-                       [sg.Text('Save To:'), sg.Input(self.d.folder, size=(55, 1), key='folder', enable_events=True),
+                       [sg.Text('Save To:  '), sg.Input(self.d.folder, size=(55, 1), key='folder', enable_events=True),
                         sg.FolderBrowse(key='browse')], #initial_folder=self.d.folder,
 
                        # download button
@@ -408,7 +405,7 @@ class MainWindow:
                            sg.T('')]
                           ]
 
-        log_layout = [[sg.T('Details events:')], [sg.Multiline(default_text=self.log_text, size=(70, 16), key='log',
+        log_layout = [[sg.T('Details events:')], [sg.Multiline(default_text='', size=(70, 17), key='log',
                                                                autoscroll=True)],
                       [sg.Button('Clear Log')]]
 
@@ -451,14 +448,9 @@ class MainWindow:
         for _ in range(m_frame_q.qsize()):
             k, v = m_frame_q.get()
             if k == 'log':
-                # add msg to log_txt
-                # self.log_text = v + self.log_text
-                # self.log_text = self.log_text[:20000]  # limit text size to save memory
-
                 try:
                     if len(self.window['log'].get()) > 3000:
                         self.window['log'](self.window['log'].get()[:2000])
-                    # self.window.Element('log').Update(self.log_text)
                     self.window['log'](v, append=True)
                 except:
                     pass
@@ -473,6 +465,10 @@ class MainWindow:
 
             elif k == 'monitor':
                 self.window.Element('monitor').Update(v)
+
+            elif k == 'visibility' and v == 'show':
+                self.bring_to_front()
+
 
         # process pending jobs
         if self.pending and len(active_downloads) < self.max_concurrent_downloads:
@@ -660,9 +656,8 @@ class MainWindow:
 
             # log
             elif event == 'Clear Log':
-                self.log_text = ''
                 try:
-                    self.window.Element('log').Update('')
+                    self.window['log']('')
                 except:
                     pass
 
@@ -1574,11 +1569,23 @@ class MainWindow:
     # endregion
 
     # region General
+    def bring_to_front(self):
+        # get the app on top of other windows
+        self.window.BringToFront()
+        self.window.TKroot.attributes('-topmost', True)
+        self.window.TKroot.attributes('-topmost', False)
+        
+        # self.window.TKroot.lift()
+        # self.window.TKroot.focus_force()
+        # self.window.TKroot.grab_set()
+        # self.window.TKroot.grab_release()
+        # self.window.TKroot.after_idle(self.window.TKroot.attributes,'-topmost',False)
+
     def url_text_change(self):
         # Focus and select main app page in case text changed from script
+        self.bring_to_front()
         self.select_tab('Main')
-        self.window.BringToFront()
-
+        
         self.reset()
         try:
             self.d.eff_url = self.d.url = self.window.Element('url').Get().strip()
@@ -1650,7 +1657,6 @@ class DownloadWindow:
         self.values = None
         self.timeout = 10
         self.timer = 0
-        self.log_text = ''
 
         self.create_window()
 
@@ -1665,7 +1671,7 @@ class DownloadWindow:
         ]
 
         log_layout = [[sg.T('Details events:')],
-                      [sg.Multiline(default_text=self.log_text, size=(70, 16), font='any 8', key='log', autoscroll=True)],
+                      [sg.Multiline(default_text='', size=(70, 16), font='any 8', key='log', autoscroll=True)],
                       [sg.Button('Clear Log')]]
 
         layout = [[sg.TabGroup([[sg.Tab('Main', main_layout), sg.Tab('Log', log_layout)]])]]
@@ -1694,13 +1700,9 @@ class DownloadWindow:
             k, v = self.d.q.d_window.get()
             print(k, v)
             if k == 'log':
-                # self.log_text = v + self.log_text
-                # self.log_text = self.log_text[:20000]  # limit text size to save memory
                 try:
-                    # self.window.Element('log').Update(self.log_text)
                     if len(self.window['log'].get()) > 3000:
                         self.window['log'](self.window['log'].get()[:2000])
-                    # self.window.Element('log').Update(self.log_text)
                     self.window['log'](v, append=True)
                 except:
                     pass
