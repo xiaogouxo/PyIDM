@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 app_name = 'pyIDM'
-version = '3.4.1.0' # GUI - use Column() container, and get rid of pl.download btn icon
+version = '3.4.1.2' # GUI - adjust design for no padding elements
 
 # standard modules
 import copy
@@ -328,10 +328,10 @@ class MainWindow:
 
     # region gui design
     def create_window(self):
-        col1 = [[sg.Combo(values=['Playlist'], size=(29, 1), key='pl_menu', enable_events=True)],
+        col1 = [[sg.Combo(values=['Playlist'], size=(34, 1), key='pl_menu', enable_events=True)],
                 [sg.ProgressBar(max_value=100, size=(20, 5), key='m_bar')]]
 
-        col2 = [[sg.Combo(values=['Quality'], size=(29, 1), key='stream_menu', enable_events=True)],
+        col2 = [[sg.Combo(values=['Quality'], size=(34, 1), key='stream_menu', enable_events=True)],
                 [sg.ProgressBar(max_value=100, size=(20, 5), key='s_bar')]]
 
         # main tab
@@ -348,22 +348,10 @@ class MainWindow:
                        [sg.T('', font='any 1')],
 
                        # youtube playlist
-                       # [sg.Frame('Youtube Playlist / videos:', key='youtube_frame', layout=[
-                       #     [sg.Combo(values=['Playlist'], size=(30, 1), key='pl_menu', enable_events=True),
-                       #      sg.Button('⚡', # image_filename=r'./icons/pl_download.png', # ▼ ⬇⬇ ⇓ ⇩ ⤋ ⍔ ᗐ ⚓ ⚡ Ψ ტ Ꭾ Ω
-                       #                disabled=False, tooltip='download this playlist', key='pl_download'),
-                       #      sg.Combo(values=['Quality'], size=(30, 1), key='stream_menu', enable_events=True)],
-
-                       #     # progress bars
-                       #     [sg.ProgressBar(max_value=100, size=(24, 5), key='m_bar'), sg.T('', size=(3, 1)),
-                       #      sg.ProgressBar(max_value=100, size=(24, 5), key='s_bar')],
-
-                       # ])],
-
-                       [sg.Frame('Youtube Playlist / videos:', key='youtube_frame', pad=(0, 0), layout=[
-                            [sg.Column(col1, size=(280, 40),  element_justification='left'),
+                       [sg.Frame('Youtube Playlist / videos:', key='youtube_frame', pad=(5, 5), layout=[
+                            [sg.Column(col1, size=(300, 40),  element_justification='center', background_color=None),
                             sg.Button('⚡', disabled=False,  pad=(0, 0), tooltip='download this playlist', key='pl_download'),
-                            sg.Column(col2, size=(280, 40), element_justification='left')]]
+                            sg.Column(col2, size=(300, 40), element_justification='center', background_color=None)]]
                                 )
                         ],
                       
@@ -381,7 +369,7 @@ class MainWindow:
                        ]
 
         # downloads tab
-        spacing = [' ' * 4, ' ' * 3, ' ' * 30, ' ', ' ' * 8, ' ' * 8, ' ' * 8, ' ' * 8, ' ' * 10, ' ' * 12, ' ', ' ',
+        spacing = [' ' * 4, ' ' * 3, ' ' * 30, ' ' * 5, ' ' * 8, ' ' * 8, ' ' * 8, ' ' * 8, ' ' * 10, ' ' * 12, ' ' * 30, ' ',
                    ' ', ' ']  # setup initial column width
 
         downloads_layout = [[sg.Button('Resume'), sg.Button('Cancel'), sg.Button('Refresh'),
@@ -440,7 +428,7 @@ class MainWindow:
         self.window = self.create_window()
         self.window.Finalize()
         # expand elements to fit
-        elements = ['url', 'name', 'folder', 'youtube_frame', 'm_bar', 's_bar', 'pl_menu', 'stream_menu'] # elements to be expanded
+        elements = ['url', 'name', 'folder', 'youtube_frame', 'm_bar', 's_bar', 'pl_menu', 'stream_menu', 'log'] # elements to be expanded
         for e in elements:
             self.window[e].expand(expand_x=True)
 
@@ -1308,7 +1296,7 @@ class MainWindow:
 
     def disable_video_controls(self):
         try:
-            # self.window.Element('pl_download').Update(disabled=True)
+            self.window.Element('pl_download').Update(disabled=True)
             self.reset_progress_bar()
             self.pl_menu = ['Playlist']
             self.stream_menu = ['Video quality']
