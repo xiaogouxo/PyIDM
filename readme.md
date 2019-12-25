@@ -17,10 +17,10 @@ example multi-downloading with speed limit of 20 KB/sec as a test
 ![concurrent windows](https://user-images.githubusercontent.com/37757246/71418548-a2a46a00-2673-11ea-8101-c95d29b6a0e4.png)
 
 
-# Run pyIDM:
+# How to run pyIDM?
 You have 2 options to run pyIDM on your operating system:
-1. **Binary executable**:
-currently binary build is available only for windows [here](https://github.com/pyIDM/pyIDM/releases/latest).
+1. **Binary executables**:
+currently binary build "Standalone zip" is available only for windows [here](https://github.com/pyIDM/pyIDM/releases/latest).
 
 2. **run from the source**:
 pyIDM is a python app. so, it can run on any platform that can run python, 
@@ -121,6 +121,8 @@ the audio will be merged into video file using FFMPEG external application "subp
 # Versions change log:
 3.4:
 - use json to store downloads list to avoid pickle problems in frozen builds, and avoid future problem of pickled downloads.cfg file incompatibility with new version of the app. issue #11
+- Feedback popups for download btn and pl.btn in case of not allowed ops.
+- bring application to front if url copied to clipboard or try to run another app. instance
 
 3.3:
 - the table header colors match the color theme "pySimpleGui addition"
@@ -149,7 +151,8 @@ the audio will be merged into video file using FFMPEG external application "subp
 
 # Future Plans :
 - use native video library for merging audio and video, will check libav, or possibility with youtube_dl.
-- Design different user interface.
+- Design different user interface using pySimpleGUI ports for Qt or wx.
+- Auto application update.
 
 
 
@@ -159,7 +162,7 @@ the audio will be merged into video file using FFMPEG external application "subp
 
 # Feedback:
 your feedback is most welcomed by filling an issue on https://github.com/pyIDM/pyIDM <br>
-or email me: mahmoud_elshahhat@yahoo.com
+or email me at: mahmoud_elshahhat@yahoo.com <br>
 Cheers, <br>
 Mahmoud Elshahat, <br>
 2019
