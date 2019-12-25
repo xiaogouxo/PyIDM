@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 app_name = 'pyIDM'
-version = '3.4.1.2' # GUI - adjust design for no padding elements
+version = '3.4.1.3' # GUI - apply margins = (2, 2)
 
 # standard modules
 import copy
@@ -421,7 +421,7 @@ class MainWindow:
 
         # window
         window = sg.Window(title=app_title, icon=icon, layout=layout,
-                           size=(700, 450))
+                           size=(700, 450),  margins = (2, 2))
         return window
 
     def start_window(self):
@@ -1290,13 +1290,13 @@ class MainWindow:
 
     def enable_video_controls(self):
         try:
-            self.window.Element('pl_download').Update(disabled=False)
+            pass # self.window.Element('pl_download').Update(disabled=False)
         except:
             pass
 
     def disable_video_controls(self):
         try:
-            self.window.Element('pl_download').Update(disabled=True)
+            # self.window.Element('pl_download').Update(disabled=True)
             self.reset_progress_bar()
             self.pl_menu = ['Playlist']
             self.stream_menu = ['Video quality']
@@ -1473,14 +1473,6 @@ class MainWindow:
         if stream.mediatype == 'video':
             audio_stream = [a for a in self.video.audiostreams if a.extension == stream.extension
                             or (a.extension == 'm4a' and stream.extension == 'mp4')][0]
-            # audio = copy.deepcopy(self.d)
-            # audio.audio = None
-            # self.d.audio = audio
-            # self.d.audio.eff_url=self.d.audio.url=audio_stream.url
-            # self.d.audio.size=audio_stream.filesize
-            # self.d.audio.type = audio_stream.extension
-            # self.d.audio.is_audio = True
-
             self.d.audio_url = audio_stream.url
             self.d.audio_size = audio_stream.filesize
         else:
@@ -1509,6 +1501,10 @@ class MainWindow:
         self.update_video_param(index)
 
     def download_playlist(self):
+        # check if there is a playlist or quit
+        # if self.pl_menu[0] = 'Playlist' and self.stream_menu[0] = 'Video quality':
+        #     pass
+
         # ask user to choose videos quality
         streams = [repr(s) for s in self.video.allstreams]
 
