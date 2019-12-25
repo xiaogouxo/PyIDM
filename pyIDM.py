@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 app_name = 'pyIDM'
-version = '3.4.1.3' # GUI - apply margins = (2, 2)
+version = '3.4.1.4' # GUI - Feedback popups for download btn and pl.btn in case of not allowed ops.
 
 # standard modules
 import copy
@@ -1035,7 +1035,10 @@ class MainWindow:
     def download_btn(self):
         d = copy.deepcopy(self.d)
 
-        if self.disabled: return
+        if self.disabled: 
+            sg.popup_ok('Nothing to download', 'it might be a web page or invalid url link', 
+                'check your link or click "Retry"')
+            return
 
         # search current list for previous item with same name, folder
         found_index = self.file_in_d_list(self.d.name, self.d.folder)
@@ -1502,8 +1505,9 @@ class MainWindow:
 
     def download_playlist(self):
         # check if there is a playlist or quit
-        # if self.pl_menu[0] = 'Playlist' and self.stream_menu[0] = 'Video quality':
-        #     pass
+        if self.pl_menu[0] == 'Playlist' and self.stream_menu[0] == 'Video quality':
+            sg.popup_ok('Playlist is empty, nothing to download :)', title='Playlist download')
+            return
 
         # ask user to choose videos quality
         streams = [repr(s) for s in self.video.allstreams]
