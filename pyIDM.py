@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 app_name = 'pyIDM'
-version = '3.4.2.0' # bring application to front if url copied to clipboard or try to run another app. instance
+version = '3.4.2.1' # Gui - fix appearance on linux
+default_theme = 'reds'
 
 # standard modules
 import copy
@@ -46,7 +47,7 @@ if missing_packages:
     # try importing PySimpleGUI
     if 'PySimpleGUI' not in sys.modules.keys():
         import PySimpleGUI as sg
-        sg.change_look_and_feel('Kayak')
+        sg.change_look_and_feel(default_theme)
 
     msg = (f"Looks like you have missing modules / packages:\n"
            f"\n"
@@ -89,7 +90,7 @@ if missing_packages:
 
             if failed_packages:
                 window['missing_pkg_status'](f"\nFailed to install some packages, {failed_packages} 'press cancel to terminate application",
-                                             append=True, text_color='red')
+                                             append=True, text_color_for_value='red')
             else:
                 window['missing_pkg_status']('\nAll - ok, click proceed to continue' , append=True, text_color='green')
 
@@ -325,15 +326,17 @@ class MainWindow:
 
     # region gui design
     def create_window(self):
+        # main tab
         col1 = [[sg.Combo(values=['Playlist'], size=(34, 1), key='pl_menu', enable_events=True)],
                 [sg.ProgressBar(max_value=100, size=(20, 5), key='m_bar')]]
 
         col2 = [[sg.Combo(values=['Quality'], size=(34, 1), key='stream_menu', enable_events=True)],
                 [sg.ProgressBar(max_value=100, size=(20, 5), key='s_bar')]]
 
-        # main tab
         main_layout = [
-                       [sg.Text(f'{app_name}', font='Helvetica 20', size=(37, 1), justification='center')],
+                       # [sg.Text(f'{app_name}', font='Helvetica 20', size=(37, 1), justification='center')],
+                       [sg.Column([[sg.Text(f'{app_name}', font='Helvetica 20')]], size=(100, 40), 
+                       justification='center')],
 
                        # url
                        [sg.Text('URL:', pad=(5,1))],
@@ -346,9 +349,9 @@ class MainWindow:
 
                        # youtube playlist ⚡
                        [sg.Frame('Youtube Playlist / videos:', key='youtube_frame', pad=(5, 5), layout=[
-                            [sg.Column(col1, size=(300, 40),  element_justification='center', background_color=None),
-                            sg.Button('⚡', disabled=False,  pad=(0, 0), tooltip='download this playlist', key='pl_download'),
-                            sg.Column(col2, size=(300, 40), element_justification='center', background_color=None)]]
+                            [sg.Column(col1, size=(300, 40),  element_justification='center'),
+                            sg.Button('⚡',  pad=(0, 0), tooltip='download this playlist', key='pl_download'),
+                            sg.Column(col2, size=(300, 40), element_justification='center')]]
                                 )
                         ],
                       
@@ -361,7 +364,8 @@ class MainWindow:
                         sg.FolderBrowse(key='browse')], #initial_folder=self.d.folder,
 
                        # download button
-                       [sg.T('', size=(29, 1)), sg.Button('Download', font='Helvetica 14', border_width=1)],
+                       [sg.Column([[sg.Button('Download', font='Helvetica 14', border_width=1)]], size=(120, 40), 
+                       justification='center')], # sg.T(' ', size=(29, 1), font='Helvetica 12'), 
 
                        ]
 
@@ -373,7 +377,7 @@ class MainWindow:
                              sg.Button('Folder'), sg.Button('D.Window'),
                              sg.T(' ' * 5), sg.T('Item:'),
                              sg.T('---', key='selected_row_num', text_color='white', background_color='red')],
-                            [sg.Table(values=[spacing], headings=self.d_headers, size=(70, 13),
+                            [sg.Table(values=[spacing], headings=self.d_headers, size=(70, 13), bind_return_key=True,
                                       vertical_scroll_only=False, key='table', enable_events=True)],
                             [sg.Button('Resume All'), sg.Button('Stop All'),
                              sg.Button('Delete', button_color=('white', 'red')),
@@ -424,10 +428,15 @@ class MainWindow:
     def start_window(self):
         self.window = self.create_window()
         self.window.Finalize()
+
         # expand elements to fit
-        elements = ['url', 'name', 'folder', 'youtube_frame', 'm_bar', 's_bar', 'pl_menu', 'stream_menu', 'log'] # elements to be expanded
+        elements = ['url', 'name', 'folder', 'youtube_frame', 'm_bar', 's_bar', 'pl_menu', 'stream_menu', 'log', 'status_bar'] # elements to be expanded
         for e in elements:
             self.window[e].expand(expand_x=True)
+
+        # override double click / Enter key callback function for the table
+        self.window['table'].treeview_double_click = self.table_d_clicked
+        # SelectedRows
 
     def restart_window(self):
         try:
@@ -538,6 +547,7 @@ class MainWindow:
                 self.restart_window()
 
             elif event == 'table':
+                print(values['table'])
 
                 try:
                     item_num = values['table'][0]
@@ -664,6 +674,8 @@ class MainWindow:
             # about window
             elif event == 'about':
                 sg.PopupNoButtons(about_notes, title=f'About {app_name} DM', non_blocking=True)
+
+
 
             # Run every n seconds
             if time.time() - timer1 >= 1:
@@ -865,7 +877,7 @@ class MainWindow:
             self.show_download_window = self.setting.get('show_download_window', True)
 
             # theme
-            self.theme = self.setting.get('theme', 'Green')
+            self.theme = self.setting.get('theme', default_theme)
 
     def save_setting(self):
         self.setting['folder'] = self.d.folder
@@ -1234,6 +1246,10 @@ class MainWindow:
         self.window['folder'](self.d.folder)
         self.select_tab('Main')
 
+    @staticmethod
+    def table_d_clicked(table, event):
+        print('double clicked', table.SelectedRows)
+
     # endregion
 
     # region video
@@ -1571,15 +1587,30 @@ class MainWindow:
     # region General
     def bring_to_front(self):
         # get the app on top of other windows
-        self.window.BringToFront()
-        self.window.TKroot.attributes('-topmost', True)
-        self.window.TKroot.attributes('-topmost', False)
+        # self.window.BringToFront()
+        # self.window.TKroot.attributes('-topmost', True)
+        # self.window.TKroot.update()
+        # self.window.TKroot.attributes('-topmost', False)
         
         # self.window.TKroot.lift()
         # self.window.TKroot.focus_force()
         # self.window.TKroot.grab_set()
         # self.window.TKroot.grab_release()
         # self.window.TKroot.after_idle(self.window.TKroot.attributes,'-topmost',False)
+
+        if sys.platform.startswith('win'):
+            try:
+                self.window.TKroot.wm_attributes("-topmost", 0)
+                self.window.TKroot.wm_attributes("-topmost", 1)
+                if not self.window.KeepOnTop:
+                    self.window.TKroot.wm_attributes("-topmost", 0)
+            except:
+                pass
+        else:
+            try:
+                self.window.TKroot.lift()
+            except:
+                pass
 
     def url_text_change(self):
         # Focus and select main app page in case text changed from script
