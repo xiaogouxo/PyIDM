@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 app_name = 'pyIDM'
-version = '3.5.0.0' # Gui - New right click menu for download table
+version = '3.5.0.1' # Gui - tweaks for download window
 default_theme = 'reds'
 
 # standard modules
@@ -619,8 +619,12 @@ class MainWindow:
 
             # downloads tab events
             elif event == 'table':
-                row_num = values['table'][0]
-                self.select_row(row_num)
+                try:
+                    row_num = values['table'][0]
+                    self.select_row(row_num)
+                except Exception as e:
+                    log("MainWindow.run:if event == 'table': ", e)
+
 
             # elif event == 'table_right_clicked':
             #     print(event, values)
@@ -1672,30 +1676,8 @@ class MainWindow:
     # region General
     def bring_to_front(self):
         # get the app on top of other windows
-        # self.window.BringToFront()
-        # self.window.TKroot.attributes('-topmost', True)
-        # self.window.TKroot.update()
-        # self.window.TKroot.attributes('-topmost', False)
+        self.window.BringToFront()
         
-        # self.window.TKroot.lift()
-        # self.window.TKroot.focus_force()
-        # self.window.TKroot.grab_set()
-        # self.window.TKroot.grab_release()
-        # self.window.TKroot.after_idle(self.window.TKroot.attributes,'-topmost',False)
-
-        if sys.platform.startswith('win'):
-            try:
-                self.window.TKroot.wm_attributes("-topmost", 0)
-                self.window.TKroot.wm_attributes("-topmost", 1)
-                if not self.window.KeepOnTop:
-                    self.window.TKroot.wm_attributes("-topmost", 0)
-            except:
-                pass
-        else:
-            try:
-                self.window.TKroot.lift()
-            except:
-                pass
 
     def url_text_change(self):
         # Focus and select main app page in case text changed from script
@@ -1780,9 +1762,9 @@ class DownloadWindow:
         main_layout = [
             [sg.T('', size=(55, 7), key='out')],
 
-            [sg.ProgressBar(max_value=100, key='progress_bar', size=(35, 15), border_width=3)],
+            [sg.ProgressBar(max_value=100, key='progress_bar', size=(42, 15), border_width=3)],
 
-            [sg.T(' ' * 45), sg.Button('Hide', key='hide'), sg.Button('Cancel', key='cancel')],
+            [sg.Column([[sg.Button('Hide', key='hide'), sg.Button('Cancel', key='cancel')]], justification='right')],
 
         ]
 
@@ -1792,8 +1774,8 @@ class DownloadWindow:
 
         layout = [[sg.TabGroup([[sg.Tab('Main', main_layout), sg.Tab('Log', log_layout)]])]]
 
-        self.window = sg.Window(title=self.d.name, icon=icon, layout=layout,
-                                size=(460, 240))
+        self.window = sg.Window(title=self.d.name, icon=icon, layout=layout, finalize=True, margins=(2, 2), size=(460, 240))
+        self.window['progress_bar'].expand()
 
     def update_gui(self):
         # trim name and folder length
