@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 app_name = 'pyIDM'
-version = '3.5.0.1' # Gui - tweaks for download window
+version = '3.6.0.0' # Gui - new Animation for download table status
 default_theme = 'reds'
 
 # standard modules
@@ -379,7 +379,7 @@ class MainWindow:
                              sg.Button('Folder'), sg.Button('D.Window'),
                              sg.T(' ' * 5), sg.T('Item:'),
                              sg.T('---', key='selected_row_num', text_color='white', background_color='red')],
-                            [sg.Table(values=[spacing], headings=self.d_headers, size=(70, 13),
+                            [sg.Table(values=[spacing], headings=self.d_headers, size=(70, 13), justification='left',
                                       vertical_scroll_only=False, key='table', enable_events=True, 
                                       right_click_menu=table_right_click_menu)],
                             [sg.Button('Resume All'), sg.Button('Stop All'),
@@ -477,8 +477,9 @@ class MainWindow:
             self.selected_row_num = int(row_num)
             self.selected_d = self.d_list[self.selected_row_num]
             self.window['selected_row_num']('---' if row_num is None else row_num + 1)
-        except:
-            pass
+            
+        except Exception as e:
+            log('MainWindow.select_row(): ', e)
 
     def open_file(self, file):
         
@@ -2160,6 +2161,11 @@ class Status:
 
 # Download Item Class
 class DownloadItem:
+    # animation ['►►   ', '  ►►'] › ► ⤮ ⇴ ↹ ↯  ↮  ₡ ['⯈', '▼', '⯇', '▲'] ['⏵⏵', '  ⏵⏵'] ['›', '››', '›››', '››››', '›››››']
+    # test = [x.replace('›', '❯') for x in ['›', '››', '›››', '››››']]
+    print(test)
+    animation_icons = {Status.downloading: ['❯', '❯❯', '❯❯❯', '❯❯❯❯'], Status.pending: ['⏳'],
+                      Status.completed: ['✔'], Status.cancelled: ['-x-'], Status.merging_audio: ['↯', '↯↯', '↯↯↯']} # 
 
     def __init__(self, d_id=0, name='', size=0, mime_type='', folder='', url='',
      eff_url='', pl_url='', max_connections=1, live_connections=0, resumable=False,
@@ -2173,7 +2179,6 @@ class DownloadItem:
         self.type = mime_type
         self.folder = folder
         self._full_name = None  # containing path
-        # self.temp_folder = ''
         self.url = url
         self.eff_url = eff_url
         self.pl_url = pl_url # playlist url
@@ -2184,13 +2189,12 @@ class DownloadItem:
         self.speed = speed
         self.time_left = time_left
         self.downloaded = downloaded
-        self._status = status
+        self.status = status
         self.remaining_parts = remaining_parts
-        # animation
-        self.animation_icon = {Status.downloading: '►►', Status.pending: 'P', Status.completed: '✔',
-                               Status.cancelled: '--'}
-        self.i = ''  # animation image
         self._part_size = part_size
+        
+        # animation
+        self.animation_index = self.id % 2 # to give it a different start point than neighbour items
 
         # audio
         self.audio_url = None
@@ -2232,18 +2236,18 @@ class DownloadItem:
     
     @property
     def full_temp_name(self):
-        """return file name including path"""
+        """return temp file name including path"""
         return os.path.join(self.folder, self.temp_name)
 
-
     @property
-    def status(self):
-        return self._status
+    def i(self):
+        icon_list = self.animation_icons.get(self.status, [''])
+        if self.animation_index >= len(icon_list):  self.animation_index = 0
+        selected_image = icon_list[self.animation_index]
+        self.animation_index += 1 
 
-    @status.setter
-    def status(self, value):
-        self._status = value
-        self.i = self.animation_icon.get(self._status, '')
+        return selected_image
+        
 
     @property
     def part_size(self):
