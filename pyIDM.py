@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 app_name = 'pyIDM'
-version = '3.4.2.1' # Gui - fix appearance on linux
+version = '3.5.0.0' # Gui - New right click menu for download table
 default_theme = 'reds'
 
 # standard modules
@@ -137,7 +137,7 @@ app_title = f'{app_name} .. an open source download manager version {version}'
 icon_name = 'icon.ico' if os.name == 'nt' else 'icon.png'
 app_icon = os.path.join(current_directory, 'icons', icon_name)
 
-themes = sorted(list(sg.LOOK_AND_FEEL_TABLE.keys()))
+themes = sg.ListOfLookAndFeelValues() # sorted(list(sg.LOOK_AND_FEEL_TABLE.keys()))
 sg.SetOptions(font='Helvetica 11', auto_size_buttons=True, progress_meter_border_depth=0, border_width=1)
 
 m_frame_q = Queue()  # queue for Main application window
@@ -370,6 +370,8 @@ class MainWindow:
                        ]
 
         # downloads tab
+        table_right_click_menu = ['Table', ['!Options for selected file:', '---', 'Open File', 'Open File Location', 'Watch while downloading',
+        'copy webpage url', 'copy download url', 'properties']]
         spacing = [' ' * 4, ' ' * 3, ' ' * 30, ' ' * 5, ' ' * 8, ' ' * 8, ' ' * 8, ' ' * 8, ' ' * 10, ' ' * 12, ' ' * 30, ' ',
                    ' ', ' ']  # setup initial column width
 
@@ -377,8 +379,9 @@ class MainWindow:
                              sg.Button('Folder'), sg.Button('D.Window'),
                              sg.T(' ' * 5), sg.T('Item:'),
                              sg.T('---', key='selected_row_num', text_color='white', background_color='red')],
-                            [sg.Table(values=[spacing], headings=self.d_headers, size=(70, 13), bind_return_key=True,
-                                      vertical_scroll_only=False, key='table', enable_events=True)],
+                            [sg.Table(values=[spacing], headings=self.d_headers, size=(70, 13),
+                                      vertical_scroll_only=False, key='table', enable_events=True, 
+                                      right_click_menu=table_right_click_menu)],
                             [sg.Button('Resume All'), sg.Button('Stop All'),
                              sg.Button('Delete', button_color=('white', 'red')),
                              sg.Button('Delete All', button_color=('white', 'red'))],
@@ -430,13 +433,21 @@ class MainWindow:
         self.window.Finalize()
 
         # expand elements to fit
-        elements = ['url', 'name', 'folder', 'youtube_frame', 'm_bar', 's_bar', 'pl_menu', 'stream_menu', 'log', 'status_bar'] # elements to be expanded
+        elements = ['url', 'name', 'folder', 'youtube_frame', 'm_bar', 's_bar', 'pl_menu',
+                    'stream_menu', 'log', 'status_bar'] # elements to be expanded
         for e in elements:
             self.window[e].expand(expand_x=True)
 
         # override double click / Enter key callback function for the table
-        self.window['table'].treeview_double_click = self.table_d_clicked
+        # self.window['table'].treeview_double_click = table_d_clicked
         # SelectedRows
+
+        # bind keys events for table
+        # self.window['table'].bind("<Button-3>", '_right_clicked') # it will disable right click menu
+        self.window['table'].Widget.bind("<Button-3>", self.table_right_click)
+        self.window['table'].bind('<Double-Button-1>', '_double_clicked')
+        self.window['table'].bind('<Return>', '_enter_key')
+
 
     def restart_window(self):
         try:
@@ -444,7 +455,46 @@ class MainWindow:
         except:
             pass
 
+        # sg.popup_ok('restart_window')
+
         self.start_window()
+
+    def table_right_click(self, event):
+        try:
+            # select row under mouse
+            iid = self.window['table'].Widget.identify_row(event.y) # first row = 1 not 0
+            if iid:
+                # mouse pointer over item
+                self.window['table'].Widget.selection_set(iid)
+                self.select_row(int(iid)-1)  # get count start from zero
+                self.window['table']._RightClickMenuCallback(event)  
+                # print(iid)
+        except:
+            pass
+
+    def select_row(self, row_num):
+        try:
+            self.selected_row_num = int(row_num)
+            self.selected_d = self.d_list[self.selected_row_num]
+            self.window['selected_row_num']('---' if row_num is None else row_num + 1)
+        except:
+            pass
+
+    def open_file(self, file):
+        
+        try:
+            if platform.system() == 'Windows':
+                os.startfile(file)
+
+            elif platform.system() == 'Linux':
+                run_command(f'xdg-open {file}')
+
+            elif platform.system() == 'Darwin':
+                run_command(f'open {file}')
+        except Exception as e:
+            print('MainWindow.open_file(): ', e)
+        
+            
 
     def select_tab(self, tab_name):
         try:
@@ -510,6 +560,7 @@ class MainWindow:
 
         except Exception as e:
             print('gui not updated:', e)
+            # raise e
 
     def enable(self):
         self.disabled = False
@@ -529,6 +580,7 @@ class MainWindow:
         timer1 = 0
         while True:
             event, values = self.window.Read(timeout=50)
+            self.event, self.values = event, values
             # if event != '__TIMEOUT__': print(event, values)
 
             if event is None:
@@ -545,17 +597,6 @@ class MainWindow:
                 self.download_windows = {}
 
                 self.restart_window()
-
-            elif event == 'table':
-                print(values['table'])
-
-                try:
-                    item_num = values['table'][0]
-                    self.selected_row_num = item_num
-                    self.selected_d = self.d_list[self.selected_row_num]
-                    self.window.Element('selected_row_num').Update('---' if item_num is None else item_num + 1)
-                except:
-                    pass
 
             elif event == 'url':
                 self.url_text_change()
@@ -577,6 +618,53 @@ class MainWindow:
                 self.retry()
 
             # downloads tab events
+            elif event == 'table':
+                row_num = values['table'][0]
+                self.select_row(row_num)
+
+            # elif event == 'table_right_clicked':
+            #     print(event, values)
+
+
+            elif event in ('table_double_clicked', 'table_enter_key', 'Open File', 'Watch while downloading'):
+                if self.selected_d.status == Status.completed:
+                    self.open_file(self.selected_d.full_name)
+                else:
+                   self.open_file(self.selected_d.full_temp_name) 
+                
+
+            # table right click menu event
+            # elif event == 'Open File':
+            #     if self.selected_d.status == Status.completed:
+            #         self.open_file(self.selected_d.full_name)
+            #     else:
+            #        self.open_file(self.selected_d.full_temp_name) 
+
+            elif event =='Open File Location':
+                self.open_file_location()
+
+            elif event =='copy webpage url':
+                clipboard.write(self.selected_d.url)
+
+            elif event =='copy download url':
+                clipboard.write(self.selected_d.eff_url)
+
+            elif event == 'properties':
+                try:
+                    info = self.window['table'].get()[self.selected_row_num]
+                except:
+                    pass
+                if info:
+                    msg = ''
+                    for i in range(len(info)):
+
+                        msg += f'{self.d_headers[i]}: {info[i]} \n' 
+                    msg += f'webpage url: {self.selected_d.url} \n\n'
+                    msg += f'playlist url: {self.selected_d.pl_url} \n'
+                    sg.popup_scrolled(msg, title='File properties')
+
+           
+
             elif event == 'Resume':
                 self.resume_btn()
 
@@ -1246,9 +1334,6 @@ class MainWindow:
         self.window['folder'](self.d.folder)
         self.select_tab('Main')
 
-    @staticmethod
-    def table_d_clicked(table, event):
-        print('double clicked', table.SelectedRows)
 
     # endregion
 
@@ -2132,6 +2217,15 @@ class DownloadItem:
 
 
     @property
+    def id(self):
+        return self._id
+
+    @id.setter
+    def id(self, new_id):
+        self._id = new_id
+        self.num = new_id + 1 if type(new_id) is int else new_id
+
+    @property
     def name(self):
         return self._name
 
@@ -2141,13 +2235,24 @@ class DownloadItem:
         self._name = validate_file_name(new_value)
 
     @property
-    def id(self):
-        return self._id
+    def full_name(self):
+        """return file name including path"""
+        return os.path.join(self.folder, self.name)
 
-    @id.setter
-    def id(self, new_id):
-        self._id = new_id
-        self.num = new_id + 1 if type(new_id) is int else new_id
+    @property
+    def temp_folder(self):
+        return self.full_name + '_parts'
+
+    @property
+    def temp_name(self):
+        """return file name including path"""
+        return f'__downloading__{self.name}'
+    
+    @property
+    def full_temp_name(self):
+        """return file name including path"""
+        return os.path.join(self.folder, self.temp_name)
+
 
     @property
     def status(self):
@@ -2167,14 +2272,6 @@ class DownloadItem:
         self._part_size = value if value <= self.size else self.size
         print('part size = ', self._part_size)
 
-    @property
-    def full_name(self):
-        """return file name including path"""
-        return os.path.join(self.folder, self.name)
-
-    @property
-    def temp_folder(self):
-        return self.full_name + '_parts'
 
 
 # region video classes
@@ -2787,11 +2884,11 @@ def file_mngr(d, barrier, seg_list):
         completed_parts = set()
 
     # target file
-    d.folder = os.path.abspath(d.folder)
-    target_file = os.path.join(d.folder, d.name)
+    # d.folder = os.path.abspath(d.folder)
+    target_file = d.full_name #os.path.join(d.folder, d.name)
 
     # check / create temp file
-    temp_file = os.path.join(d.folder, '__downloading__' + d.name)
+    temp_file = d.full_temp_name #os.path.join(d.folder, '__downloading__' + d.name)
     if not os.path.isfile(temp_file):
         with open(temp_file, 'wb') as f:
             # f.write(b'')
@@ -3289,6 +3386,8 @@ def update_object(obj, new_values):
     except Exception as e:
         log(f'update_object(): error, {e}')
 
+# def table_d_clicked(table, event):
+#     print('double clicked', table.SelectedRows)
 
 # endregion
 
