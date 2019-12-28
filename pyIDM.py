@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 app_name = 'pyIDM'
-version = '3.6.0.0' # Gui - new Animation for download table status
+version = '3.6.1.0' # Speed limit bug fix and more options in setting tab
 default_theme = 'reds'
 
 # standard modules
@@ -392,8 +392,10 @@ class MainWindow:
                           [sg.Text('Select Theme:'),
                            sg.Combo(values=themes, default_value=self.theme, size=(15, 1), enable_events=True,
                                     key='themes'), sg.Text(f' Total of {len(themes)} Themes')],
-                          [sg.T('Speed Limit:'), sg.Input('', size=(4, 1), key='speed_limit', enable_events=True),
-                           sg.T('kb/s  *zero or blank means no limit')],
+                          [sg.Checkbox('Speed Limit:', key= 'speed_limit_switch', change_submits=True),
+                          sg.Input('', size=(10, 1), key='speed_limit', disabled=True, enable_events=True), 
+                          sg.T('0', size=(30, 1), key='current_speed_limit')],
+                          [sg.T('* speed limit hint: format"numbers+[k, kb, m, mb] small or capital, examples:"50 k, 10kb, 2m 3mb, 20, 10MB" ', font='any 8')],
                           [sg.Checkbox('Monitor copied urls in clipboard', default=monitor_clipboard, key='monitor',
                                        enable_events=True)],
                           [sg.Checkbox("Show download window", key='show_download_window',
@@ -558,6 +560,9 @@ class MainWindow:
             self.window.Element('status_bar').Update(
                 f'Active downloads: {len(active_downloads)}, pending: {len(self.pending)}')
 
+            # setting
+            self.window['current_speed_limit'](f'current speed limit: {size_format(self.speed_limit * 1024) if self.speed_limit > 0 else "_no limit_"}') 
+
 
         except Exception as e:
             print('gui not updated:', e)
@@ -637,14 +642,7 @@ class MainWindow:
                 else:
                    self.open_file(self.selected_d.full_temp_name) 
                 
-
             # table right click menu event
-            # elif event == 'Open File':
-            #     if self.selected_d.status == Status.completed:
-            #         self.open_file(self.selected_d.full_name)
-            #     else:
-            #        self.open_file(self.selected_d.full_temp_name) 
-
             elif event =='Open File Location':
                 self.open_file_location()
 
@@ -714,8 +712,46 @@ class MainWindow:
                 self.stream_OnChoice(values['stream_menu'])
 
             # setting tab
+            elif event == 'speed_limit_switch':
+                switch = values['speed_limit_switch']
+                
+                if switch:
+                    self.window['speed_limit'](disabled=False)
+                    event == 'speed_limit'
+                else:
+                    self.speed_limit = 0
+                    self.window['speed_limit'](disabled=True)
+                # print('speed limit:', self.speed_limit)
+
+
             elif event == 'speed_limit':
-                self.speed_limit = values['speed_limit']
+                sl = values['speed_limit'].replace(' ', '') # if values['speed_limit'] else 0
+                print(sl)
+                # 
+                # validate speed limit,  expecting formats: number + (k, kb, m, mb) final value should be in kb
+                # pattern \d*[mk]b?
+
+                match = re.fullmatch(r'\d+([mk]b?)?', sl, re.I)
+                if match:
+                    # print(match.group())
+
+                    digits = re.match(r"[0-9]+", sl, re.I).group()
+                    digits = int(digits)
+
+                    letters = re.search(r"[a-z]+", sl, re.I)
+                    letters = letters.group().lower() if letters else None
+
+                    print(digits, letters)
+
+                    if letters in ('k', 'kb', None):
+                        sl = digits
+                    elif letters in('m', 'mb'):
+                        sl = digits * 1024
+                else:
+                    sl = 0
+
+                self.speed_limit = sl
+                # print('speed limit:', self.speed_limit)
 
             elif event == 'max_concurrent_downloads':
                 self.max_concurrent_downloads = int(values['max_concurrent_downloads'])
