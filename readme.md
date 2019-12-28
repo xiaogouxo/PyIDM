@@ -119,6 +119,13 @@ the audio will be merged into video file using FFMPEG external application "subp
 <br><br>
 
 # Versions change log:
+3.6:
+- New right click menu for download table, now you can view all info for any download item, copy url, open file location.
+- Ability to watch video files before it finish downloading.
+- open files by double click, Enter button, or context menu from downloads tab.
+- new animations for files status during download and merge.
+- Speed limit option now more better than before.
+
 3.4:
 - use json to store downloads list to avoid pickle problems in frozen builds, and avoid future problem of pickled downloads.cfg file incompatibility with new version of the app. issue #11
 - Feedback popups for download btn and pl.btn in case of not allowed ops.
