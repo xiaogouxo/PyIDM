@@ -1,13 +1,43 @@
-pyIDM is a python open source alternative to IDM (Internet Download Manager) 
+pyIDM is a python open source (Internet Download Manager) 
 with multi-connections, high speed engine, 
 it downloads general files with good youtube support (such as downloading videos, whole playlists at once, or just an audio file for a video stream) . <br>
 Developed in Python, based on "pyCuRL/curl", "youtube_dl", and "PySimpleGUI"
 
+![main window](https://user-images.githubusercontent.com/58998813/71563996-a2580480-2aa1-11ea-8818-6476b500d200.png)
+
+---
+
+# Why another download manager?:
+With all free and paid download manager why someone may need another one?
+I believe in one term, **"if the product is free, then you are the product"**, most (if not all) free applications collect data about you, some of them are toxic and plant trojans and spyware in your system, then I decided to make my own download manager based on python with 👉 **"--GUI--"** relies only on open source tools and libraries, nothing hidden, with source code exposed to thousands of programmers, no one can play dirty games here 😉.
+
+originally I made this application for my personal use then decided to release its open source for others to use, hoping it might help someone.
+
+# What makes pyIDM different? 
+Like most download managers it can download, pause, resume any file, additionally, pyIDM has some strength points in some fields like:
+
+- **Re-using existing connection**, pyIDM will reuse already establiched connections to the download server which saves the time of establishing new connections. 
+- **Segment size:** you can decide the size of the individual file segments "chunk size".
+- **Resume:** files downloaded in **segments** saved at user download directory in a temp folder, in case download interrupts or fatal os system failure, if you try to download the same file again with same name and at the same destination folder, pyIDM will scan all completed segments and resume where it left.
+- **Youtube support**: you can download videos with any quality, also can download the whole playlist at once. the different here over famous applications that you don't need a browser extension to get the available youtube streams, you just copy youtube video link and all metadata will be fetched internally with all available video streams and  audio streams as well for this video will be available to be downloaded from the application.
+- **Refresh expired urls**, keeping a file's webpage url saved and fetch the effective download link to download the file, in case a download url gets expired "most servers issue a temporary download links", you can press refresh button on downloads Tab and it will fetch a new download link for you then you can press download button to resume downloading the file.
+- **Speed:** relying on famous "LibCurl" library as a powerfull download engine, in comparision tests it overcomes famous download managers in speed.
+- **GUI:** a beautiful and yet simple user interface, with very simple options to get what you want without effort, with around 140 themes to choose among them, and this is something missing from other opensource python download managers.
+- **Updates:** relying on highly active python packages and libraries will guarantee a decent update cycle to this application.
+- **Speed Limit:** it does a good job limiting download speeds as per user requirements.
+- **Multiconnection:** you can decide how many connections (workers) you want per file download, the default is 10 connections. some servers limit download per connection, in this case increasing connections number will make a huge difference in download speeds.
+- **Concurrent downloads:** you can decide how many simultaneous downloads from setting Tab. 
+- **Clipboard Monitor**: it watches any copied url and directly process and fetch metadata (you can disable this behaviour in setting if you wish)
 
 
-**snapshots**
 
-![main window](https://user-images.githubusercontent.com/37757246/71418544-a20bd380-2673-11ea-903c-ea5ea17e0e26.png)
+
+
+
+---
+
+**more snapshots**
+
 ![downloads_tab](https://user-images.githubusercontent.com/37757246/71418538-a0daa680-2673-11ea-82a8-e10e0ca673bd.PNG)
 ![setting_tab](https://user-images.githubusercontent.com/37757246/71418549-a2a46a00-2673-11ea-848a-ca5ca82e743b.PNG)
 ![d_window](https://user-images.githubusercontent.com/37757246/71418539-a0daa680-2673-11ea-8073-0c217fff7e9a.png)
@@ -16,6 +46,9 @@ example multi-downloading with speed limit of 20 KB/sec as a test
 
 ![concurrent windows](https://user-images.githubusercontent.com/37757246/71418548-a2a46a00-2673-11ea-8101-c95d29b6a0e4.png)
 
+[view all snapshots with different themes](https://github.com/pyIDM/pyIDM/issues/13)
+
+---
 
 # How to run pyIDM?
 You have 2 options to run pyIDM on your operating system:
