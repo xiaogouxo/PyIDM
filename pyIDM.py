@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 app_name = 'pyIDM'
-version = '3.6.1.3' # Disable shell=True for ffmpeg command
+version = '3.6.1.4' # Add truncate() function
 default_theme = 'reds'
 
 # standard modules
@@ -1817,10 +1817,8 @@ class DownloadWindow:
 
     def update_gui(self):
         # trim name and folder length
-        length = 17
-        name = self.d.name[:length] + ' ... ' + self.d.name[-length:] if len(self.d.name) > 40 else self.d.name
-        folder = self.d.folder[:length] + ' ... ' + self.d.folder[-length:] if len(
-            self.d.folder) > 40 else self.d.folder
+        name = truncate(self.d.name, 50) 
+        folder = truncate(self.d.folder, 50) 
 
         out = (f"File: {name}\n"
                f"Folder: {folder}\n"
@@ -3410,8 +3408,17 @@ def update_object(obj, new_values):
     except Exception as e:
         log(f'update_object(): error, {e}')
 
-# def table_d_clicked(table, event):
-#     print('double clicked', table.SelectedRows)
+def truncate(string, length):
+    """truncate a string to specified length by adding ... in the middle of the string"""
+    # print(len(string), string)
+    sep = '...'
+    if len(string) > length: 
+        eff_length = length - len(sep) # length without separator characters
+        part = eff_length // 2  # half of the length "integer only"
+        remainder = eff_length % 2
+        string = string[:part + remainder] + sep + string[-part:] 
+    # print(len(string), string)
+    return string
 
 # endregion
 
