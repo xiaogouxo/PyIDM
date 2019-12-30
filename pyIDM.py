@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 app_name = 'pyIDM'
-version = '3.6.1.4' # Add truncate() function
+version = '3.6.1.5' # edit truncate() function
 default_theme = 'reds'
 
 # standard modules
@@ -3412,10 +3412,11 @@ def truncate(string, length):
     """truncate a string to specified length by adding ... in the middle of the string"""
     # print(len(string), string)
     sep = '...'
-    if len(string) > length: 
-        eff_length = length - len(sep) # length without separator characters
-        part = eff_length // 2  # half of the length "integer only"
-        remainder = eff_length % 2
+    if length < len(sep) + 2:
+        string = string[:length]
+    elif len(string) > length: 
+        part = (length - len(sep)) // 2 
+        remainder = (length - len(sep)) % 2
         string = string[:part + remainder] + sep + string[-part:] 
     # print(len(string), string)
     return string
