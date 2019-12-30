@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 app_name = 'pyIDM'
-version = '3.6.1.0' # Speed limit bug fix and more options in setting tab
+version = '3.6.1.2' # Fix bug open file with spaces in its name 
 default_theme = 'reds'
 
 # standard modules
+import shlex
 import copy
 import os, sys, platform
 import py_compile
@@ -115,7 +116,7 @@ Developed in Python, based on "pyCuRL/curl", "youtube_dl", and "PySimpleGUI"
 
 your feedback is most welcomed on
 
-https://github.com/Aboghazala/{app_name}
+https://github.com/pyIDM/{app_name}
 email: mahmoud_elshahhat@yahoo.com
 
 Thanks,
@@ -490,10 +491,10 @@ class MainWindow:
                 os.startfile(file)
 
             elif platform.system() == 'Linux':
-                run_command(f'xdg-open {file}')
+                run_command(f'xdg-open "{file}"', verbose=False)
 
             elif platform.system() == 'Darwin':
-                run_command(f'open {file}')
+                run_command(f'open "{file}"', verbose=False)
         except Exception as e:
             print('MainWindow.open_file(): ', e)
         
@@ -3373,7 +3374,8 @@ def run_command(cmd, verbose=True, shell=False):
         if shell==True:
             r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
         else:
-            r = subprocess.run(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            cmd = shlex.split(cmd) #, posix=False)
+            r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
         error = True if r.returncode != 0 else False
         output = r.stdout.decode('utf-8')
