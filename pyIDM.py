@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 app_name = 'pyIDM'
-version = '3.6.1.2' # Fix bug open file with spaces in its name 
+version = '3.6.1.3' # Disable shell=True for ffmpeg command
 default_theme = 'reds'
 
 # standard modules
@@ -3289,7 +3289,7 @@ def merge_video_audio(video, audio, output):
     # slow, mix different formats
     cmd2 = f'{ffmpeg} -i "{video}" -i "{audio}" "{output}"'
 
-    error, output = run_command(cmd1, shell=True, verbose=True)
+    error, output = run_command(cmd1, verbose=True)
 
     return error, output
 
