@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 app_name = 'pyIDM'
-version = '3.7.0.0' # ability to choose which videos to include/exclude in playlist download - New Feature -   
+version = '3.7.1.0' # bug fix, download an existing file in download list  
 default_theme = 'reds'
 
 # standard modules
@@ -1112,9 +1112,11 @@ class MainWindow:
                 log('start download fn> file is being downloaded already, abort mission, taking no action')
                 return
             else:
-                # update url
-                _d.eff_url = d.eff_url
-                d = _d
+                # get some info from old one
+                d.id = _d.id
+                d.part_size = d.part_size
+
+                self.d_list[i] = d
 
         else:  # new file
             # generate unique id number for each download
@@ -1769,11 +1771,11 @@ class MainWindow:
             quality_combo = sg.Combo(values=video_stream_list, default_value=video_stream_list[0], font='any 8', size=(26,1), key=f'stream {num}', enable_events=True)
             quality_combos.append(quality_combo)
 
-            row = [video_checkbox, quality_combo, sg.T(size_format(video.size), size=(10,1), key=f'size_text {num}')]
+            row = [video_checkbox, quality_combo, sg.T(size_format(video.size), size=(10,1), font='any 8', key=f'size_text {num}')]
             # print(video.title)
             video_layout.append(row)
 
-        video_layout = [sg.Column(video_layout, scrollable=True, vertical_scroll_only=True, size=(640, 250), key='col')]
+        video_layout = [sg.Column(video_layout, scrollable=True, vertical_scroll_only=True, size=(650, 250), key='col')]
 
         layout = [[sg.T(f'Total Videos: {len(self.playlist)}')]]
         layout.append(general_options_layout)
@@ -1781,7 +1783,7 @@ class MainWindow:
         layout.append([sg.Frame(title='select videos to download:', layout=[video_layout])])
         layout.append([sg.Col([[sg.OK(), sg.Cancel()]], justification='right')])
 
-        w=sg.Window(title='Playlist download window', layout=layout, finalize=True, margins=(2,2))
+        w=sg.Window(title='Playlist download window', layout=layout, icon=app_icon, finalize=True, margins=(2,2))
         # w['spacer1'].expand()
 
         def quality_on_change(num, quality_combo):
