@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 app_name = 'pyIDM'
-version = '3.7.1.0' # bug fix, download an existing file in download list  
+version = '3.7.2.0' # bug fix, playlist download, random video qualities chosen as default, now best "normal video" quality chosen  
 default_theme = 'reds'
 
 # standard modules
@@ -1738,9 +1738,20 @@ class MainWindow:
 
             return video
 
+        def getbest_stream_num(video):
+            default_quality_list = video.streams_repr(include_size=False)
+            best_normal_stream = video.getbest(preftype="mp4", ftypestrict=True)
+            best_stream_num = video.allstreams.index(best_normal_stream) if best_normal_stream else 0
+
+            return best_stream_num
+
+
+
+
+
         # get a sample of available stream types from self.video.allstreams
         default_quality_list = self.video.streams_repr(include_size=False)
-        default_quality = default_quality_list[0]
+        default_quality = default_quality_list[getbest_stream_num(self.video)]
         # print(default_quality_list)
 
         # video.name = video.title + '.' + stream.extension
@@ -1767,8 +1778,9 @@ class MainWindow:
             video_checkboxes.append(video_checkbox)
 
             video_stream_list = video.streams_repr(include_size=False)
+            default_quality = video_stream_list[getbest_stream_num(video)]
             
-            quality_combo = sg.Combo(values=video_stream_list, default_value=video_stream_list[0], font='any 8', size=(26,1), key=f'stream {num}', enable_events=True)
+            quality_combo = sg.Combo(values=video_stream_list, default_value=default_quality, font='any 8', size=(26,1), key=f'stream {num}', enable_events=True)
             quality_combos.append(quality_combo)
 
             row = [video_checkbox, quality_combo, sg.T(size_format(video.size), size=(10,1), font='any 8', key=f'size_text {num}')]
