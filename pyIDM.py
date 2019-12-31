@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 app_name = 'pyIDM'
-version = '3.6.1.5' # edit truncate() function
+version = '3.7.0.0' # ability to choose which videos to include/exclude in playlist download - New Feature -   
 default_theme = 'reds'
 
 # standard modules
@@ -451,7 +451,6 @@ class MainWindow:
         self.window['table'].bind('<Double-Button-1>', '_double_clicked')
         self.window['table'].bind('<Return>', '_enter_key')
 
-
     def restart_window(self):
         try:
             self.window.Close()
@@ -496,9 +495,7 @@ class MainWindow:
             elif platform.system() == 'Darwin':
                 run_command(f'open "{file}"', verbose=False)
         except Exception as e:
-            print('MainWindow.open_file(): ', e)
-        
-            
+            print('MainWindow.open_file(): ', e)         
 
     def select_tab(self, tab_name):
         try:
@@ -1641,7 +1638,7 @@ class MainWindow:
         index = self.stream_menu.index(selected_text)
         self.update_video_param(index)
 
-    def download_playlist(self):
+    def download_playlist_old(self):
         # check if there is a playlist or quit
         if self.pl_menu[0] == 'Playlist' and self.stream_menu[0] == 'Video quality':
             sg.popup_ok('Playlist is empty, nothing to download :)', title='Playlist download')
@@ -1708,6 +1705,156 @@ class MainWindow:
             d = DownloadItem(url=video.webpage_url, eff_url=video.url, name=video.name, size=video.size,
                              folder=self.d.folder, max_connections=self.max_connections, resumable=resume_support)
             self.start_download(d, silent=True)
+
+    def download_playlist(self):
+        # check if there is a playlist or quit
+        if self.pl_menu[0] == 'Playlist' and self.stream_menu[0] == 'Video quality':
+            sg.popup_ok('Playlist is empty, nothing to download :)', title='Playlist download')
+            return
+
+        def update_video(video, stream_num):
+            """update video object when selecting a specific stream"""
+
+            stream = video.allstreams[stream_num]
+            video.name = video.title + '.' + stream.extension
+            video.url = stream.url
+            video.type = stream.extension
+            video.size = stream.filesize
+            video.selected_stream=stream
+
+            # check if video type has no audio
+            if stream.mediatype == 'video':
+                audio_stream = [a for a in self.video.audiostreams if a.extension == stream.extension
+                                or (a.extension == 'm4a' and stream.extension == 'mp4')][0]
+
+
+                video.audio_url = audio_stream.url
+                video.audio_size = audio_stream.filesize
+            else:
+                video.audio_url = None
+                video.audio_size = None
+
+            return video
+
+        # get a sample of available stream types from self.video.allstreams
+        default_quality_list = self.video.streams_repr(include_size=False)
+        default_quality = default_quality_list[0]
+        # print(default_quality_list)
+
+        # video.name = video.title + '.' + stream.extension
+
+
+        # default_quality_list = ['normal: mp4 - 720p - 1280x720 ', 'normal: mp4 - 360p - 640x360 ', 'normal: webm - 360p - 640x360 ', 'video: mp4 - 1080p - 1920x1080 ', 'video: webm - 1080p - 1920x1080 ', 'video: mp4 - 1080p - 1920x1080 ', 'video: mp4 - 720p - 1280x720 ', 'video: webm - 720p - 1280x720 ', 'video: mp4 - 720p - 1280x720 ', 'video: mp4 - 480p - 854x480 ', 'video: webm - 480p - 854x480 ', 'video: mp4 - 480p - 854x480 ', 'video: mp4 - 360p - 640x360 ', 'video: webm - 360p - 640x360 ', 'video: mp4 - 360p - 640x360 ', 'video: mp4 - 240p - 426x240 ', 'video: webm - 240p - 426x240 ', 'video: mp4 - 240p - 426x240 ', 'video: mp4 - 144p - 256x144 ', 'video: mp4 - 144p - 256x144 ', 'video: webm - 144p - 256x144 ', 'audio: webm - abr 160 ', 'audio: m4a - abr 128 ', 'audio: webm - abr 70 ', 'audio: webm - abr 50 ']
+        # file_names = ['Using Drones to Plant 20,000,000 Trees', 'Testing if Sharks Can Smell a Drop of Blood', 'Stealing Baseball Signs with a Phone (Machine Learning)', 'Drinking Nasty Swamp Water (to save the world)', "World's Largest Horn Shatters Glass", 'FLYING PHONE SCAM EXPOSED (so I built a REAL one)', "World's Largest Lemon Battery- Lemon powered Supercar", '200 dropped wallets- the 20 MOST and LEAST HONEST cities', '1st place Mousetrap Car Ideas- using SCIENCE', 'Is NASA a waste of money_', 'ARCADE SCAM SCIENCE (not clickbait)', 'CARNIVAL SCAM SCIENCE- and how to win', 'How to measure HOW MUCH PEE IS IN YOUR POOL', 'DRONE Solar System Model- How far is Planet 9_', 'How to save 51 billion lives for 68 cents with simple Engineering', '1st place science fair ideas- 10 ideas and tricks to WIN!', 'BARE HAND Bottle Busting- Science Investigation', '1st place Egg Drop project ideas- using SCIENCE', 'EASY Pinewood Derby Car WINS using Science!!!', 'BEST Guess Who Strategy- 96% WIN record using MATH', 'How to Survive a Grenade Blast', 'Defog your windows TWICE as fast using SCIENCE- 4 easy steps', 'Unibrow Discrimination- Social Experiment', "NASA's Curiosity landing- 1 of her creator's POV", 'Turtles or Snakes- Which do cars hit more_ ROADKILL EXPERIMENT']
+        # default_quality = default_quality_list[0]
+        # print(default_quality_list)
+
+        # selection window
+        video_checkboxes = []
+        quality_combos = []
+
+        general_options_layout = [sg.Checkbox('Select All', enable_events=True, key='Select All'), sg.T('', size=(15,1)),
+        sg.T('Choose quality for all videos:'), 
+        sg.Combo(values=default_quality_list, default_value=default_quality, size=(28,1), key='quality_default', enable_events=True)]
+
+        video_layout = []
+       
+        for num, video in enumerate(self.playlist):
+            video = update_video(video, 0) # update video with first stream as default selected
+            video_checkbox = sg.Checkbox(truncate(video.title, 40), size=(40,1), tooltip=video.title, key=f'video {num}')
+            video_checkboxes.append(video_checkbox)
+
+            video_stream_list = video.streams_repr(include_size=False)
+            
+            quality_combo = sg.Combo(values=video_stream_list, default_value=video_stream_list[0], font='any 8', size=(26,1), key=f'stream {num}', enable_events=True)
+            quality_combos.append(quality_combo)
+
+            row = [video_checkbox, quality_combo, sg.T(size_format(video.size), size=(10,1), key=f'size_text {num}')]
+            # print(video.title)
+            video_layout.append(row)
+
+        video_layout = [sg.Column(video_layout, scrollable=True, vertical_scroll_only=True, size=(640, 250), key='col')]
+
+        layout = [[sg.T(f'Total Videos: {len(self.playlist)}')]]
+        layout.append(general_options_layout)
+        layout.append([sg.T('')])
+        layout.append([sg.Frame(title='select videos to download:', layout=[video_layout])])
+        layout.append([sg.Col([[sg.OK(), sg.Cancel()]], justification='right')])
+
+        w=sg.Window(title='Playlist download window', layout=layout, finalize=True, margins=(2,2))
+        # w['spacer1'].expand()
+
+        def quality_on_change(num, quality_combo):
+            video = self.playlist[num]
+            quality_list = video.streams_repr(include_size=False)
+            selected_quality = quality_combo.get()
+            stream_num = quality_list.index(selected_quality)
+            video = update_video(video, stream_num)
+            self.playlist[num] = video
+
+        chosen_videos = []
+
+        while True:
+            e, v = w()
+            if e in (None, 'Cancel'): 
+                w.close()
+                return
+            # print(e, v)
+
+            if e == 'OK':
+                chosen_videos.clear()
+                for num, video in enumerate(self.playlist):
+                    selected_stream_name = v[f'stream {num}']
+                    streams_names = video.streams_repr(include_size=False)
+                    stream_num = streams_names.index(selected_stream_name)
+                    self.playlist[num] = update_video(video, stream_num)
+
+                    if v[f'video {num}'] == True:
+                        chosen_videos.append(self.playlist[num])
+
+                w.close()
+                break
+
+  
+
+            elif e == 'Select All':
+                for checkbox in video_checkboxes:
+                    checkbox(w['Select All'].get())
+            elif e == 'quality_default':
+                for num, quality in enumerate(quality_combos):
+                    quality(v['quality_default'])
+                    quality_on_change(num, quality)
+                    w[f'size_text {num}'](size_format(self.playlist[num].size))
+
+                # print(w['quality_default'].get())
+
+            elif e.startswith('stream'):
+                num = int(e.split()[-1])
+                quality_on_change(num, w[e])
+                w[f'size_text {num}'](size_format(self.playlist[num].size))
+
+        self.select_tab('Downloads')
+
+        for video in chosen_videos:
+            resume_support = True if video.size else False
+
+            log('download playlist fn>', 'stream', repr(video.selected_stream))
+            log(f'download playlist fn> media size= {video.size}, name= {video.name}')
+
+            # start download
+            d = DownloadItem(url=video.webpage_url, eff_url=video.url, name=video.name, size=video.size,
+                             folder=self.d.folder, max_connections=self.max_connections, resumable=resume_support)
+
+            # update file properties
+            d.type = video.type
+            d.resumable = True
+            d.max_connections = self.max_connections
+            d.audio_url = video.audio_url
+            d.audio_size = video.audio_size
+
+            self.start_download(d, silent=True)
+
+
 
     # endregion
 
@@ -2335,7 +2482,7 @@ class Video:
 
     @property
     def streams(self):
-        """ The streams for a video. Returns list."""
+        """ Returns list of only 'normal' streams for this video"""
         if not self._streams:
             self._process_streams()
 
@@ -2343,7 +2490,7 @@ class Video:
 
     @property
     def allstreams(self):
-        """ All stream types for a video. Returns list. """
+        """ Returns list of All streams for this video"""
         if not self._allstreams:
             self._process_streams()
 
@@ -2359,7 +2506,7 @@ class Video:
 
     @property
     def videostreams(self):
-        """ The video streams for a video. Returns list. """
+        """ Return a list of video Stream objects. """
         if not self._videostreams:
             self._process_streams()
 
@@ -2424,6 +2571,10 @@ class Video:
         if not self.audiostreams:
             return None
 
+
+
+
+
         def _sortkey(x, keybitrate=0, keyftype=0):
             """ Sort function for max(). """
             keybitrate = int(x.rawbitrate)
@@ -2438,6 +2589,11 @@ class Video:
 
         else:
             return r
+
+    def streams_repr(self, include_size=True):
+        """return a list of streams representations / descriptions"""
+        return [s.__repr__(include_size=include_size) for s in self.allstreams]
+
 
 
 class Stream:
@@ -2482,12 +2638,12 @@ class Stream:
             self._filesize = int(headers.get('content-length', 0))
             return self._filesize
 
-    def __repr__(self):
+    def __repr__(self, include_size=True):
+        size = f'- {size_format(self.filesize)}' if include_size else ''
         if self.mediatype == 'audio':
-            r = f'{self.mediatype}: {self.extension} - abr {self.abr} - {size_format(self.filesize)} '
+            r = f'{self.mediatype}: {self.extension} - abr {self.abr} {size}'
         else:
-            r = f'{self.mediatype}: {self.extension} - {self.height}p - {self.resolution} ' \
-                f'- {size_format(self.filesize)}'
+            r = f'{self.mediatype}: {self.extension} - {self.height}p - {self.resolution} {size}'
         return r
 
     def get_type(self):
