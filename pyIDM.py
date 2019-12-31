@@ -28,7 +28,7 @@
 # ####################################################################################################################
 
 app_name = 'pyIDM'
-version = '3.7.3.0' # Add License
+version = '3.7.3.0' # bug fix, side bar didn't fill completely "workaround, wait for PySimpleGUI update"
 default_theme = 'reds'
 
 # standard modules
@@ -1534,7 +1534,7 @@ class MainWindow:
 
                     # progress bars
                     self.m_bar = 50  # decide increment value in side bar based on number of threads
-                    s_bar_incr = 100 // len(pl_info) + 1 #100 / len(pl_info) #
+                    s_bar_incr = 100 / len(pl_info) #100 // len(pl_info) + 1 #waiting for pysimplegui to fix p_bar bug
 
                     self.playlist = [None for _ in range(len(pl_info))]  # fill list so we can store videos in order
                     v_threads = []
