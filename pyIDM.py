@@ -1,6 +1,34 @@
 #!/usr/bin/env python
+
+# ####################################################################################################################
+# copyright notice                                                                                                   #
+# ####################################################################################################################
+# pyIDM is an open source multi-connections download manager developed in Python,                                    #
+# it downloads general files, support downloading videos, and playlists from youtube.                                #
+# Mainly based on "pyCuRL/curl", "youtube_dl", and "PySimpleGUI"                                                     #
+#                                                                                                                    #
+# Project url: https://github.com/pyIDM/pyIDM                                                                        #
+#                                                                                                                    #
+# Author,                                                                                                            #
+# Mahmoud Elshahat                                                                                                   #
+# email: mahmoud_elshahhat@yahoo.com                                                                                 #
+# 2019                                                                                                               #
+# ####################################################################################################################
+
+
+# ####################################################################################################################
+# License                                                                                                            #
+# ####################################################################################################################
+# This software can be used under "GNU LGPLv3" License, this means:                                                  #
+# you have permission for: Commercial use, Distribution, Modification,  Patent use, Private use                      #
+# under these conditions:                                                                                            #
+#  - Source code must be made available when the software is distributed.                                            #
+#  - a copy of the license and copyright notice must be include with the software.                                   #
+#  - Changes made to the code must be documented                                                                     #
+# ####################################################################################################################
+
 app_name = 'pyIDM'
-version = '3.7.2.0' # bug fix, playlist download, random video qualities chosen as default, now best "normal video" quality chosen  
+version = '3.7.3.0' # Add License
 default_theme = 'reds'
 
 # standard modules
@@ -1506,7 +1534,7 @@ class MainWindow:
 
                     # progress bars
                     self.m_bar = 50  # decide increment value in side bar based on number of threads
-                    s_bar_incr = 100 // len(pl_info) + 1
+                    s_bar_incr = 100 // len(pl_info) + 1 #100 / len(pl_info) #
 
                     self.playlist = [None for _ in range(len(pl_info))]  # fill list so we can store videos in order
                     v_threads = []
@@ -1574,16 +1602,17 @@ class MainWindow:
 
             # make sure no other youtube func thread started
             if yt_id != self.yt_id:
-                print('get_video:> operation cancelled')
+                log('get_video:> operation cancelled')
                 return
 
             self.playlist[num] = video
 
         except Exception as e:
-            print(e)
+            log('MainWindow.get_video:> ', e)
         finally:
             with self.s_bar_lock:
                 self.s_bar += s_bar_incr
+                log('MainWindow.get_video:>', f'num={num} - self.s_bar={self.s_bar} - s_bar_incr={s_bar_incr}')
 
     def update_pl_menu(self):
         # set playlist label
@@ -1709,6 +1738,8 @@ class MainWindow:
             self.start_download(d, silent=True)
 
     def download_playlist(self):
+        self.s_bar = 104
+        return
         # check if there is a playlist or quit
         if self.pl_menu[0] == 'Playlist' and self.stream_menu[0] == 'Video quality':
             sg.popup_ok('Playlist is empty, nothing to download :)', title='Playlist download')
