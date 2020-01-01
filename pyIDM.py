@@ -28,7 +28,7 @@
 # ####################################################################################################################
 
 app_name = 'pyIDM'
-version = '3.7.3.1' # bug fix, side bar didn't fill completely "bug fixed in PySimpleGUI 4.14.1.5 "
+version = '3.8.0.0' # Ability to auto download ffmpeg.exe if missing on windows platform ==> smaller releases- issue #23
 default_theme = 'reds'
 
 # region import modules
@@ -159,6 +159,9 @@ clipboard.write = pyperclip.copy
 
 # region public
 ytdl = None  # youtube-dl will be imported in a separate thread to save loading time
+
+# current operating system  ('Windows', 'Linux', 'Darwin')
+operating_system = platform.system()
 
 current_directory = os.path.dirname(os.path.abspath(sys.argv[0]))  # get the directory of this script
 os.chdir(current_directory)
@@ -355,6 +358,39 @@ class MainWindow:
         self.reset()
         self.disable_video_controls()
 
+        # check availability of ffmpeg in the system or in same folder with this script
+        self.ffmpeg_check()
+
+    def read_q(self):
+        # read incoming messages from queue
+        for _ in range(m_frame_q.qsize()):
+            k, v = m_frame_q.get()
+            if k == 'log':
+                try:
+                    if len(self.window['log'].get()) > 3000:
+                        self.window['log'](self.window['log'].get()[:2000])
+                    self.window['log'](v, append=True)
+                except:
+                    pass
+
+                # show youtube_dl activity in status text
+                if '[youtube]' in v:
+                    self.set_status(v.strip('\n'))
+
+            elif k == 'url':
+                self.window.Element('url').Update(v)
+                self.url_text_change()
+
+            elif k == 'monitor':
+                self.window.Element('monitor').Update(v)
+
+            elif k == 'visibility' and v == 'show':
+                self.bring_to_front()
+                sg.popup_ok('application is already running', title=app_name)
+
+            elif k == 'download':  # can receive download requests
+                self.start_download(*v)
+
     # region gui design
     def create_window(self):
         # main tab
@@ -365,44 +401,44 @@ class MainWindow:
                 [sg.ProgressBar(max_value=100, size=(20, 5), key='s_bar')]]
 
         main_layout = [
-                       # [sg.Text(f'{app_name}', font='Helvetica 20', size=(37, 1), justification='center')],
-                       [sg.Column([[sg.Text(f'{app_name}', font='Helvetica 20')]], size=(100, 40), 
+            # [sg.Text(f'{app_name}', font='Helvetica 20', size=(37, 1), justification='center')],
+            [sg.Column([[sg.Text(f'{app_name}', font='Helvetica 20')]], size=(100, 40),
                        justification='center')],
 
-                       # url
-                       [sg.Text('URL:', pad=(5,1))],
-                       [sg.Input('', enable_events=True, change_submits=True, key='url', size=(66, 1)),
-                        sg.Button('Retry')],
-                       [sg.Text('Status:', size=(70, 1), key='status')],
+            # url
+            [sg.Text('URL:', pad=(5,1))],
+            [sg.Input('', enable_events=True, change_submits=True, key='url', size=(66, 1)),
+             sg.Button('Retry')],
+            [sg.Text('Status:', size=(70, 1), key='status')],
 
-                       # spacer
-                       [sg.T('', font='any 1')],
+            # spacer
+            [sg.T('', font='any 1')],
 
-                       # youtube playlist ⚡
-                       [sg.Frame('Youtube Playlist / videos:', key='youtube_frame', pad=(5, 5), layout=[
-                            [sg.Column(col1, size=(300, 40),  element_justification='center'),
-                            sg.Button('⚡',  pad=(0, 0), tooltip='download this playlist', key='pl_download'),
-                            sg.Column(col2, size=(300, 40), element_justification='center')]]
-                                )
-                        ],
-                      
+            # youtube playlist ⚡
+            [sg.Frame('Youtube Playlist / videos:', key='youtube_frame', pad=(5, 5), layout=[
+                [sg.Column(col1, size=(300, 40),  element_justification='center'),
+                 sg.Button('⚡',  pad=(0, 0), tooltip='download this playlist', key='pl_download'),
+                 sg.Column(col2, size=(300, 40), element_justification='center')]]
+                      )
+             ],
 
-                       # file info
-                       [sg.Text('File name:'), sg.Input('', size=(65, 1), key='name', enable_events=True)],
-                       [sg.T('File size: '), sg.T('-' * 30, key='size'), sg.T('Type:'), sg.T('-' * 35, key='type'),
-                        sg.T('Resumable:'), sg.T('-----', key='resumable')],
-                       [sg.Text('Save To:  '), sg.Input(self.d.folder, size=(55, 1), key='folder', enable_events=True),
-                        sg.FolderBrowse(key='browse')], #initial_folder=self.d.folder,
 
-                       # download button
-                       [sg.Column([[sg.Button('Download', font='Helvetica 14', border_width=1)]], size=(120, 40), 
+            # file info
+            [sg.Text('File name:'), sg.Input('', size=(65, 1), key='name', enable_events=True)],
+            [sg.T('File size: '), sg.T('-' * 30, key='size'), sg.T('Type:'), sg.T('-' * 35, key='type'),
+             sg.T('Resumable:'), sg.T('-----', key='resumable')],
+            [sg.Text('Save To:  '), sg.Input(self.d.folder, size=(55, 1), key='folder', enable_events=True),
+             sg.FolderBrowse(key='browse')], #initial_folder=self.d.folder,
+
+            # download button
+            [sg.Column([[sg.Button('Download', font='Helvetica 14', border_width=1)]], size=(120, 40),
                        justification='center')], # sg.T(' ', size=(29, 1), font='Helvetica 12'), 
 
-                       ]
+        ]
 
         # downloads tab
         table_right_click_menu = ['Table', ['!Options for selected file:', '---', 'Open File', 'Open File Location', 'Watch while downloading',
-        'copy webpage url', 'copy download url', 'properties']]
+                                            'copy webpage url', 'copy download url', 'properties']]
         spacing = [' ' * 4, ' ' * 3, ' ' * 30, ' ' * 5, ' ' * 8, ' ' * 8, ' ' * 8, ' ' * 8, ' ' * 10, ' ' * 12, ' ' * 30, ' ',
                    ' ', ' ']  # setup initial column width
 
@@ -411,7 +447,7 @@ class MainWindow:
                              sg.T(' ' * 5), sg.T('Item:'),
                              sg.T('---', key='selected_row_num', text_color='white', background_color='red')],
                             [sg.Table(values=[spacing], headings=self.d_headers, size=(70, 13), justification='left',
-                                      vertical_scroll_only=False, key='table', enable_events=True, 
+                                      vertical_scroll_only=False, key='table', enable_events=True,
                                       right_click_menu=table_right_click_menu)],
                             [sg.Button('Resume All'), sg.Button('Stop All'),
                              sg.Button('Delete', button_color=('white', 'red')),
@@ -424,8 +460,8 @@ class MainWindow:
                            sg.Combo(values=themes, default_value=self.theme, size=(15, 1), enable_events=True,
                                     key='themes'), sg.Text(f' Total of {len(themes)} Themes')],
                           [sg.Checkbox('Speed Limit:', key= 'speed_limit_switch', change_submits=True),
-                          sg.Input('', size=(10, 1), key='speed_limit', disabled=True, enable_events=True), 
-                          sg.T('0', size=(30, 1), key='current_speed_limit')],
+                           sg.Input('', size=(10, 1), key='speed_limit', disabled=True, enable_events=True),
+                           sg.T('0', size=(30, 1), key='current_speed_limit')],
                           [sg.T('* speed limit hint: format"numbers+[k, kb, m, mb] small or capital, examples:"50 k, 10kb, 2m 3mb, 20, 10MB" ', font='any 8')],
                           [sg.Checkbox('Monitor copied urls in clipboard', default=monitor_clipboard, key='monitor',
                                        enable_events=True)],
@@ -499,7 +535,7 @@ class MainWindow:
                 # mouse pointer over item
                 self.window['table'].Widget.selection_set(iid)
                 self.select_row(int(iid)-1)  # get count start from zero
-                self.window['table']._RightClickMenuCallback(event)  
+                self.window['table']._RightClickMenuCallback(event)
                 # print(iid)
         except:
             pass
@@ -509,12 +545,12 @@ class MainWindow:
             self.selected_row_num = int(row_num)
             self.selected_d = self.d_list[self.selected_row_num]
             self.window['selected_row_num']('---' if row_num is None else row_num + 1)
-            
+
         except Exception as e:
             log('MainWindow.select_row(): ', e)
 
     def open_file(self, file):
-        
+
         try:
             if platform.system() == 'Windows':
                 os.startfile(file)
@@ -525,7 +561,7 @@ class MainWindow:
             elif platform.system() == 'Darwin':
                 run_command(f'open "{file}"', verbose=False)
         except Exception as e:
-            print('MainWindow.open_file(): ', e)         
+            print('MainWindow.open_file(): ', e)
 
     def select_tab(self, tab_name):
         try:
@@ -534,32 +570,6 @@ class MainWindow:
             print(e)
 
     def update_gui(self):
-        # read incoming messages from queue
-        for _ in range(m_frame_q.qsize()):
-            k, v = m_frame_q.get()
-            if k == 'log':
-                try:
-                    if len(self.window['log'].get()) > 3000:
-                        self.window['log'](self.window['log'].get()[:2000])
-                    self.window['log'](v, append=True)
-                except:
-                    pass
-
-                # show youtube_dl activity in status text
-                if '[youtube]' in v:
-                    self.set_status(v.strip('\n'))
-
-            elif k == 'url':
-                self.window.Element('url').Update(v)
-                self.url_text_change()
-
-            elif k == 'monitor':
-                self.window.Element('monitor').Update(v)
-
-            elif k == 'visibility' and v == 'show':
-                self.bring_to_front()
-
-
         # process pending jobs
         if self.pending and len(active_downloads) < self.max_concurrent_downloads:
             self.start_download(self.pending.popleft())
@@ -589,7 +599,7 @@ class MainWindow:
                 f'Active downloads: {len(active_downloads)}, pending: {len(self.pending)}')
 
             # setting
-            self.window['current_speed_limit'](f'current speed limit: {size_format(self.speed_limit * 1024) if self.speed_limit > 0 else "_no limit_"}') 
+            self.window['current_speed_limit'](f'current speed limit: {size_format(self.speed_limit * 1024) if self.speed_limit > 0 else "_no limit_"}')
 
 
         except Exception as e:
@@ -659,18 +669,13 @@ class MainWindow:
                 except Exception as e:
                     log("MainWindow.run:if event == 'table': ", e)
 
-
-            # elif event == 'table_right_clicked':
-            #     print(event, values)
-
-
             elif event in ('table_double_clicked', 'table_enter_key', 'Open File', 'Watch while downloading'):
                 if self.selected_d.status == Status.completed:
                     self.open_file(self.selected_d.full_name)
                 else:
-                   self.open_file(self.selected_d.full_temp_name) 
-                
-            # table right click menu event
+                    self.open_file(self.selected_d.full_temp_name)
+
+                    # table right click menu event
             elif event =='Open File Location':
                 self.open_file_location()
 
@@ -689,12 +694,10 @@ class MainWindow:
                     msg = ''
                     for i in range(len(info)):
 
-                        msg += f'{self.d_headers[i]}: {info[i]} \n' 
+                        msg += f'{self.d_headers[i]}: {info[i]} \n'
                     msg += f'webpage url: {self.selected_d.url} \n\n'
                     msg += f'playlist url: {self.selected_d.pl_url} \n'
                     sg.popup_scrolled(msg, title='File properties')
-
-           
 
             elif event == 'Resume':
                 self.resume_btn()
@@ -742,7 +745,7 @@ class MainWindow:
             # setting tab
             elif event == 'speed_limit_switch':
                 switch = values['speed_limit_switch']
-                
+
                 if switch:
                     self.window['speed_limit'](disabled=False)
                     event == 'speed_limit'
@@ -754,7 +757,7 @@ class MainWindow:
 
             elif event == 'speed_limit':
                 sl = values['speed_limit'].replace(' ', '') # if values['speed_limit'] else 0
-                print(sl)
+                # print(sl)
                 # 
                 # validate speed limit,  expecting formats: number + (k, kb, m, mb) final value should be in kb
                 # pattern \d*[mk]b?
@@ -769,7 +772,7 @@ class MainWindow:
                     letters = re.search(r"[a-z]+", sl, re.I)
                     letters = letters.group().lower() if letters else None
 
-                    print(digits, letters)
+                    # print(digits, letters)
 
                     if letters in ('k', 'kb', None):
                         sl = digits
@@ -840,6 +843,9 @@ class MainWindow:
 
                 # gui update
                 self.update_gui()
+
+                # read incoming requests and messages from queue
+                self.read_q()
 
             # run download windows if existed
             keys = list(self.download_windows.keys())
@@ -993,7 +999,7 @@ class MainWindow:
                 data.append(d.__dict__) # append object attributes dictionary to data list
 
             file = os.path.join(self.sett_folder, 'downloads.cfg')
-        
+
             with open(file, 'w') as f:
                 json.dump(data, f)
             log('list saved')
@@ -1086,18 +1092,15 @@ class MainWindow:
     # endregion
 
     # region download
-    def start_download(self, d, silent=None):
+    def start_download(self, d, silent=None, callback=None):
+        # callback = post_download_callback
         if d is None:
             return
 
         # check for ffmpeg availability in case this is a video only stream
         if d.audio_url:
-            cmd = 'where ffmpeg' if platform.system() == 'Windows' else 'which ffmpeg'
-            error, output = run_command(cmd)
-            if error:
-                 sg.popup_error(self.d.name, 'The video stream has no audio, and "ffmpeg" is required to merge an audio stream with your video',
-                'please install ffmpeg to your system and try again', 'https://www.ffmpeg.org/download.html', title='ffmpeg is missing')
-                 return 'error'
+            log('Dash video detected')
+            self.ffmpeg_check()
 
         # validate destination folder for existence and permission
         try:
@@ -1167,7 +1170,7 @@ class MainWindow:
             self.download_windows[d.id] = DownloadWindow(d)
 
         # create and start brain in a separate thread
-        Thread(target=brain, daemon=True, args=(d, self.speed_limit)).start()
+        Thread(target=brain, daemon=True, args=(d, self.speed_limit, callback)).start()
 
     def stop_all_downloads(self):
         # change status of pending items to cancelled
@@ -1201,9 +1204,9 @@ class MainWindow:
     def download_btn(self):
         d = copy.deepcopy(self.d)
 
-        if self.disabled: 
-            sg.popup_ok('Nothing to download', 'it might be a web page or invalid url link', 
-                'check your link or click "Retry"')
+        if self.disabled:
+            sg.popup_ok('Nothing to download', 'it might be a web page or invalid url link',
+                        'check your link or click "Retry"')
             return
 
         # search current list for previous item with same name, folder
@@ -1211,11 +1214,11 @@ class MainWindow:
         if found_index is not None: # might be zero
             #  show dialogue
             msg = f'File with the same name: \n{self.d.name},\n already exist in download list\n' \
-                'Do you want to resume this file?\n' \
-                'Resume ==> continue if it has been partially downloaded ... \n' \
-                'Overwrite ==> delete old downloads and overwrite existing item... \n' \
-                'note: "if you need fresh download, you have to change file name \n' \
-                'or target folder or delete same entry from download list'
+                  'Do you want to resume this file?\n' \
+                  'Resume ==> continue if it has been partially downloaded ... \n' \
+                  'Overwrite ==> delete old downloads and overwrite existing item... \n' \
+                  'note: "if you need fresh download, you have to change file name \n' \
+                  'or target folder or delete same entry from download list'
             # response = sg.PopupYesNo(msg)
             window = sg.Window(title='', layout=[[sg.T(msg)], [sg.B('Resume'), sg.B('Overwrite'), sg.B('Cancel')]])
             response, _ = window()
@@ -1614,7 +1617,7 @@ class MainWindow:
         finally:
             with self.s_bar_lock:
                 self.s_bar += s_bar_incr
-                log('MainWindow.get_video:>', f'num={num} - self.s_bar={self.s_bar} - s_bar_incr={s_bar_incr}')
+                # log('MainWindow.get_video:>', f'num={num} - self.s_bar={self.s_bar} - s_bar_incr={s_bar_incr}')
 
     def update_pl_menu(self):
         # set playlist label
@@ -1649,7 +1652,6 @@ class MainWindow:
         else:
             # self.d.audio = None
             self.d.audio_url = None
-
 
     def update_stream_menu(self):
         self.stream_menu = [repr(stream) for stream in self.video.allstreams]
@@ -1800,11 +1802,11 @@ class MainWindow:
         quality_combos = []
 
         general_options_layout = [sg.Checkbox('Select All', enable_events=True, key='Select All'), sg.T('', size=(15,1)),
-        sg.T('Choose quality for all videos:'), 
-        sg.Combo(values=default_quality_list, default_value=default_quality, size=(28,1), key='quality_default', enable_events=True)]
+                                  sg.T('Choose quality for all videos:'),
+                                  sg.Combo(values=default_quality_list, default_value=default_quality, size=(28,1), key='quality_default', enable_events=True)]
 
         video_layout = []
-       
+
         for num, video in enumerate(self.playlist):
             video = update_video(video, 0) # update video with first stream as default selected
             video_checkbox = sg.Checkbox(truncate(video.title, 40), size=(40,1), tooltip=video.title, key=f'video {num}')
@@ -1812,7 +1814,7 @@ class MainWindow:
 
             video_stream_list = video.streams_repr(include_size=False)
             default_quality = video_stream_list[getbest_stream_num(video)]
-            
+
             quality_combo = sg.Combo(values=video_stream_list, default_value=default_quality, font='any 8', size=(26,1), key=f'stream {num}', enable_events=True)
             quality_combos.append(quality_combo)
 
@@ -1843,7 +1845,7 @@ class MainWindow:
 
         while True:
             e, v = w()
-            if e in (None, 'Cancel'): 
+            if e in (None, 'Cancel'):
                 w.close()
                 return
             # print(e, v)
@@ -1862,7 +1864,7 @@ class MainWindow:
                 w.close()
                 break
 
-  
+
 
             elif e == 'Select All':
                 for checkbox in video_checkboxes:
@@ -1901,6 +1903,25 @@ class MainWindow:
 
             self.start_download(d, silent=True)
 
+    def ffmpeg_check(self):
+        if not ffmpeg.get_folder():
+            if operating_system == 'Windows':
+                response = sg.popup_yes_no(
+                               '"ffmpeg.exe" is required to merge an audio stream with your video',
+                               'it must be copied into pyIDM folder or add ffmpeg.exe path to system PATH',
+                               '',
+                               'Do you want pyIDM to download ffmpeg.exe for you?',
+                               'you can download it manually from https://www.ffmpeg.org/download.html',
+                               title='ffmpeg is missing')
+                if response == 'Yes':
+                    ffmpeg.download()
+            else:
+                sg.popup_error(
+                    '"ffmpeg" is required to merge an audio stream with your video',
+                    'executable must be copied into pyIDM folder or add ffmpeg path to system PATH',
+                    '',
+                    'you can download it manually from https://www.ffmpeg.org/download.html',
+                    title='ffmpeg is missing')
 
 
     # endregion
@@ -1909,13 +1930,13 @@ class MainWindow:
     def bring_to_front(self):
         # get the app on top of other windows
         self.window.BringToFront()
-        
+
 
     def url_text_change(self):
         # Focus and select main app page in case text changed from script
         self.bring_to_front()
         self.select_tab('Main')
-        
+
         self.reset()
         try:
             self.d.eff_url = self.d.url = self.window.Element('url').Get().strip()
@@ -2026,7 +2047,7 @@ class DownloadWindow:
         # update log
         if self.d.q and self.d.q.d_window.qsize():
             k, v = self.d.q.d_window.get()
-            print(k, v)
+            # print(k, v)
             if k == 'log':
                 try:
                     if len(self.window['log'].get()) > 3000:
@@ -2158,12 +2179,13 @@ class Connection:
         self.c = pycurl.Curl()
         self.speed_limit = 0
         self.headers = {}
+        self.use_range = True # if false will set pycurl option not to use ranges
 
     @property
     def actual_size(self):
         return self.start_size + self.downloaded + self.buff
 
-    def reuse(self, seg='0-0', speed_limit=0):
+    def reuse(self, seg='0-0', speed_limit=0, use_range=True):
         """Recycle same object again, better for performance as recommended by curl docs"""
         self.reset()
 
@@ -2173,6 +2195,7 @@ class Connection:
         self.target_size = get_seg_size(seg)
         self.f_name = os.path.join(self.temp_folder, seg)  # segment name with full path
         self.speed_limit = speed_limit
+        self.use_range = use_range
 
         self.q.log('start worker', self.tag, 'seg', self.seg, 'range:', self.seg_range, 'SL=', self.speed_limit)
 
@@ -2273,7 +2296,8 @@ class Connection:
         self.c.setopt(pycurl.USERAGENT, agent)
 
         self.c.setopt(pycurl.URL, self.url)
-        self.c.setopt(pycurl.RANGE, self.seg_range)  # download segment only not the whole file
+        if self.use_range:
+            self.c.setopt(pycurl.RANGE, self.seg_range)  # download segment only not the whole file
 
         # re-directions
         self.c.setopt(pycurl.FOLLOWLOCATION, 1)
@@ -2392,7 +2416,7 @@ class Status:
 class DownloadItem:
     # animation ['►►   ', '  ►►'] › ► ⤮ ⇴ ↹ ↯  ↮  ₡ ['⯈', '▼', '⯇', '▲'] ['⏵⏵', '  ⏵⏵'] ['›', '››', '›››', '››››', '›››››']
     # test = [x.replace('›', '❯') for x in ['›', '››', '›››', '››››']]
-    print(test)
+    # print(test)
     animation_icons = {Status.downloading: ['❯', '❯❯', '❯❯❯', '❯❯❯❯'], Status.pending: ['⏳'],
                       Status.completed: ['✔'], Status.cancelled: ['-x-'], Status.merging_audio: ['↯', '↯↯', '↯↯↯']} # 
 
@@ -2487,6 +2511,61 @@ class DownloadItem:
         self._part_size = value if value <= self.size else self.size
         print('part size = ', self._part_size)
 
+class FFMPEG:
+    def __init__(self):
+        self.folder = self.get_folder()
+        self.url = 'https://github.com/pyIDM/pyIDM/releases/download/extra/ffmpeg.zip'
+        self.name = 'ffmpeg.exe'
+        self.zip_name = 'ffmpeg.zip'
+
+    def download(self):
+        # create a download object
+        d = DownloadItem()
+        d.name = self.zip_name
+        d.size = self.get_file_size()
+        d.resumable = True
+        d.url = d.eff_url = self.url
+        d.folder = current_directory
+
+        # send download request to main window
+        # start_download(self, d, silent=None, callback=None)
+        m_frame_q.put(('download', (d, False, self.extract_and_clean)))
+
+
+    def unzip(self):
+        log('ffmpeg update:', 'unzipping')
+        # extract zip file
+        # try:
+        with zipfile.ZipFile('ffmpeg.zip', 'r') as zip_ref:
+            zip_ref.extractall(current_directory)
+        # except:
+        #     pass
+
+    def delete_zipfile(self):
+        log('ffmpeg update:', 'delete zip file')
+        # try:
+        os.unlink('ffmpeg.zip')
+        # except:
+        #     pass
+
+    def extract_and_clean(self):
+        # succeeded = self.download()
+        # if succeeded:
+        self.unzip()
+        self.delete_zipfile()
+        self.get_folder()
+        log('ffmpeg update:', 'done update')
+
+    def get_folder(self):
+        cmd = 'where ffmpeg' if platform.system() == 'Windows' else 'which ffmpeg'
+        error, output = run_command(cmd)
+        if not error:
+            self.folder = output
+            return self.folder
+    def get_file_size(self):
+        """get file size on remote server"""
+        headers = get_headers(self.url)
+        return int(headers.get('content-length', 0))
 
 
 # region video classes
@@ -2706,7 +2785,7 @@ class Stream:
 
 
 # region brain, thread manager, file manager
-def brain(d=None, speed_limit=0):
+def brain(d=None, speed_limit=0, callback=None):
     """main brain for a single download, it controls thread manger, file manager, and get data from workers
     and communicate with download window Gui, Main frame gui"""
 
@@ -2751,7 +2830,9 @@ def brain(d=None, speed_limit=0):
     if d.resumable:
         seg_list = size_splitter(d.size, d.part_size)
     else:
+        # will use only one connection because remote server doesn't support chunk download
         seg_list = [f'0-{d.size - 1 if d.size > 0 else 0}']  # should be '0-0' if size zero/unknown
+
 
     # getting previously completed list, by reading 'completed.cfg' file from temp folder
     completed_parts = set()
@@ -2985,6 +3066,10 @@ def brain(d=None, speed_limit=0):
         active_downloads.remove(d.id)
     log(f'\nbrain {d.num}: removed item from active downloads')
 
+    # callback, a method or func to call if download completed
+    if callback:
+        callback()
+
     # report quitting
     q.log('brain: quitting')
     log(f'\nbrain {d.num}: quitting')
@@ -3010,6 +3095,8 @@ def thread_manager(d, barrier, speed_limit):
     live_threads = []  # hold reference to live threads
     job_list = []
     track_num = 0  # to monitor any change in live threads
+
+    use_range = d.resumable and d.size > 0
 
     while True:
         time.sleep(0.1)  # a sleep time to while loop to make the app responsive
@@ -3057,7 +3144,7 @@ def thread_manager(d, barrier, speed_limit):
 
             # create new threads
             conn = connections[worker_num]
-            conn.reuse(seg=seg, speed_limit=worker_sl)
+            conn.reuse(seg=seg, speed_limit=worker_sl, use_range= use_range)
             t = Thread(target=conn.worker, daemon=True, name=str(worker_num))
             live_threads.append(t)
             t.start()
@@ -3357,6 +3444,8 @@ def download(url, file_name):
         finally:
             c.close()
 
+        return True
+
 
 def size_format(size, tail=''):
     # 1 kb = 1024 byte, 1MB = 1024 KB, 1GB = 1024 MB
@@ -3633,5 +3722,6 @@ if __name__ == '__main__':
     if singleApp():
         Thread(target=import_ytdl, daemon=True).start()
         Thread(target=clipboard_listener, daemon=True).start()
+        ffmpeg = FFMPEG()
         main_window = MainWindow()
         main_window.run()
