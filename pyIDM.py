@@ -28,9 +28,10 @@
 # ####################################################################################################################
 
 app_name = 'pyIDM'
-version = '3.7.3.0' # bug fix, side bar didn't fill completely "workaround, wait for PySimpleGUI update"
+version = '3.7.3.1' # bug fix, side bar didn't fill completely "bug fixed in PySimpleGUI 4.14.1.5 "
 default_theme = 'reds'
 
+# region import modules
 # standard modules
 import shlex
 import copy
@@ -134,7 +135,7 @@ import pyperclip
 import pickle, json
 import plyer  # for os notification messages
 
-
+# endregion
 
 test = False  # when active all exceptions will be re-raised
 
@@ -177,6 +178,7 @@ terminate = False  # application exit flag
 
 active_downloads = set()  # indexes for active downloading items
 
+ffmpeg_is_exist = False
 
 class Logger(object):
     """used for capturing youtube-dl messages"""
@@ -1534,7 +1536,7 @@ class MainWindow:
 
                     # progress bars
                     self.m_bar = 50  # decide increment value in side bar based on number of threads
-                    s_bar_incr = 100 / len(pl_info) #100 // len(pl_info) + 1 #waiting for pysimplegui to fix p_bar bug
+                    s_bar_incr = 100 // len(pl_info) + 1 #100 / len(pl_info) #
 
                     self.playlist = [None for _ in range(len(pl_info))]  # fill list so we can store videos in order
                     v_threads = []
