@@ -12,7 +12,7 @@
 # Author,                                                                                                            #
 # Mahmoud Elshahat                                                                                                   #
 # email: mahmoud_elshahhat@yahoo.com                                                                                 #
-# 2019                                                                                                               #
+# 2019, 2020                                                                                                             #
 # ####################################################################################################################
 
 
@@ -28,7 +28,7 @@
 # ####################################################################################################################
 
 app_name = 'pyIDM'
-version = '3.8.0.0' # Ability to auto download ffmpeg.exe if missing on windows platform ==> smaller releases- issue #23
+version = '3.8.0.2' # hide command prompt window from flashing while run command
 default_theme = 'reds'
 
 # region import modules
@@ -1539,7 +1539,7 @@ class MainWindow:
 
                     # progress bars
                     self.m_bar = 50  # decide increment value in side bar based on number of threads
-                    s_bar_incr = 100 // len(pl_info) + 1 #100 / len(pl_info) #
+                    s_bar_incr = 100 / len(pl_info) # 100 // len(pl_info) + 1 #
 
                     self.playlist = [None for _ in range(len(pl_info))]  # fill list so we can store videos in order
                     v_threads = []
@@ -3595,7 +3595,7 @@ def run_command(cmd, verbose=True, shell=False):
             r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
         else:
             cmd = shlex.split(cmd) #, posix=False)
-            r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, wShowWindow=subprocess.SW_HIDE)
 
         error = True if r.returncode != 0 else False
         output = r.stdout.decode('utf-8')
