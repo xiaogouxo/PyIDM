@@ -1673,77 +1673,7 @@ class MainWindow:
         index = self.stream_menu.index(selected_text)
         self.update_video_param(index)
 
-    def download_playlist_old(self):
-        # check if there is a playlist or quit
-        if self.pl_menu[0] == 'Playlist' and self.stream_menu[0] == 'Video quality':
-            sg.popup_ok('Playlist is empty, nothing to download :)', title='Playlist download')
-            return
-
-        # ask user to choose videos quality
-        streams = [repr(s) for s in self.video.allstreams]
-
-        quality_window = sg.Window('Playlist download').Layout([
-            [sg.T(f'{len(self.playlist)} videos will be downloaded \nChoose videos quality')],
-            [sg.Listbox(streams, size=(50, 10))],
-            [sg.Ok(), sg.Cancel()]])
-        button, values = quality_window.Read()
-
-        if button == 'Ok':
-            choice = values[0][0]
-            index = streams.index(choice)
-            self.pl_quality = self.video.allstreams[index]  # as a chosen quality sample
-            log('Selected quality:', choice)
-            quality_window.Close()
-            self.select_tab('Downloads')
-        else:
-            quality_window.Close()
-            return
-
-        for video in self.playlist:
-
-            # get the best stream as a fallback in case we didn't find user selected stream
-            if self.pl_quality.mediatype == 'normal':
-                streams = video.streams
-                best_stream = video.getbest(preftype='mp4', ftypestrict=False)
-            elif self.pl_quality.mediatype == 'video':
-                streams = video.videostreams
-                best_stream = video.getbestvideo(preftype='mp4', ftypestrict=False)
-            else:
-                streams = video.audiostreams
-                best_stream = video.getbestaudio(preftype='m4a', ftypestrict=False)
-
-            stream = best_stream
-
-            # search for stream match user selection
-            for s in streams:
-                if self.pl_quality.extension == s.extension and self.pl_quality.quality == s.quality:
-                    stream = s
-                    break
-
-            video.name = video.title + '.' + stream.extension
-
-            # check if video already exist
-            if os.path.isfile(os.path.join(self.d.folder, video.name)):
-                log(f'file name: {video.name} already exist, skip downloading this file')
-                continue
-
-            video.url = stream.url
-            video.type = stream.extension
-            video.size = stream.filesize
-
-            resume_support = True if video.size else False
-
-            log('download playlist fn>', 'stream', repr(stream))
-            log(f'download playlist fn> media size= {video.size}, name= {video.name}')
-
-            # start download
-            d = DownloadItem(url=video.webpage_url, eff_url=video.url, name=video.name, size=video.size,
-                             folder=self.d.folder, max_connections=self.max_connections, resumable=resume_support)
-            self.start_download(d, silent=True)
-
     def download_playlist(self):
-        self.s_bar = 104
-        return
         # check if there is a playlist or quit
         if self.pl_menu[0] == 'Playlist' and self.stream_menu[0] == 'Video quality':
             sg.popup_ok('Playlist is empty, nothing to download :)', title='Playlist download')
