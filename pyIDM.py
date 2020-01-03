@@ -28,7 +28,7 @@
 # ####################################################################################################################
 
 app_name = 'pyIDM'
-version = '3.8.0.2' # hide command prompt window from flashing while run command
+version = '3.8.1.0' # bug fix run command func
 default_theme = 'reds'
 
 # region import modules
@@ -3591,11 +3591,14 @@ def run_command(cmd, verbose=True, shell=False):
     if verbose: log('running command:', cmd)
     error, output = True, f'error running command {cmd}'
     try:
-        if shell==True:
+        if shell:
             r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
         else:
             cmd = shlex.split(cmd) #, posix=False)
-            r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, wShowWindow=subprocess.SW_HIDE)
+            info = subprocess.STARTUPINFO()
+            info.dwFlags = subprocess.STARTF_USESHOWWINDOW
+            info.wShowWindow = subprocess.SW_HIDE
+            r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, startupinfo=info)
 
         error = True if r.returncode != 0 else False
         output = r.stdout.decode('utf-8')
