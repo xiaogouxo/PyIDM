@@ -28,7 +28,7 @@
 # ####################################################################################################################
 
 app_name = 'pyIDM'
-version = '3.9.0.0'  # stream menu mods issue #25
+version = '3.9.0.1'  # gui feedback for merge fail
 default_theme = 'reds'
 
 # region import modules
@@ -137,7 +137,7 @@ import plyer  # for os notification messages
 
 # endregion
 
-test = True  # when active all exceptions will be re-raised
+test = False  # when active all exceptions will be re-raised
 
 about_notes = f"""{app_name} is an open source multi-connections download manager based on python,
 it downloads general files, also support downloading videos, and playlists from youtube.
@@ -391,6 +391,9 @@ class MainWindow:
 
             elif k == 'download':  # can receive download requests
                 self.start_download(*v)
+
+            elif k == 'popup':  # can receive download requests
+                sg.popup(*v)
 
     # region gui design
     def create_window(self):
@@ -1133,7 +1136,11 @@ class MainWindow:
                 return 'cancelled'
             else:
                 log('deleting existing file:', d.full_name)
-                os.unlink(d.full_name)
+                try:
+                    os.unlink(d.full_name)
+                    # os.unlink(d.full_name)---------------------------------------
+                except:
+                    pass
 
         # check if file already existed in download list
         i = self.file_in_d_list(d.name, d.folder)
@@ -1805,7 +1812,7 @@ class MainWindow:
     def ffmpeg_check(self):
         if not ffmpeg.get_folder():
             if operating_system == 'Windows':
-                response, _ = sg.popup_yes_no(
+                response = sg.popup_yes_no(
                                '"ffmpeg" is missing',
                                'Download it for you?',
                                title='ffmpeg is missing')
@@ -2906,10 +2913,10 @@ def brain(d=None, speed_limit=0, callback=None):
                         log('start merging video and audio files')
                         error, output = merge_video_audio(video_file, audio_file, out_file)
                         if error:
-                           msg = f'Failed to merge {audio.name} \n {output}'
-                           log(msg)
-                           # sg.popup_error(msg, title='Merge error')
-                           status == Status.cancelled
+                            msg = f'Failed to merge {audio.name} \n {output}'
+                            log(msg)
+                            popup(f'Failed to merge {audio.name}', title='Merge error')
+                            status = Status.cancelled
                         else:
 
                             log('finished merging video and audio files')
@@ -2920,12 +2927,12 @@ def brain(d=None, speed_limit=0, callback=None):
                             # Rename main file name
                             os.rename(out_file, video_file)
 
-                            status = d.status = Status.completed
+                            status = Status.completed
                     else:
                         msg = 'Failed to download ' + audio.name
                         log(msg)
                         # sg.popup_error(msg, title='audio file download error')
-                        status == Status.cancelled
+                        status = Status.cancelled
 
             if status == Status.completed:
                 # getting remaining buff value
@@ -2961,8 +2968,10 @@ def brain(d=None, speed_limit=0, callback=None):
     d.q.reset()
 
     # remove item index from active downloads
-    if d.is_audio == False:
+    try:
         active_downloads.remove(d.id)
+    except:
+        pass
     log(f'\nbrain {d.num}: removed item from active downloads')
 
     # callback, a method or func to call if download completed
@@ -3147,7 +3156,6 @@ def file_mngr(d, barrier, seg_list):
             # inform brain
             q.brain.put(('status', Status.completed))
             break
-
 
     # wait for thread manager and brain to quit
     try:
@@ -3618,6 +3626,10 @@ def truncate(string, length):
 def sort_dictionary(dictionary, descending=True):
     return {k: v for k, v in sorted(dictionary.items(), key=lambda item: item[0], reverse=descending)}
 
+def popup(msg, title=''):
+    """Send message to main window to spawn a popup"""
+    param = (f'title={title}', msg)
+    m_frame_q.put(('popup', param))
 
 # endregion
 
