@@ -28,7 +28,7 @@
 # ####################################################################################################################
 
 app_name = 'pyIDM'
-version = '3.8.1.0' # bug fix run command func
+version = '3.9.0.0'  # stream menu mods issue #25
 default_theme = 'reds'
 
 # region import modules
@@ -137,7 +137,7 @@ import plyer  # for os notification messages
 
 # endregion
 
-test = False  # when active all exceptions will be re-raised
+test = True  # when active all exceptions will be re-raised
 
 about_notes = f"""{app_name} is an open source multi-connections download manager based on python,
 it downloads general files, also support downloading videos, and playlists from youtube.
@@ -322,6 +322,7 @@ class MainWindow:
         self.s_bar_lock = Lock()  # a lock to access a video quality progress bar from threads
         self._s_bar = 0  # side progress bar for video quality loading
         self._m_bar = 0  # main playlist progress par
+        self.stream_menu_selection = ''
 
         # download
         self.pending = deque()
@@ -1419,7 +1420,7 @@ class MainWindow:
 
     @m_bar.setter
     def m_bar(self, value):
-        self._m_bar = value
+        self._m_bar = value if value <= 100 else 100
         try:
             self.window.Element('m_bar').UpdateBar(value)
         except:
@@ -1431,7 +1432,7 @@ class MainWindow:
 
     @s_bar.setter
     def s_bar(self, value):
-        self._s_bar = value
+        self._s_bar = value if value <= 100 else 100
         try:
             self.window.Element('s_bar').UpdateBar(value)
         except:
@@ -1481,9 +1482,7 @@ class MainWindow:
         self.s_bar = 0
 
     def youtube_func(self):
-        """get videos from youtube link consume time, if we start another func thread
-        it should cancel the previous one
-        """
+        """fetch metadata from youtube"""
 
         # validate youtube url
         pattern = r'^(http(s)?:\/\/)?((w){3}.)?youtu(be|.be)?(\.com)?\/.+'
@@ -1491,6 +1490,7 @@ class MainWindow:
         if not match:
             return  # quit if url is not a valid youtube watch url
 
+        # getting videos from youtube is time consuming, if another thread starts, it should cancel the previous one
         # create unique identification for this thread
         self.yt_id += 1 if self.yt_id < 1000 else 0
         yt_id = self.yt_id
@@ -1539,7 +1539,9 @@ class MainWindow:
 
                     # progress bars
                     self.m_bar = 50  # decide increment value in side bar based on number of threads
-                    s_bar_incr = 100 / len(pl_info) # 100 // len(pl_info) + 1 #
+
+                    self.window['s_bar'].update_bar(0, max=len(pl_info)) # change maximum value
+                    s_bar_incr = 1 #100 / len(pl_info) # 100 // len(pl_info) + 1 #
 
                     self.playlist = [None for _ in range(len(pl_info))]  # fill list so we can store videos in order
                     v_threads = []
@@ -1629,32 +1631,25 @@ class MainWindow:
         # choose current item
         self.video = self.playlist[0]
 
-    def update_video_param(self, stream_num=0):
-        stream = self.video.allstreams[stream_num]
-        self.video.name = self.video.title + '.' + stream.extension
-        self.video.url = stream.url
-        self.video.type = stream.extension
-        self.video.size = stream.filesize
+    def update_video_param(self):
 
         # update file properties
-        self.d.eff_url = self.video.url
+        self.d.url = self.video.url
+        self.d.eff_url = self.video.eff_url
         self.d.name = self.video.name
         self.d.size = self.video.size
         self.d.type = self.video.type
+        self.d.audio_url = self.video.audio_url
+        self.d.audio_size = self.video.audio_size
         self.d.resumable = True
 
-        # check if video type has no audio
-        if stream.mediatype == 'video':
-            audio_stream = [a for a in self.video.audiostreams if a.extension == stream.extension
-                            or (a.extension == 'm4a' and stream.extension == 'mp4')][0]
-            self.d.audio_url = audio_stream.url
-            self.d.audio_size = audio_stream.filesize
-        else:
-            # self.d.audio = None
-            self.d.audio_url = None
-
     def update_stream_menu(self):
-        self.stream_menu = [repr(stream) for stream in self.video.allstreams]
+        self.stream_menu = self.video.stream_menu
+
+        # select first stream
+        selected_text = self.video.stream_names[0]
+        self.window['stream_menu'](selected_text)
+        self.stream_OnChoice(selected_text)
 
     def playlist_OnChoice(self, selected_text):
         if selected_text not in self.pl_menu:
@@ -1669,9 +1664,13 @@ class MainWindow:
     def stream_OnChoice(self, selected_text):
         if selected_text not in self.stream_menu:
             return
+        if selected_text not in self.video.stream_names:
+            selected_text = self.stream_menu_selection or self.video.stream_names[0]
+            self.window['stream_menu'](selected_text)
 
-        index = self.stream_menu.index(selected_text)
-        self.update_video_param(index)
+        self.stream_menu_selection = selected_text
+        self.video.selected_stream = self.video.streams[selected_text]
+        self.update_video_param()
 
     def download_playlist(self):
         # check if there is a playlist or quit
@@ -1679,77 +1678,45 @@ class MainWindow:
             sg.popup_ok('Playlist is empty, nothing to download :)', title='Playlist download')
             return
 
-        def update_video(video, stream_num):
-            """update video object when selecting a specific stream"""
+        # prepare a list for master stream menu
+        mp4_videos = {}
+        other_videos = {}
+        audio_streams = {}
 
-            stream = video.allstreams[stream_num]
-            video.name = video.title + '.' + stream.extension
-            video.url = stream.url
-            video.type = stream.extension
-            video.size = stream.filesize
-            video.selected_stream=stream
+        # will use raw stream names which doesn't include size
+        for video in self.playlist:
+            mp4_videos.update({stream.raw_name: stream for stream in video.mp4_videos.values()})
+            other_videos.update({stream.raw_name: stream for stream in video.other_videos.values()})
+            audio_streams.update({stream.raw_name: stream for stream in video.audio_streams.values()})
 
-            # check if video type has no audio
-            if stream.mediatype == 'video':
-                audio_stream = [a for a in self.video.audiostreams if a.extension == stream.extension
-                                or (a.extension == 'm4a' and stream.extension == 'mp4')][0]
+        # sort streams based on quality
+        mp4_videos = {k: v for k, v in sorted(mp4_videos.items(), key=lambda item: item[1].quality, reverse=True)}
+        other_videos = {k: v for k, v in sorted(other_videos.items(), key=lambda item: item[1].quality, reverse=True)}
+        audio_streams = {k: v for k, v in sorted(audio_streams.items(), key=lambda item: item[1].quality, reverse=True)}
 
-
-                video.audio_url = audio_stream.url
-                video.audio_size = audio_stream.filesize
-            else:
-                video.audio_url = None
-                video.audio_size = None
-
-            return video
-
-        def getbest_stream_num(video):
-            default_quality_list = video.streams_repr(include_size=False)
-            best_normal_stream = video.getbest(preftype="mp4", ftypestrict=True)
-            best_stream_num = video.allstreams.index(best_normal_stream) if best_normal_stream else 0
-
-            return best_stream_num
+        raw_streams = {**mp4_videos, **other_videos, **audio_streams}
+        master_stream_menu = ['● Video streams:                     '] + list(mp4_videos.keys()) + list(other_videos.keys()) + \
+                      ['', '● Audio streams:                 '] + list(audio_streams.keys())
+        master_stream_combo_selection = ''
 
 
-
-
-
-        # get a sample of available stream types from self.video.allstreams
-        default_quality_list = self.video.streams_repr(include_size=False)
-        default_quality = default_quality_list[getbest_stream_num(self.video)]
-        # print(default_quality_list)
-
-        # video.name = video.title + '.' + stream.extension
-
-
-        # default_quality_list = ['normal: mp4 - 720p - 1280x720 ', 'normal: mp4 - 360p - 640x360 ', 'normal: webm - 360p - 640x360 ', 'video: mp4 - 1080p - 1920x1080 ', 'video: webm - 1080p - 1920x1080 ', 'video: mp4 - 1080p - 1920x1080 ', 'video: mp4 - 720p - 1280x720 ', 'video: webm - 720p - 1280x720 ', 'video: mp4 - 720p - 1280x720 ', 'video: mp4 - 480p - 854x480 ', 'video: webm - 480p - 854x480 ', 'video: mp4 - 480p - 854x480 ', 'video: mp4 - 360p - 640x360 ', 'video: webm - 360p - 640x360 ', 'video: mp4 - 360p - 640x360 ', 'video: mp4 - 240p - 426x240 ', 'video: webm - 240p - 426x240 ', 'video: mp4 - 240p - 426x240 ', 'video: mp4 - 144p - 256x144 ', 'video: mp4 - 144p - 256x144 ', 'video: webm - 144p - 256x144 ', 'audio: webm - abr 160 ', 'audio: m4a - abr 128 ', 'audio: webm - abr 70 ', 'audio: webm - abr 50 ']
-        # file_names = ['Using Drones to Plant 20,000,000 Trees', 'Testing if Sharks Can Smell a Drop of Blood', 'Stealing Baseball Signs with a Phone (Machine Learning)', 'Drinking Nasty Swamp Water (to save the world)', "World's Largest Horn Shatters Glass", 'FLYING PHONE SCAM EXPOSED (so I built a REAL one)', "World's Largest Lemon Battery- Lemon powered Supercar", '200 dropped wallets- the 20 MOST and LEAST HONEST cities', '1st place Mousetrap Car Ideas- using SCIENCE', 'Is NASA a waste of money_', 'ARCADE SCAM SCIENCE (not clickbait)', 'CARNIVAL SCAM SCIENCE- and how to win', 'How to measure HOW MUCH PEE IS IN YOUR POOL', 'DRONE Solar System Model- How far is Planet 9_', 'How to save 51 billion lives for 68 cents with simple Engineering', '1st place science fair ideas- 10 ideas and tricks to WIN!', 'BARE HAND Bottle Busting- Science Investigation', '1st place Egg Drop project ideas- using SCIENCE', 'EASY Pinewood Derby Car WINS using Science!!!', 'BEST Guess Who Strategy- 96% WIN record using MATH', 'How to Survive a Grenade Blast', 'Defog your windows TWICE as fast using SCIENCE- 4 easy steps', 'Unibrow Discrimination- Social Experiment', "NASA's Curiosity landing- 1 of her creator's POV", 'Turtles or Snakes- Which do cars hit more_ ROADKILL EXPERIMENT']
-        # default_quality = default_quality_list[0]
-        # print(default_quality_list)
-
-        # selection window
         video_checkboxes = []
-        quality_combos = []
+        stream_combos = []
 
         general_options_layout = [sg.Checkbox('Select All', enable_events=True, key='Select All'), sg.T('', size=(15,1)),
                                   sg.T('Choose quality for all videos:'),
-                                  sg.Combo(values=default_quality_list, default_value=default_quality, size=(28,1), key='quality_default', enable_events=True)]
+                                  sg.Combo(values=master_stream_menu, default_value=master_stream_menu[1], size=(28,1), key='master_stream_combo', enable_events=True)]
 
         video_layout = []
 
         for num, video in enumerate(self.playlist):
-            video = update_video(video, 0) # update video with first stream as default selected
-            video_checkbox = sg.Checkbox(truncate(video.title, 40), size=(40,1), tooltip=video.title, key=f'video {num}')
+            video_checkbox = sg.Checkbox(truncate(video.title, 40), size=(40, 1), tooltip=video.title, key=f'video {num}')
             video_checkboxes.append(video_checkbox)
 
-            video_stream_list = video.streams_repr(include_size=False)
-            default_quality = video_stream_list[getbest_stream_num(video)]
+            stream_combo = sg.Combo(values=video.raw_stream_menu, default_value=video.raw_stream_menu[1], font='any 8', size=(26, 1), key=f'stream {num}', enable_events=True)
+            stream_combos.append(stream_combo)
 
-            quality_combo = sg.Combo(values=video_stream_list, default_value=default_quality, font='any 8', size=(26,1), key=f'stream {num}', enable_events=True)
-            quality_combos.append(quality_combo)
-
-            row = [video_checkbox, quality_combo, sg.T(size_format(video.size), size=(10,1), font='any 8', key=f'size_text {num}')]
-            # print(video.title)
+            row = [video_checkbox, stream_combo, sg.T(size_format(video.size), size=(10, 1), font='any 8', key=f'size_text {num}')]
             video_layout.append(row)
 
         video_layout = [sg.Column(video_layout, scrollable=True, vertical_scroll_only=True, size=(650, 250), key='col')]
@@ -1760,16 +1727,7 @@ class MainWindow:
         layout.append([sg.Frame(title='select videos to download:', layout=[video_layout])])
         layout.append([sg.Col([[sg.OK(), sg.Cancel()]], justification='right')])
 
-        w=sg.Window(title='Playlist download window', layout=layout, icon=app_icon, finalize=True, margins=(2,2))
-        # w['spacer1'].expand()
-
-        def quality_on_change(num, quality_combo):
-            video = self.playlist[num]
-            quality_list = video.streams_repr(include_size=False)
-            selected_quality = quality_combo.get()
-            stream_num = quality_list.index(selected_quality)
-            video = update_video(video, stream_num)
-            self.playlist[num] = video
+        w= sg.Window(title='Playlist download window', layout=layout, icon=app_icon, finalize=True, margins=(2,2))
 
         chosen_videos = []
 
@@ -1783,51 +1741,62 @@ class MainWindow:
             if e == 'OK':
                 chosen_videos.clear()
                 for num, video in enumerate(self.playlist):
-                    selected_stream_name = v[f'stream {num}']
-                    streams_names = video.streams_repr(include_size=False)
-                    stream_num = streams_names.index(selected_stream_name)
-                    self.playlist[num] = update_video(video, stream_num)
+                    selected_text = v[f'stream {num}']
+                    video.selected_stream = raw_streams[selected_text]
 
-                    if v[f'video {num}'] == True:
+                    if v[f'video {num}'] is True:
                         chosen_videos.append(self.playlist[num])
 
                 w.close()
                 break
 
-
-
             elif e == 'Select All':
+                checked = w['Select All'].get()
                 for checkbox in video_checkboxes:
-                    checkbox(w['Select All'].get())
-            elif e == 'quality_default':
-                for num, quality in enumerate(quality_combos):
-                    quality(v['quality_default'])
-                    quality_on_change(num, quality)
-                    w[f'size_text {num}'](size_format(self.playlist[num].size))
+                    checkbox(checked)
 
-                # print(w['quality_default'].get())
+            elif e == 'master_stream_combo':
+                selected_text = v['master_stream_combo']
+                if selected_text not in raw_streams:
+                    selected_text = master_stream_combo_selection or raw_streams[0]
+                    # w['master_stream_combo'](selected_text)
+                else:
+                    master_stream_combo_selection = selected_text
+
+                # update all videos stream menus from master stream menu
+                for num, stream_combo in enumerate(stream_combos):
+                    stream_combo(selected_text)
+                    video = self.playlist[num]
+                    video.selected_stream = raw_streams[selected_text]
+                    w[f'size_text {num}'](size_format(self.playlist[num].size))
 
             elif e.startswith('stream'):
                 num = int(e.split()[-1])
-                quality_on_change(num, w[e])
+
+                video = self.playlist[num]
+                selected_text = w[e].get()
+
+                if selected_text in raw_streams:
+                    video.selected_stream = raw_streams[selected_text]
+                else:
+                    w[e](video.selected_stream.raw_name)
+
                 w[f'size_text {num}'](size_format(self.playlist[num].size))
 
         self.select_tab('Downloads')
 
         for video in chosen_videos:
-            resume_support = True if video.size else False
+            # resume_support = True if video.size else False
 
             log('download playlist fn>', 'stream', repr(video.selected_stream))
             log(f'download playlist fn> media size= {video.size}, name= {video.name}')
 
             # start download
-            d = DownloadItem(url=video.webpage_url, eff_url=video.url, name=video.name, size=video.size,
-                             folder=self.d.folder, max_connections=self.max_connections, resumable=resume_support)
+            d = DownloadItem(url=video.url, eff_url=video.eff_url, name=video.name, size=video.size,
+                             folder=self.d.folder, max_connections=self.max_connections, resumable=True)
 
             # update file properties
             d.type = video.type
-            d.resumable = True
-            d.max_connections = self.max_connections
             d.audio_url = video.audio_url
             d.audio_size = video.audio_size
 
@@ -1836,12 +1805,9 @@ class MainWindow:
     def ffmpeg_check(self):
         if not ffmpeg.get_folder():
             if operating_system == 'Windows':
-                response = sg.popup_yes_no(
-                               '"ffmpeg.exe" is required to merge an audio stream with your video',
-                               'it must be copied into pyIDM folder or add ffmpeg.exe path to system PATH',
-                               '',
-                               'Do you want pyIDM to download ffmpeg.exe for you?',
-                               'you can download it manually from https://www.ffmpeg.org/download.html',
+                response, _ = sg.popup_yes_no(
+                               '"ffmpeg" is missing',
+                               'Download it for you?',
                                title='ffmpeg is missing')
                 if response == 'Yes':
                     ffmpeg.download()
@@ -2441,6 +2407,7 @@ class DownloadItem:
         self._part_size = value if value <= self.size else self.size
         print('part size = ', self._part_size)
 
+
 class FFMPEG:
     def __init__(self):
         self.folder = self.get_folder()
@@ -2499,156 +2466,132 @@ class FFMPEG:
 
 
 # region video classes
+# this class code is total garbage it needs a serious fixxxx
 class Video:
-    """represent a youtube video object, interface for youtube-dl, inspired from pafy"""
+    """represent a youtube video object, interface for youtube-dl"""
 
-    def __init__(self, url, vid_info=None, size=True):
-        self.watch_url = url
+    def __init__(self, url, vid_info=None, get_size=True):
+        self.url = url
         self.vid_info = vid_info  # a youtube-dl dictionary contains video information
 
         if self.vid_info is None:
             with ytdl.YoutubeDL(ydl_opts) as ydl:
-                self.vid_info = ydl.extract_info(self.watch_url, download=False)
+                self.vid_info = ydl.extract_info(self.url, download=False)
 
         self.webpage_url = self.vid_info.get('webpage_url')
         self.title = validate_file_name(self.vid_info.get('title', f'video{int(time.time())}'))
+        self.name = self.title
 
-        self._streams = []
-        self._oggstreams = []
-        self._m4astreams = []
+        # streams
+        self.stream_names = []  # names in a list
+        self.raw_stream_names = [] # names but without size
+        self.stream_list = []  # streams in a list
+        self.video_streams = {}
+        self.mp4_videos = {}
+        self.other_videos = {}
+        self.audio_streams = {}
+        self._streams = {}
 
-        self._allstreams = []
-        self._videostreams = []
-        self._audiostreams = []
+        self.stream_menu = []  # it will be shown in video quality combo box != self.stream.names
+        self.raw_stream_menu = [] # same as self.stream_menu but without size
+        self._selected_stream = None
 
-        if size:
-            for s in self.allstreams:
-                s.get_filesize()
+        if get_size:
+            for s in self.stream_list:
+                _ = s.size
+
+        self._process_streams()
+
+        self.eff_url = ''
+        self.type = ''
+        self.size = self.selected_stream.size
+        self.audio_url = None  # None for non dash videos
+        self.audio_size = 0
 
     def _process_streams(self):
         """ Create Stream object lists"""
-        self._allstreams = [Stream(x) for x in self.vid_info['formats']]
-        self._allstreams.reverse()
+        all_streams = [Stream(x) for x in self.vid_info['formats']]
 
-        self._streams = [i for i in self._allstreams if i.mediatype == 'normal']
-        self._audiostreams = [i for i in self._allstreams if i.mediatype == 'audio']
-        self._videostreams = [i for i in self._allstreams if i.mediatype == 'video']
+        # prepare some categories
+        normal_streams = {stream.name: stream for stream in all_streams if stream.mediatype == 'normal'}
+        dash_streams = {stream.name: stream for stream in all_streams if stream.mediatype == 'dash'}
 
-        self._mp4streams = [i for i in self._allstreams if i.extension == 'm4a']
+        # normal streams will overwrite same streams names in dash
+        video_streams = {**dash_streams, **normal_streams}
+
+        # sort streams based on quality
+        video_streams = {k: v for k, v in sorted(video_streams.items(), key=lambda item: item[1].quality, reverse=True)}
+
+        # sort based on mp4 streams first
+        mp4_videos = {k: v for k, v in video_streams.items() if v.extension == 'mp4'}
+        other_videos = {k: v for k, v in video_streams.items() if v.extension != 'mp4'}
+        video_streams = {**mp4_videos, **other_videos}
+
+        audio_streams = {stream.name: stream for stream in all_streams if stream.mediatype == 'audio'}
+
+        # collect all in one dictionary of stream.name: stream pairs
+        streams = {**video_streams, **audio_streams}
+
+        stream_menu = ['● Video streams:                     '] + list(mp4_videos.keys()) + list(other_videos.keys()) \
+                    + ['', '● Audio streams:                 '] + list(audio_streams.keys())
+
+        # assign variables
+        self.stream_list = list(streams.values())
+        self.stream_names = [stream.name for stream in self.stream_list]
+        self.raw_stream_names = [stream.raw_name for stream in self.stream_list]
+        self.video_streams = video_streams
+        self.mp4_videos = mp4_videos
+        self.other_videos = other_videos
+        self.audio_streams = audio_streams
+
+        self._streams = streams
+        self.stream_menu = stream_menu
+        self.raw_stream_menu = [x.rsplit(' -', 1)[0] for x in stream_menu]
 
     @property
     def streams(self):
-        """ Returns list of only 'normal' streams for this video"""
+        """ Returns dictionary of all streams sorted  key=stream.name, value=stream object"""
         if not self._streams:
             self._process_streams()
 
         return self._streams
 
     @property
-    def allstreams(self):
-        """ Returns list of All streams for this video"""
-        if not self._allstreams:
-            self._process_streams()
-
-        return self._allstreams
+    def selected_stream_index(self):
+        return self.stream_list.index(self.selected_stream)
 
     @property
-    def audiostreams(self):
-        """ Return a list of audio Stream objects. """
-        if not self._audiostreams:
-            self._process_streams()
+    def selected_stream(self):
+        if not self._selected_stream:
+            self._selected_stream = self.stream_list[0]  # select first stream
 
-        return self._audiostreams
+        return self._selected_stream
 
-    @property
-    def videostreams(self):
-        """ Return a list of video Stream objects. """
-        if not self._videostreams:
-            self._process_streams()
+    @selected_stream.setter
+    def selected_stream(self, stream):
+        if type(stream) is not Stream:
+            raise TypeError
 
-        return self._videostreams
+        self._selected_stream = stream
 
-    @property
-    def mp4streams(self):
-        """ Return a list of m4a encoded Stream objects. """
-        if not self._mp4streams:
-            self._process_streams()
+        self.update_param()
 
-        return self._mp4streams
+    def update_param(self):
+        # do some parameter updates
+        stream = self.selected_stream
+        self.name = self.title + '.' + stream.extension
+        self.eff_url = stream.url
+        self.type = stream.extension
+        self.size = stream.size
 
-    def _getbest(self, preftype="any", ftypestrict=True, vidonly=False):
-        """
-        Return the highest resolution video available.
-
-        Select from video-only streams if vidonly is True
-        """
-        streams = self.videostreams if vidonly else self.streams
-
-        if not streams:
-            return None
-
-        def _sortkey(x, key3d=0, keyres=0, keyftype=0):
-            """ sort function for max(). """
-            key3d = "3D" not in x.resolution
-            keyres = int(x.resolution.split("x")[0])
-            keyftype = preftype == x.extension
-            strict = (key3d, keyftype, keyres)
-            nonstrict = (key3d, keyres, keyftype)
-            return strict if ftypestrict else nonstrict
-
-        r = max(streams, key=_sortkey)
-
-        if ftypestrict and preftype != "any" and r.extension != preftype:
-            return None
-
+        # select an audio to embed if our stream is dash video
+        if stream.mediatype == 'dash':
+            audio_stream = [audio for audio in self.audio_streams.values() if audio.extension == stream.extension
+                            or (audio.extension == 'm4a' and stream.extension == 'mp4')][0]
+            self.audio_url = audio_stream.url
+            self.audio_size = audio_stream.size
         else:
-            return r
-
-    def getbestvideo(self, preftype="any", ftypestrict=True):
-        """
-        Return the best resolution video-only stream.
-
-        set ftypestrict to False to return a non-preferred format if that
-        has a higher resolution
-        """
-        return self._getbest(preftype, ftypestrict, vidonly=True)
-
-    def getbest(self, preftype="any", ftypestrict=True):
-        """
-        Return the highest resolution video+audio stream.
-
-        set ftypestrict to False to return a non-preferred format if that
-        has a higher resolution
-        """
-        return self._getbest(preftype, ftypestrict, vidonly=False)
-
-    def getbestaudio(self, preftype="any", ftypestrict=True):
-        """ Return the highest bitrate audio Stream object."""
-        if not self.audiostreams:
-            return None
-
-
-
-
-
-        def _sortkey(x, keybitrate=0, keyftype=0):
-            """ Sort function for max(). """
-            keybitrate = int(x.rawbitrate)
-            keyftype = preftype == x.extension
-            strict, nonstrict = (keyftype, keybitrate), (keybitrate, keyftype)
-            return strict if ftypestrict else nonstrict
-
-        r = max(self.audiostreams, key=_sortkey)
-
-        if ftypestrict and preftype != "any" and r.extension != preftype:
-            return None
-
-        else:
-            return r
-
-    def streams_repr(self, include_size=True):
-        """return a list of streams representations / descriptions"""
-        return [s.__repr__(include_size=include_size) for s in self.allstreams]
+            self.audio_url = None
 
 
 
@@ -2661,13 +2604,13 @@ class Stream:
         self.extension = stream_info.get('ext', None)
         self.width = stream_info.get('width', None)
         self.fps = stream_info.get('fps', None)
-        self.height = stream_info.get('height', None)
+        self.height = stream_info.get('height', 0)
         self.format_note = stream_info.get('format_note', None)
         self.acodec = stream_info.get('acodec', None)
-        self.abr = stream_info.get('abr', None)
-        self._filesize = stream_info.get('filesize', None)
+        self.abr = stream_info.get('abr', 0)
+        self._size = stream_info.get('filesize', None)
         self.tbr = stream_info.get('tbr', None)
-        self.quality = stream_info.get('quality', None)
+        # self.quality = stream_info.get('quality', None)
         self.vcodec = stream_info.get('vcodec', None)
         self.res = stream_info.get('resolution', None)
         self.downloader_options = stream_info.get('downloader_options', None)
@@ -2676,39 +2619,65 @@ class Stream:
 
         # calculate some values
         self.rawbitrate = stream_info.get('abr', 0) * 1024
-        self.mediatype = self.get_type()
+        self._mediatype = None
         self.resolution = f'{self.width}x{self.height}' if (self.width and self.height) else ''
 
     @property
-    def filesize(self):
-        if self._filesize:
-            return self._filesize
-        else:
-            self.get_filesize()
-
-    def get_filesize(self):
-        if self._filesize:
-            return self._filesize
-        else:
+    def size(self):
+        if not self._size:
             headers = get_headers(self.url)
-            self._filesize = int(headers.get('content-length', 0))
-            return self._filesize
+            self._size = int(headers.get('content-length', 0))
+
+        return self._size
+
+    # @property
+    # def description(self, include_size=False):
+    #     if include_size:
+    #         r = f'      ⮞  {self.extension} - {self.quality} - {size_format(self.size)}'
+    #     else:
+    #         r = f'    ⮞ {self.extension} - {self.quality}'
+    #     return r
+
+    @property
+    def name(self):
+        return f'      ⮞  {self.extension} - {self.quality} - {size_format(self.size)}'
+
+    @property
+    def raw_name(self):
+        return f'      ⮞  {self.extension} - {self.quality}'
+
+    @property
+    def quality(self):
+        try:
+            if self.mediatype == 'audio':
+                return int(self.abr)
+            else:
+                return int(self.height)
+        except:
+            return 0
 
     def __repr__(self, include_size=True):
-        size = f'- {size_format(self.filesize)}' if include_size else ''
-        if self.mediatype == 'audio':
-            r = f'{self.mediatype}: {self.extension} - abr {self.abr} {size}'
-        else:
-            r = f'{self.mediatype}: {self.extension} - {self.height}p - {self.resolution} {size}'
-        return r
+        # size = f'- {size_format(self.size)}' if include_size else ''
+        # if self.mediatype == 'audio':
+        #     r = f'{self.mediatype}: {self.extension} - abr {self.abr} {size}'
+        # else:
+        #     r = f'{self.mediatype}: {self.extension} - {self.height}p - {self.resolution} {size}'
+        # return r
+        return self.name
 
-    def get_type(self):
-        if self.vcodec == 'none':
-            return 'audio'
-        elif self.acodec == 'none':
-            return 'video'
-        else:
-            return 'normal'
+    @property
+    def mediatype(self):
+        if not self._mediatype:
+            if self.vcodec == 'none':
+                self._mediatype = 'audio'
+            elif self.acodec == 'none':
+                self._mediatype = 'dash'
+            else:
+                self._mediatype = 'normal'
+
+        return self._mediatype
+
+
 
 
 # endregion
@@ -3645,6 +3614,10 @@ def truncate(string, length):
         string = string[:part + remainder] + sep + string[-part:] 
     # print(len(string), string)
     return string
+
+def sort_dictionary(dictionary, descending=True):
+    return {k: v for k, v in sorted(dictionary.items(), key=lambda item: item[0], reverse=descending)}
+
 
 # endregion
 
