@@ -28,8 +28,12 @@
 # ####################################################################################################################
 
 app_name = 'pyIDM'
-version = '4.1.3'  # bug fix - restore MainWindow values after theme change and fix retry button
+version = '4.2.0'  # use base64 string for app. icon, no external files needed
+
 default_theme = 'reds'
+icon32 = b'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'
+app_icon = icon32
+
 
 # region import modules
 # standard modules
@@ -148,9 +152,9 @@ your feedback is most welcomed on
 https://github.com/pyIDM/{app_name}
 email: mahmoud_elshahhat@yahoo.com
 
-Thanks,
+Author,
 Mahmoud Elshahat
-2019"""
+2019-2020"""
 
 # aliases
 clipboard = pyperclip
@@ -168,10 +172,10 @@ os.chdir(current_directory)
 
 app_title = f'{app_name} .. an open source download manager version {version}'
 icon_name = 'icon.ico' if os.name == 'nt' else 'icon.png'
-app_icon = os.path.join(current_directory, 'icons', icon_name)
+# app_icon = os.path.join(current_directory, 'icons', icon_name)
 
 themes = sg.ListOfLookAndFeelValues() # sorted(list(sg.LOOK_AND_FEEL_TABLE.keys()))
-sg.SetOptions(font='Helvetica 11', auto_size_buttons=True, progress_meter_border_depth=0, border_width=1)
+sg.SetOptions(icon=app_icon, font='Helvetica 11', auto_size_buttons=True, progress_meter_border_depth=0, border_width=1)
 
 m_frame_q = Queue()  # queue for Main application window
 clipboard_q = Queue()
@@ -496,13 +500,15 @@ class MainWindow:
         ]
 
         # window
-        window = sg.Window(title=app_title, icon=icon, layout=layout,
+        window = sg.Window(title=app_title, layout=layout,
                            size=(700, 450),  margins = (2, 2))
         return window
 
     def start_window(self):
         self.window = self.create_window()
         self.window.Finalize()
+        # self.window.SetIcon(icon3)
+        # self.SetIcon(pngbase64=icon2)
 
         # expand elements to fit
         elements = ['url', 'name', 'folder', 'youtube_frame', 'm_bar', 's_bar', 'pl_menu',
@@ -1543,6 +1549,8 @@ class MainWindow:
             with ytdl.YoutubeDL(ydl_opts) as ydl:
                 result = ydl.extract_info(self.d.url, download=False, process=False)
 
+                print(result)
+
                 # set playlist / video title
                 self.pl_title = result.get('title', '')
                 self.d.name = result.get('title', 'video')
@@ -1750,7 +1758,7 @@ class MainWindow:
         layout.append([sg.Frame(title='select videos to download:', layout=[video_layout])])
         layout.append([sg.Col([[sg.OK(), sg.Cancel()]], justification='right')])
 
-        w= sg.Window(title='Playlist download window', layout=layout, icon=app_icon, finalize=True, margins=(2,2))
+        w= sg.Window(title='Playlist download window', layout=layout, finalize=True, margins=(2,2))
 
         chosen_videos = []
 
@@ -1946,7 +1954,7 @@ class DownloadWindow:
 
         layout = [[sg.TabGroup([[sg.Tab('Main', main_layout), sg.Tab('Log', log_layout)]])]]
 
-        self.window = sg.Window(title=self.d.name, icon=icon, layout=layout, finalize=True, margins=(2, 2), size=(460, 240))
+        self.window = sg.Window(title=self.d.name, layout=layout, finalize=True, margins=(2, 2), size=(460, 240))
         self.window['progress_bar'].expand()
 
     def update_gui(self):
@@ -3667,10 +3675,11 @@ def popup(msg, title=''):
     param = (f'title={title}', msg)
     m_frame_q.put(('popup', param))
 
+
+
 # endregion
 
 if __name__ == '__main__':
-    icon = app_icon
     print('starting application')
 
     if singleApp():
