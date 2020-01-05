@@ -28,7 +28,7 @@
 # ####################################################################################################################
 
 app_name = 'pyIDM'
-version = '4.1.0.0'  # fix repeated qualities in stream menu and playlist download window
+version = '4.1.1'  # fix run command func on linux
 default_theme = 'reds'
 
 # region import modules
@@ -1559,12 +1559,17 @@ class MainWindow:
                     # progress bars
                     self.m_bar = 50  # decide increment value in side bar based on number of threads
 
-                    self.window['s_bar'].update_bar(0, max=len(pl_info)) # change maximum value
-                    s_bar_incr = 1 #100 / len(pl_info) # 100 // len(pl_info) + 1 #
+                    self.window['s_bar'].update_bar(0, max=len(pl_info))  # change maximum value
+                    s_bar_incr = 1  # 100 / len(pl_info) # 100 // len(pl_info) + 1 #
 
                     self.playlist = [None for _ in range(len(pl_info))]  # fill list so we can store videos in order
                     v_threads = []
                     for num, item in enumerate(pl_info):
+                        # we have an issue here with youtube-dl doesn't get full video url from playlist
+                        # print("item.get('url')=", item.get('url'))
+                        # print("item.get('webpage_url')=", item.get('webpage_url'))
+                        # print(item)
+
                         t = Thread(target=self.get_video, daemon=True, args=[num, item.get('url'), yt_id, s_bar_incr])
                         v_threads.append(t)
                         t.start()
@@ -3606,9 +3611,13 @@ def run_command(cmd, verbose=True, shell=False):
             r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
         else:
             cmd = shlex.split(cmd) #, posix=False)
-            info = subprocess.STARTUPINFO()
-            info.dwFlags = subprocess.STARTF_USESHOWWINDOW
-            info.wShowWindow = subprocess.SW_HIDE
+
+            if operating_system == 'Windows':
+                info = subprocess.STARTUPINFO()
+                info.dwFlags = subprocess.STARTF_USESHOWWINDOW
+                info.wShowWindow = subprocess.SW_HIDE
+            else:
+                info = None
             r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, startupinfo=info)
 
         error = True if r.returncode != 0 else False
