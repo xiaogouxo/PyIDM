@@ -28,7 +28,7 @@
 # ####################################################################################################################
 
 app_name = 'pyIDM'
-version = '4.1.2'  # bug fix url input reset when change tabs
+version = '4.1.3'  # bug fix - restore MainWindow values after theme change and fix retry button
 default_theme = 'reds'
 
 # region import modules
@@ -410,7 +410,7 @@ class MainWindow:
 
             # url
             [sg.Text('URL:', pad=(5,1))],
-            [sg.Input('', enable_events=True, change_submits=True, key='url', size=(66, 1)),
+            [sg.Input(self.d.url, enable_events=True, change_submits=True, key='url', size=(66, 1)),
              sg.Button('Retry')],
             [sg.Text('Status:', size=(70, 1), key='status')],
 
@@ -526,9 +526,9 @@ class MainWindow:
         except:
             pass
 
-        # sg.popup_ok('restart_window')
-
         self.start_window()
+        self.update_pl_menu()
+        self.update_stream_menu()
 
     def table_right_click(self, event):
         try:
@@ -634,17 +634,6 @@ class MainWindow:
                 self.main_frameOnClose()
                 break
 
-            elif event == 'themes':
-                self.theme = values['themes']
-                sg.ChangeLookAndFeel(self.theme)
-
-                # close all download windows if existed
-                for win in self.download_windows.values():
-                    win.window.Close()
-                self.download_windows = {}
-
-                self.restart_window()
-
             elif event == 'url':
                 self.url_text_change()
 
@@ -746,6 +735,17 @@ class MainWindow:
                 self.stream_OnChoice(values['stream_menu'])
 
             # setting tab
+            elif event == 'themes':
+                self.theme = values['themes']
+                sg.ChangeLookAndFeel(self.theme)
+
+                # close all download windows if existed
+                for win in self.download_windows.values():
+                    win.window.Close()
+                self.download_windows = {}
+
+                self.restart_window()
+
             elif event == 'speed_limit_switch':
                 switch = values['speed_limit_switch']
 
@@ -1847,7 +1847,6 @@ class MainWindow:
         # get the app on top of other windows
         self.window.BringToFront()
 
-
     def url_text_change(self):
         url = self.window.Element('url').Get().strip()
         if url == self.d.url: return
@@ -1872,6 +1871,7 @@ class MainWindow:
             pass
 
     def retry(self):
+        self.d.url = ''
         self.url_text_change()
 
     def reset(self):
