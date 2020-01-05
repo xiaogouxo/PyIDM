@@ -28,7 +28,7 @@
 # ####################################################################################################################
 
 app_name = 'pyIDM'
-version = '3.9.0.1'  # gui feedback for merge fail
+version = '4.0.0.0'  # New stream menu design and some bug fixes
 default_theme = 'reds'
 
 # region import modules
@@ -1121,6 +1121,15 @@ class MainWindow:
             sg.Popup(f'problem in destination folder {repr(e)}', title='folder error')
             return 'error'
 
+        # validate file name
+        if d.name == '':
+            sg.popup("File name can't be empty!!", title='invalid file name!!')
+            return 'error'
+        # elif d.name.rsplit('.', 1) != d.extension:  # no extension yet for download item d
+        #     r = sg.popup_ok_cancel(f"Warning, File name doesn't have correct file extension: {d.type} \nContinue?", title=Warning)
+        #     if r != 'Ok':
+        #         return 'error'
+
         d.max_connections = self.max_connections if d.resumable else 1
         if silent is None:
             silent = not self.show_download_window
@@ -1138,7 +1147,7 @@ class MainWindow:
                 log('deleting existing file:', d.full_name)
                 try:
                     os.unlink(d.full_name)
-                    # os.unlink(d.full_name)---------------------------------------
+                    os.unlink(d.full_audio_name)
                 except:
                     pass
 
@@ -1149,7 +1158,7 @@ class MainWindow:
             log(f'start download fn> file exist in d_list, num {_d.num}')
 
             # if item in active downloads, quit or if status is downloading, quit
-            if _d.id in active_downloads or self.d_list[d.id].status == Status.downloading:
+            if _d.status == Status.downloading:
                 log('start download fn> file is being downloaded already, abort mission, taking no action')
                 return
             else:
@@ -1712,7 +1721,7 @@ class MainWindow:
 
         general_options_layout = [sg.Checkbox('Select All', enable_events=True, key='Select All'), sg.T('', size=(15,1)),
                                   sg.T('Choose quality for all videos:'),
-                                  sg.Combo(values=master_stream_menu, default_value=master_stream_menu[1], size=(28,1), key='master_stream_combo', enable_events=True)]
+                                  sg.Combo(values=master_stream_menu, default_value=master_stream_menu[0], size=(28,1), key='master_stream_combo', enable_events=True)]
 
         video_layout = []
 
@@ -1764,18 +1773,13 @@ class MainWindow:
 
             elif e == 'master_stream_combo':
                 selected_text = v['master_stream_combo']
-                if selected_text not in raw_streams:
-                    selected_text = master_stream_combo_selection or raw_streams[0]
-                    # w['master_stream_combo'](selected_text)
-                else:
-                    master_stream_combo_selection = selected_text
-
-                # update all videos stream menus from master stream menu
-                for num, stream_combo in enumerate(stream_combos):
-                    stream_combo(selected_text)
-                    video = self.playlist[num]
-                    video.selected_stream = raw_streams[selected_text]
-                    w[f'size_text {num}'](size_format(self.playlist[num].size))
+                if selected_text in raw_streams:
+                    # update all videos stream menus from master stream menu
+                    for num, stream_combo in enumerate(stream_combos):
+                        stream_combo(selected_text)
+                        video = self.playlist[num]
+                        video.selected_stream = raw_streams[selected_text]
+                        w[f'size_text {num}'](size_format(self.playlist[num].size))
 
             elif e.startswith('stream'):
                 num = int(e.split()[-1])
@@ -2383,17 +2387,25 @@ class DownloadItem:
 
     @property
     def temp_folder(self):
-        return self.full_name + '_parts'
+        return os.path.join(self.folder, f'{self.temp_name}_parts_')
 
     @property
     def temp_name(self):
         """return file name including path"""
-        return f'__downloading__{self.name}'
+        return f'_temp_{self.name}'
     
     @property
     def full_temp_name(self):
         """return temp file name including path"""
         return os.path.join(self.folder, self.temp_name)
+
+    @property
+    def audio_name(self):
+        return f'audio_for_{self.name}'
+
+    @property
+    def full_audio_name(self):
+        return os.path.join(self.folder, self.audio_name)
 
     @property
     def i(self):
@@ -2882,57 +2894,61 @@ def brain(d=None, speed_limit=0, callback=None):
                 # log('d.id, d.isaudio:', d.id, d.is_audio)
                 if d.is_audio:  # an audio file ready for merge, should quit here
                     log('done downloading', d.name)
-                    return True # as indication of success
+                    return True  # as indication of success
 
-                # now video file completed and check for audio file
-                if d.audio_url: # this means a video file needs an audio file to be downloaded
-                    # correct status because operation not finished yet
+                # if this is a dash video, will try to get its audio
+                if d.audio_url:
                     d.status = Status.merging_audio
                     d.progress = 99
 
                     # create a DownloadItem() object for audio
                     audio = DownloadItem()
-                    audio.name = f'audio_for_{d.name}'
+                    audio.name = d.audio_name
                     audio.size = d.audio_size
                     audio.max_connections = d.max_connections
                     audio.resumable = True
                     audio.url = audio.eff_url = d.audio_url
                     audio.folder = d.folder
                     audio.is_audio = True
-                    audio.id = f'{d.num}_audio'# (d.id + 1 ) * 1000 - 1
+                    audio.id = f'{d.num}_audio'
+                    audio.max_connections = d.max_connections
 
                     video_file = d.full_name
-                    audio_file = audio.full_name #os.path.join(d.folder, d.audio.name)
+                    audio_file = audio.full_name
                     out_file = os.path.join(d.folder, f'out_{d.name}')
 
                     log('start downloading ', audio.name)
-                    # brain(d.audio)
-                    done = brain(audio)
 
-                    if done: # d.audio.ready_for_merge:  # an audio file already downloaded and ready for merge
+                    done = brain(audio)
+                    if done:  # an audio file already downloaded and ready for merge
                         log('start merging video and audio files')
                         error, output = merge_video_audio(video_file, audio_file, out_file)
                         if error:
                             msg = f'Failed to merge {audio.name} \n {output}'
                             log(msg)
                             popup(f'Failed to merge {audio.name}', title='Merge error')
-                            status = Status.cancelled
+                            status = d.status = Status.cancelled
+                            print('d.id:', d.id)
+                            active_downloads.remove(d.id)
+
                         else:
 
                             log('finished merging video and audio files')
+                            try:
+                                os.unlink(video_file)
+                                os.unlink(audio_file)
 
-                            os.unlink(video_file)
-                            os.unlink(audio_file)
+                                # Rename main file name
+                                os.rename(out_file, video_file)
+                            except Exception as e:
+                                handle_exceptions(f'brain.merge.delete&rename: {e}')
 
-                            # Rename main file name
-                            os.rename(out_file, video_file)
-
-                            status = Status.completed
+                            status = d.status = Status.completed
                     else:
                         msg = 'Failed to download ' + audio.name
                         log(msg)
                         # sg.popup_error(msg, title='audio file download error')
-                        status = Status.cancelled
+                        status = d.status = Status.cancelled
 
             if status == Status.completed:
                 # getting remaining buff value
@@ -2969,6 +2985,7 @@ def brain(d=None, speed_limit=0, callback=None):
 
     # remove item index from active downloads
     try:
+        print(d.id, active_downloads)
         active_downloads.remove(d.id)
     except:
         pass
