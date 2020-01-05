@@ -28,7 +28,7 @@
 # ####################################################################################################################
 
 app_name = 'pyIDM'
-version = '4.0.0.0'  # New stream menu design and some bug fixes
+version = '4.1.0.0'  # fix repeated qualities in stream menu and playlist download window
 default_theme = 'reds'
 
 # region import modules
@@ -1005,7 +1005,10 @@ class MainWindow:
             file = os.path.join(self.sett_folder, 'downloads.cfg')
 
             with open(file, 'w') as f:
-                json.dump(data, f)
+                try:
+                    json.dump(data, f)
+                except:
+                    pass
             log('list saved')
         except Exception as e:
             handle_exceptions(e)
@@ -1096,7 +1099,7 @@ class MainWindow:
     # endregion
 
     # region download
-    def start_download(self, d, silent=None, callback=None):
+    def start_download(self, d, silent=None):
         # callback = post_download_callback
         if d is None:
             return
@@ -1187,7 +1190,7 @@ class MainWindow:
             self.download_windows[d.id] = DownloadWindow(d)
 
         # create and start brain in a separate thread
-        Thread(target=brain, daemon=True, args=(d, self.speed_limit, callback)).start()
+        Thread(target=brain, daemon=True, args=(d, self.speed_limit)).start()
 
     def stop_all_downloads(self):
         # change status of pending items to cancelled
@@ -1776,10 +1779,12 @@ class MainWindow:
                 if selected_text in raw_streams:
                     # update all videos stream menus from master stream menu
                     for num, stream_combo in enumerate(stream_combos):
-                        stream_combo(selected_text)
                         video = self.playlist[num]
-                        video.selected_stream = raw_streams[selected_text]
-                        w[f'size_text {num}'](size_format(self.playlist[num].size))
+
+                        if selected_text in video.raw_streams:
+                            stream_combo(selected_text)
+                            video.selected_stream = video.raw_streams[selected_text]
+                            w[f'size_text {num}'](size_format(video.size))
 
             elif e.startswith('stream'):
                 num = int(e.split()[-1])
@@ -1787,12 +1792,12 @@ class MainWindow:
                 video = self.playlist[num]
                 selected_text = w[e].get()
 
-                if selected_text in raw_streams:
-                    video.selected_stream = raw_streams[selected_text]
+                if selected_text in video.raw_streams:
+                    video.selected_stream = video.raw_streams[selected_text]
                 else:
                     w[e](video.selected_stream.raw_name)
 
-                w[f'size_text {num}'](size_format(self.playlist[num].size))
+                w[f'size_text {num}'](size_format(video.size))
 
         self.select_tab('Downloads')
 
@@ -2361,6 +2366,9 @@ class DownloadItem:
         self.audio_size = 0
         self.is_audio = False
 
+        # callback is a string represent any function name declared in module scope
+        self.callback = ''
+
 
     @property
     def id(self):
@@ -2442,20 +2450,22 @@ class FFMPEG:
         d.resumable = True
         d.url = d.eff_url = self.url
         d.folder = current_directory
+        d.callback = 'extract_and_clean'
+        d.max_connections = 4
 
         # send download request to main window
         # start_download(self, d, silent=None, callback=None)
-        m_frame_q.put(('download', (d, False, self.extract_and_clean)))
+        m_frame_q.put(('download', (d, False)))
 
 
     def unzip(self):
         log('ffmpeg update:', 'unzipping')
         # extract zip file
-        # try:
-        with zipfile.ZipFile('ffmpeg.zip', 'r') as zip_ref:
-            zip_ref.extractall(current_directory)
-        # except:
-        #     pass
+        try:
+            with zipfile.ZipFile('ffmpeg.zip', 'r') as zip_ref:
+                zip_ref.extractall(current_directory)
+        except:
+             pass
 
     def delete_zipfile(self):
         log('ffmpeg update:', 'delete zip file')
@@ -2478,6 +2488,7 @@ class FFMPEG:
         if not error:
             self.folder = output
             return self.folder
+
     def get_file_size(self):
         """get file size on remote server"""
         headers = get_headers(self.url)
@@ -2497,7 +2508,7 @@ class Video:
             with ytdl.YoutubeDL(ydl_opts) as ydl:
                 self.vid_info = ydl.extract_info(self.url, download=False)
 
-        self.webpage_url = self.vid_info.get('webpage_url')
+        self.webpage_url = url # self.vid_info.get('webpage_url')
         self.title = validate_file_name(self.vid_info.get('title', f'video{int(time.time())}'))
         self.name = self.title
 
@@ -2510,6 +2521,7 @@ class Video:
         self.other_videos = {}
         self.audio_streams = {}
         self._streams = {}
+        self.raw_streams = {}
 
         self.stream_menu = []  # it will be shown in video quality combo box != self.stream.names
         self.raw_stream_menu = [] # same as self.stream_menu but without size
@@ -2532,8 +2544,8 @@ class Video:
         all_streams = [Stream(x) for x in self.vid_info['formats']]
 
         # prepare some categories
-        normal_streams = {stream.name: stream for stream in all_streams if stream.mediatype == 'normal'}
-        dash_streams = {stream.name: stream for stream in all_streams if stream.mediatype == 'dash'}
+        normal_streams = {stream.raw_name: stream for stream in all_streams if stream.mediatype == 'normal'}
+        dash_streams = {stream.raw_name: stream for stream in all_streams if stream.mediatype == 'dash'}
 
         # normal streams will overwrite same streams names in dash
         video_streams = {**dash_streams, **normal_streams}
@@ -2542,8 +2554,11 @@ class Video:
         video_streams = {k: v for k, v in sorted(video_streams.items(), key=lambda item: item[1].quality, reverse=True)}
 
         # sort based on mp4 streams first
-        mp4_videos = {k: v for k, v in video_streams.items() if v.extension == 'mp4'}
-        other_videos = {k: v for k, v in video_streams.items() if v.extension != 'mp4'}
+        # mp4_videos = {k: v for k, v in video_streams.items() if v.extension == 'mp4'}
+        # other_videos = {k: v for k, v in video_streams.items() if v.extension != 'mp4'}
+
+        mp4_videos = {stream.name: stream for stream in video_streams.values() if stream.extension == 'mp4'}
+        other_videos = {stream.name: stream for stream in video_streams.values() if stream.extension != 'mp4'}
         video_streams = {**mp4_videos, **other_videos}
 
         audio_streams = {stream.name: stream for stream in all_streams if stream.mediatype == 'audio'}
@@ -2564,6 +2579,7 @@ class Video:
         self.audio_streams = audio_streams
 
         self._streams = streams
+        self.raw_streams = {stream.raw_name: stream for stream in streams.values()}
         self.stream_menu = stream_menu
         self.raw_stream_menu = [x.rsplit(' -', 1)[0] for x in stream_menu]
 
@@ -2703,7 +2719,7 @@ class Stream:
 
 
 # region brain, thread manager, file manager
-def brain(d=None, speed_limit=0, callback=None):
+def brain(d=None, speed_limit=0):
     """main brain for a single download, it controls thread manger, file manager, and get data from workers
     and communicate with download window Gui, Main frame gui"""
 
@@ -2992,8 +3008,9 @@ def brain(d=None, speed_limit=0, callback=None):
     log(f'\nbrain {d.num}: removed item from active downloads')
 
     # callback, a method or func to call if download completed
-    if callback:
-        callback()
+    if d.callback and d.status == Status.completed:
+        # d.callback()
+        globals()[d.callback]()
 
     # report quitting
     q.log('brain: quitting')
@@ -3652,11 +3669,16 @@ def popup(msg, title=''):
 
 
 if __name__ == '__main__':
-    icon = app_icon #image_file_to_bytes(app_icon, (50, 50))
+    icon = app_icon
     print('starting application')
+
     if singleApp():
         Thread(target=import_ytdl, daemon=True).start()
         Thread(target=clipboard_listener, daemon=True).start()
+
+        # ffmpeg required for merging audio for dash videos
         ffmpeg = FFMPEG()
+        extract_and_clean = ffmpeg.extract_and_clean  # a reference for use with callback
+
         main_window = MainWindow()
         main_window.run()
