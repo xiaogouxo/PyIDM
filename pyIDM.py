@@ -28,7 +28,7 @@
 # ####################################################################################################################
 
 app_name = 'pyIDM'
-version = '4.1.1'  # fix run command func on linux
+version = '4.1.2'  # bug fix url input reset when change tabs
 default_theme = 'reds'
 
 # region import modules
@@ -287,7 +287,6 @@ def import_ytdl():
     import youtube_dl as ytdl
     load_time = time.time() - start
     log(f'youtube-dl load_time= {load_time}')
-
 
 # region GUI
 class MainWindow:
@@ -1850,13 +1849,16 @@ class MainWindow:
 
 
     def url_text_change(self):
+        url = self.window.Element('url').Get().strip()
+        if url == self.d.url: return
+
         # Focus and select main app page in case text changed from script
         self.bring_to_front()
         self.select_tab('Main')
 
         self.reset()
         try:
-            self.d.eff_url = self.d.url = self.window.Element('url').Get().strip()
+            self.d.eff_url = self.d.url = url
 
             # schedule refresh header func
             if type(self.url_timer) == Timer:
@@ -2008,7 +2010,6 @@ class DownloadWindow:
 
 # endregion
 
-
 # define a class to hold all the required queues
 class Communication:
     """it serve as communication between threads"""
@@ -2060,7 +2061,6 @@ class Communication:
         # print(s, end='')
 
         self.d_window.put(('log', s))
-
 
 # worker class
 class Connection:
@@ -2317,7 +2317,6 @@ class Connection:
         if self.actual_size > self.target_size > 0:
             return -1  # abort
 
-
 # status class as an Enum
 class Status:
     """used to identify status, i don't like Enum"""
@@ -2327,7 +2326,6 @@ class Status:
     completed = 'completed'
     pending = 'pending'
     merging_audio = 'merging_audio'
-
 
 # Download Item Class
 class DownloadItem:
@@ -2439,7 +2437,6 @@ class DownloadItem:
         self._part_size = value if value <= self.size else self.size
         print('part size = ', self._part_size)
 
-
 class FFMPEG:
     def __init__(self):
         self.folder = self.get_folder()
@@ -2498,7 +2495,6 @@ class FFMPEG:
         """get file size on remote server"""
         headers = get_headers(self.url)
         return int(headers.get('content-length', 0))
-
 
 # region video classes
 # this class code is total garbage it needs a serious fixxxx
@@ -2721,7 +2717,6 @@ class Stream:
 
 
 # endregion
-
 
 # region brain, thread manager, file manager
 def brain(d=None, speed_limit=0):
@@ -3207,7 +3202,6 @@ def file_mngr(d, barrier, seg_list):
 
 # endregion
 
-
 # region clipboard, singleApp, and Taskbaricon
 def clipboard_listener():
     old_data = ''
@@ -3251,7 +3245,6 @@ def singleApp():
 
 
 # endregion
-
 
 # region helper functions
 def notify(msg, title=f'{app_name}', timeout=5):
@@ -3675,7 +3668,6 @@ def popup(msg, title=''):
     m_frame_q.put(('popup', param))
 
 # endregion
-
 
 if __name__ == '__main__':
     icon = app_icon
