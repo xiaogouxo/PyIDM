@@ -39,14 +39,16 @@ Like most download managers it can download, pause, resume any file, additionall
 **more snapshots**
 
 ![downloads_tab](https://user-images.githubusercontent.com/37757246/71418538-a0daa680-2673-11ea-82a8-e10e0ca673bd.PNG)
+![playlist_window](https://user-images.githubusercontent.com/58998813/71775076-22d7a300-2f83-11ea-8011-b45f2f2605f4.png)
 ![setting_tab](https://user-images.githubusercontent.com/37757246/71418549-a2a46a00-2673-11ea-848a-ca5ca82e743b.PNG)
 ![d_window](https://user-images.githubusercontent.com/37757246/71418539-a0daa680-2673-11ea-8073-0c217fff7e9a.png)
+![black](https://user-images.githubusercontent.com/37757246/71418541-a1733d00-2673-11ea-85c3-cd6f6b2d66c1.PNG)
 
 example multi-downloading with speed limit of 20 KB/sec as a test
 
 ![concurrent windows](https://user-images.githubusercontent.com/37757246/71418548-a2a46a00-2673-11ea-8101-c95d29b6a0e4.png)
 
-[view all snapshots with different themes](https://github.com/pyIDM/pyIDM/issues/13)
+[view all screenshots with different themes](https://github.com/pyIDM/pyIDM/issues/13)
 
 ---
 
@@ -152,59 +154,23 @@ the audio will be merged into video file using FFMPEG external application "subp
 <br><br>
 
 # Versions change log:
-3.6:
-- New right click menu for download table, now you can view all info for any download item, copy url, open file location.
-- Ability to watch video files before it finish downloading.
-- open files by double click, Enter button, or context menu from downloads tab.
-- new animations for files status during download and merge.
-- Speed limit option now more better than before.
+change log / what's new now moved to releases page under each release
 
-3.4:
-- use json to store downloads list to avoid pickle problems in frozen builds, and avoid future problem of pickled downloads.cfg file incompatibility with new version of the app. issue #11
-- Feedback popups for download btn and pl.btn in case of not allowed ops.
-- bring application to front if url copied to clipboard or try to run another app. instance
-
-3.3:
-- the table header colors match the color theme "pySimpleGui addition"
-- sort themes names in setting tabs, 140+ themes
-- proper setting folder location for linux and mac
-- bug fixes for youtube audio track handling
-- handle exception for notify function
-- Change application name to pyIDM instead of old name Hanash.
-
-3.2:
-- Automatically install required python packages to run the application.
-- better log text newer entries are now at the bottom.
-- correct app. icon not appearing in windows
-
-
-3.1:
-- added functionality to download youtube DASH videos with audio merged using ffmpg.
-- bug fixes.
-- remove Pillow module from requirements
-- new themes added from PySimpleGUI module are available for use in user
-  setting (total of 105 themes)
-
-<br><br>
-
----
-
-# Future Plans :
-- use native video library for merging audio and video, will check libav, or possibility with youtube_dl.
-- Design different user interface using pySimpleGUI ports for Qt or wx.
-- Auto application update.
 
 
 
 <br><br>
 
 ---
+
+
 
 # Feedback:
-your feedback is most welcomed by filling an issue on https://github.com/pyIDM/pyIDM <br>
+your feedback is most welcomed by filling a [new issue](https://github.com/pyIDM/pyIDM/issues/new) <br>
 or email me at: mahmoud_elshahhat@yahoo.com <br>
-Cheers, <br>
+
+Author, <br>
 Mahmoud Elshahat, <br>
-2019
+2019-2020
 
 ---
