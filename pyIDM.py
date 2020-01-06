@@ -28,7 +28,7 @@
 # ####################################################################################################################
 
 app_name = 'pyIDM'
-version = '4.2.0'  # use base64 string for app. icon, no external files needed
+version = '4.2.1'  # fix for change theme and playlist download button
 
 default_theme = 'reds'
 icon32 = b'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'
@@ -401,10 +401,10 @@ class MainWindow:
     # region gui design
     def create_window(self):
         # main tab
-        col1 = [[sg.Combo(values=['Playlist'], size=(34, 1), key='pl_menu', enable_events=True)],
+        col1 = [[sg.Combo(values= self.pl_menu, size=(34, 1), key='pl_menu', enable_events=True)],
                 [sg.ProgressBar(max_value=100, size=(20, 5), key='m_bar')]]
 
-        col2 = [[sg.Combo(values=['Quality'], size=(34, 1), key='stream_menu', enable_events=True)],
+        col2 = [[sg.Combo(values= self.stream_menu, size=(34, 1), key='stream_menu', enable_events=True)],
                 [sg.ProgressBar(max_value=100, size=(20, 5), key='s_bar')]]
 
         main_layout = [
@@ -533,8 +533,13 @@ class MainWindow:
             pass
 
         self.start_window()
-        self.update_pl_menu()
-        self.update_stream_menu()
+
+        if self.video:
+            self.update_pl_menu()
+            self.update_stream_menu()
+        else:
+            self.pl_menu = ['Playlist']
+            self.stream_menu = ['Video quality']
 
     def table_right_click(self, event):
         try:
@@ -1653,14 +1658,17 @@ class MainWindow:
                 # log('MainWindow.get_video:>', f'num={num} - self.s_bar={self.s_bar} - s_bar_incr={s_bar_incr}')
 
     def update_pl_menu(self):
-        # set playlist label
-        self.set_status(f'{len(self.playlist)} videos in Playlist: {self.pl_title}')
+        try:
+            # set playlist label
+            self.set_status(f'{len(self.playlist)} videos in Playlist: {self.pl_title}')
 
-        # update playlist menu items
-        self.pl_menu = [str(i + 1) + '- ' + video.title for i, video in enumerate(self.playlist)]
+            # update playlist menu items
+            self.pl_menu = [str(i + 1) + '- ' + video.title for i, video in enumerate(self.playlist)]
 
-        # choose current item
-        self.video = self.playlist[0]
+            # choose current item
+            self.video = self.playlist[0]
+        except:
+            pass
 
     def update_video_param(self):
 
@@ -1675,12 +1683,15 @@ class MainWindow:
         self.d.resumable = True
 
     def update_stream_menu(self):
-        self.stream_menu = self.video.stream_menu
+        try:
+            self.stream_menu = self.video.stream_menu
 
-        # select first stream
-        selected_text = self.video.stream_names[0]
-        self.window['stream_menu'](selected_text)
-        self.stream_OnChoice(selected_text)
+            # select first stream
+            selected_text = self.video.stream_names[0]
+            self.window['stream_menu'](selected_text)
+            self.stream_OnChoice(selected_text)
+        except:
+            pass
 
     def playlist_OnChoice(self, selected_text):
         if selected_text not in self.pl_menu:
@@ -1704,8 +1715,8 @@ class MainWindow:
         self.update_video_param()
 
     def download_playlist(self):
-        # check if there is a playlist or quit
-        if self.pl_menu[0] == 'Playlist' and self.stream_menu[0] == 'Video quality':
+        # check if there is a video file or quit
+        if not self.video:
             sg.popup_ok('Playlist is empty, nothing to download :)', title='Playlist download')
             return
 
@@ -1891,6 +1902,8 @@ class MainWindow:
         self.d.resumable = False
         self.status_code = ''
         self.set_status('')
+        self.playlist = []
+        self.video = None
 
         # reset audio field
         self.d.audio_url = None
