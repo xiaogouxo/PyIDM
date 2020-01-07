@@ -28,7 +28,7 @@
 # ####################################################################################################################
 
 app_name = 'pyIDM'
-version = '4.2.1'  # fix for change theme and playlist download button
+version = '4.3.0'  # Add ability to schedule download
 
 default_theme = 'reds'
 icon32 = b'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'
@@ -444,19 +444,22 @@ class MainWindow:
         ]
 
         # downloads tab
-        table_right_click_menu = ['Table', ['!Options for selected file:', '---', 'Open File', 'Open File Location', 'Watch while downloading',
-                                            'copy webpage url', 'copy download url', 'properties']]
-        spacing = [' ' * 4, ' ' * 3, ' ' * 30, ' ' * 5, ' ' * 8, ' ' * 8, ' ' * 8, ' ' * 8, ' ' * 10, ' ' * 12, ' ' * 30, ' ',
-                   ' ', ' ']  # setup initial column width
+        table_right_click_menu = ['Table', ['!Options for selected file:', '---', 'Open File', 'Open File Location',
+                                            '▶ Watch while downloading', 'copy webpage url', 'copy download url',
+                                            '⏳ Schedule download', '⏳ Cancel schedule!', 'properties']]
+        # ['i', 'num', 'name', 'progress', 'speed', 'time_left', 'size', 'downloaded', 'status',
+        #                           'resumable', 'folder', 'max_connections', 'live_connections', 'remaining_parts']
+        spacing = [' ' * 4, ' ' * 3, ' ' * 30, ' ' * 3, ' ' * 3, ' ' * 3, ' ' * 6, ' ' * 8, ' ' * 10, ' ' * 12,
+                   ' ' * 30, ' ', ' ', ' ']  # setup initial column width
 
         downloads_layout = [[sg.Button('Resume'), sg.Button('Cancel'), sg.Button('Refresh'),
                              sg.Button('Folder'), sg.Button('D.Window'),
                              sg.T(' ' * 5), sg.T('Item:'),
                              sg.T('---', key='selected_row_num', text_color='white', background_color='red')],
                             [sg.Table(values=[spacing], headings=self.d_headers, size=(70, 13), justification='left',
-                                      vertical_scroll_only=False, key='table', enable_events=True,
+                                      vertical_scroll_only=False, key='table', enable_events=True, font='any 10',
                                       right_click_menu=table_right_click_menu)],
-                            [sg.Button('Resume All'), sg.Button('Stop All'),
+                            [sg.Button('Resume All'), sg.Button('Stop All'), sg.B('Schedule All'),
                              sg.Button('Delete', button_color=('white', 'red')),
                              sg.Button('Delete All', button_color=('white', 'red'))],
                             ]
@@ -678,14 +681,14 @@ class MainWindow:
                 else:
                     self.open_file(self.selected_d.full_temp_name)
 
-                    # table right click menu event
-            elif event =='Open File Location':
+            # table right click menu event
+            elif event == 'Open File Location':
                 self.open_file_location()
 
-            elif event =='copy webpage url':
+            elif event == 'copy webpage url':
                 clipboard.write(self.selected_d.url)
 
-            elif event =='copy download url':
+            elif event == 'copy download url':
                 clipboard.write(self.selected_d.eff_url)
 
             elif event == 'properties':
@@ -701,6 +704,14 @@ class MainWindow:
                     msg += f'webpage url: {self.selected_d.url} \n\n'
                     msg += f'playlist url: {self.selected_d.pl_url} \n'
                     sg.popup_scrolled(msg, title='File properties')
+
+            elif event == '⏳ Schedule download':
+                response = self.ask_for_sched_time(msg=self.selected_d.name)
+                if response:
+                    self.selected_d.sched = response
+
+            elif event == '⏳ Cancel schedule!':
+                self.selected_d.sched = None
 
             elif event == 'Resume':
                 self.resume_btn()
@@ -728,6 +739,13 @@ class MainWindow:
 
             elif event == 'Stop All':
                 self.stop_all_downloads()
+
+            elif event == 'Schedule All':
+                response = self.ask_for_sched_time(msg='Schedule all non completed files')
+                if response:
+                    for d in self.d_list:
+                        if d.status in (Status.pending, Status.cancelled):
+                            d.sched = response
 
             elif event == 'Delete':
                 self.delete_btn()
@@ -767,7 +785,6 @@ class MainWindow:
                     self.speed_limit = 0
                     self.window['speed_limit'](disabled=True)
                 # print('speed limit:', self.speed_limit)
-
 
             elif event == 'speed_limit':
                 sl = values['speed_limit'].replace(' ', '') # if values['speed_limit'] else 0
@@ -836,8 +853,6 @@ class MainWindow:
                     except Exception as e:
                         log('failed to update youtube-dl module:', e)
 
-
-
             # log
             elif event == 'Clear Log':
                 try:
@@ -849,8 +864,6 @@ class MainWindow:
             elif event == 'about':
                 sg.PopupNoButtons(about_notes, title=f'About {app_name} DM', non_blocking=True)
 
-
-
             # Run every n seconds
             if time.time() - timer1 >= 1:
                 timer1 = time.time()
@@ -860,6 +873,9 @@ class MainWindow:
 
                 # read incoming requests and messages from queue
                 self.read_q()
+
+                # scheduled downloads
+                self.check_scheduled()
 
             # run download windows if existed
             keys = list(self.download_windows.keys())
@@ -1935,6 +1951,50 @@ class MainWindow:
             pass
 
         clipboard_q.put(('status', Status.cancelled))
+
+    def check_scheduled(self):
+        t = time.localtime()
+        c_t = (t.tm_hour, t.tm_min)
+        for d in self.d_list:
+            if d.sched and d.sched[0] <= c_t[0] and d.sched[1] <=c_t[1]:
+                self.start_download(d)  # send for download
+                d.sched = None  # cancel schedule time
+
+    def ask_for_sched_time(self, msg=''):
+        """Show a gui dialog to ask user for schedule time for download items, it take one or more of download items"""
+        response = None
+
+        layout = [
+            [sg.T('schedule download item:')],
+            [sg.T(msg)],
+            [sg.Combo(values=list(range(1, 13)), default_value=1, size=(5, 1), key='hours'), sg.T('H  '),
+             sg.Combo(values=list(range(0, 60)), default_value=0, size=(5, 1), key='minutes'), sg.T('m  '),
+             sg.Combo(values=['AM', 'PM'], default_value='AM', size=(5, 1), key='am pm')],
+            [sg.Ok(), sg.Cancel()]
+        ]
+
+        window = sg.Window('Scheduling download item', layout, finalize=True)
+
+        e, v = window()
+
+        if e == 'Ok':
+            h = int(v['hours'])
+            if v['am pm'] == 'AM' and h == 12:
+                h = 0
+            elif v['am pm'] == 'PM' and h != 12:
+                h += 12
+
+            m = int(v['minutes'])
+
+            # # assign to download item
+            # d.sched = (h, m)
+
+            response = h, m
+
+        window.close()
+        return response
+
+
     # endregion
 
 
@@ -2351,15 +2411,13 @@ class Status:
 # Download Item Class
 class DownloadItem:
     # animation ['►►   ', '  ►►'] › ► ⤮ ⇴ ↹ ↯  ↮  ₡ ['⯈', '▼', '⯇', '▲'] ['⏵⏵', '  ⏵⏵'] ['›', '››', '›››', '››››', '›››››']
-    # test = [x.replace('›', '❯') for x in ['›', '››', '›››', '››››']]
-    # print(test)
     animation_icons = {Status.downloading: ['❯', '❯❯', '❯❯❯', '❯❯❯❯'], Status.pending: ['⏳'],
-                      Status.completed: ['✔'], Status.cancelled: ['-x-'], Status.merging_audio: ['↯', '↯↯', '↯↯↯']} # 
+                       Status.completed: ['✔'], Status.cancelled: ['-x-'], Status.merging_audio: ['↯', '↯↯', '↯↯↯']}
 
     def __init__(self, d_id=0, name='', size=0, mime_type='', folder='', url='',
-     eff_url='', pl_url='', max_connections=1, live_connections=0, resumable=False,
-     progress=0, speed=0, time_left='', downloaded=0, status='cancelled',
-     remaining_parts=0, part_size=1048576):
+                 eff_url='', pl_url='', max_connections=1, live_connections=0, resumable=False,
+                 progress=0, speed=0, time_left='', downloaded=0, status='cancelled',
+                 remaining_parts=0, part_size=1048576):
         self.q = None  # queue
         self._id = d_id
         self.num = d_id + 1 if d_id else ''
@@ -2383,7 +2441,7 @@ class DownloadItem:
         self._part_size = part_size
         
         # animation
-        self.animation_index = self.id % 2 # to give it a different start point than neighbour items
+        self.animation_index = self.id % 2  # to give it a different start point than neighbour items
 
         # audio
         self.audio_url = None
@@ -2393,6 +2451,8 @@ class DownloadItem:
         # callback is a string represent any function name declared in module scope
         self.callback = ''
 
+        # schedule download
+        self.sched = None  # should be time in (hours, minutes) tuple for scheduling download
 
     @property
     def id(self):
@@ -2441,13 +2501,16 @@ class DownloadItem:
 
     @property
     def i(self):
-        icon_list = self.animation_icons.get(self.status, [''])
-        if self.animation_index >= len(icon_list):  self.animation_index = 0
-        selected_image = icon_list[self.animation_index]
-        self.animation_index += 1 
+        # This is where we put the animation letter
+        if self.sched:
+            selected_image = self.sched_string
+        else:
+            icon_list = self.animation_icons.get(self.status, [''])
+            if self.animation_index >= len(icon_list):  self.animation_index = 0
+            selected_image = icon_list[self.animation_index]
+            self.animation_index += 1
 
         return selected_image
-        
 
     @property
     def part_size(self):
@@ -2457,6 +2520,12 @@ class DownloadItem:
     def part_size(self, value):
         self._part_size = value if value <= self.size else self.size
         print('part size = ', self._part_size)
+
+    @property
+    def sched_string(self):
+        # t = time.localtime(self.sched)
+        # return f"⏳({t.tm_hour}:{t.tm_min})"
+        return f"{self.sched[0]:02}:{self.sched[1]:02}"
 
 class FFMPEG:
     def __init__(self):
