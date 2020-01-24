@@ -6,33 +6,63 @@ Developed in Python, based on "pyCuRL/curl", "youtube_dl", and "PySimpleGUI"
 ![main window](https://user-images.githubusercontent.com/58998813/71563996-a2580480-2aa1-11ea-8818-6476b500d200.png)
 
 ---
-
-# Why another download manager?:
-With all free and paid download manager why someone may need another one?
-I believe in one term, **"if the product is free, then you are the product"**, most (if not all) free applications collect data about you, some of them are toxic and plant trojans and spyware in your system, then I decided to make my own download manager based on python with 👉 **"--GUI--"** relies only on open source tools and libraries, nothing hidden, with source code exposed to thousands of programmers, no one can play dirty games here 😉.
-
-originally I made this application for my personal use then decided to release its open source for others to use, hoping it might help someone.
-
-# What makes pyIDM different? 
-Like most download managers it can download, pause, resume any file, additionally, pyIDM has some strength points in some fields like:
-
-- **Re-using existing connection**, pyIDM will reuse already establiched connections to the download server which saves the time of establishing new connections. 
-- **Segment size:** you can decide the size of the individual file segments "chunk size".
-- **Resume:** files downloaded in **segments** saved at user download directory in a temp folder, in case download interrupts or fatal os system failure, if you try to download the same file again with same name and at the same destination folder, pyIDM will scan all completed segments and resume where it left.
-- **Youtube support**: you can download videos with any quality, also can download the whole playlist at once. the different here over famous applications that you don't need a browser extension to get the available youtube streams, you just copy youtube video link and all metadata will be fetched internally with all available video streams and  audio streams as well for this video will be available to be downloaded from the application.
-- **Refresh expired urls**, keeping a file's webpage url saved and fetch the effective download link to download the file, in case a download url gets expired "most servers issue a temporary download links", you can press refresh button on downloads Tab and it will fetch a new download link for you then you can press download button to resume downloading the file.
-- **Speed:** relying on famous "LibCurl" library as a powerfull download engine, in comparision tests it overcomes famous download managers in speed.
-- **GUI:** a beautiful and yet simple user interface, with very simple options to get what you want without effort, with around 140 themes to choose among them, and this is something missing from other opensource python download managers.
-- **Updates:** relying on highly active python packages and libraries will guarantee a decent update cycle to this application.
-- **Speed Limit:** it does a good job limiting download speeds as per user requirements.
-- **Multiconnection:** you can decide how many connections (workers) you want per file download, the default is 10 connections. some servers limit download per connection, in this case increasing connections number will make a huge difference in download speeds.
-- **Concurrent downloads:** you can decide how many simultaneous downloads from setting Tab. 
-- **Clipboard Monitor**: it watches any copied url and directly process and fetch metadata (you can disable this behaviour in setting if you wish)
+**Features**:
+* High download speeds "based on cuRL"
+* Multi-connection downloading
+* Scan and resume uncompleted downloads.
+* Support for Youtube, and a lot of stream websites "using youtube-dl to fetch data".
+* Auto check for application updates.
+* Scheduling downloads
+* Re-using existing connection to remote server.
+* Clipboard Monitor.
+* Refresh expired urls.
+* Simple GUI interface with 140 themes available.
+* user can control a lot of options:
+    - selecting Segment size.
+    - Speed limit.
+    - Max. Concurrent downloads.
+    - Max. connections per download.
 
 
+---
+# How to install pyIDM?
+You have 3 options to run pyIDM on your operating system:
+1. **pip**:
+`pip install pyIDM`
+then you can launch application by writing in Terminal / cmd `python -m pyIDM` or just type 'pyIDM' if "python/scripts" is in PATH. 
+
+2. **Binary executables**:
+currently binary build "Standalone zip" is available only for windows [here](https://github.com/pyIDM/pyIDM/releases/latest).
+
+3. **run from github source code**:
+pyIDM is a python app. so, it can run on any platform that can run python, 
+To run from source, you have to have a python installed, "supported python versions is 3.6, 3.7, and 3.8", then download or clone this repository, and run pyIDM.py (it will install the other required python packages automatically if missing)
+if pyIDM failed to install required packages, you should install it manually, refer to "Dependencies" section below.
+
+---
+
+# Dependencies:
+below are the requirements to run from source:
+- Python 3.6+: tested with python 3.6 on windows, and 3.7, 3.8 on linux
+- [ffmpeg](https://www.ffmpeg.org/) : for merging audio with youtube DASH videos "it will be installed automatically on windows"
+
+Required python packages: 
+- [pycurl](http://pycurl.io/docs/latest/index.html): is a Python interface to libcurl / curl as our download engine,
+- [PySimpleGUI](https://github.com/PySimpleGUI/PySimpleGUI): a beautiful gui builder, 
+- [youtube_dl](https://github.com/ytdl-org/youtube-dl): famous youtube downloader, limited use for meta information extraction only but videos are downloaded using pycurl 
+- certifi: required by 'pycurl' for validating the trustworthiness of SSL certificates,
+- mimetypes: converts between a filename or URL and the MIME type associated with the filename extension.,
+- pyperclip: A cross-platform clipboard module for monitoring url copied to clipboard, requires "xclip or xsel to be available on linux"
+- plyer: for systray area notification.
 
 
+** please read notes below
 
+
+pyIDM application will do its best to install missing packages automatically once you run it. or you can install required packages manually using:
+```
+python -m pip install --user --upgrade certifi PySimpleGUI mimetypes pyperclip plyer youtube_dl pycurl
+```
 
 ---
 
@@ -50,42 +80,13 @@ example multi-downloading with speed limit of 20 KB/sec as a test
 
 [view all screenshots with different themes](https://github.com/pyIDM/pyIDM/issues/13)
 
----
-
-# How to run pyIDM?
-You have 2 options to run pyIDM on your operating system:
-1. **Binary executables**:
-currently binary build "Standalone zip" is available only for windows [here](https://github.com/pyIDM/pyIDM/releases/latest).
-
-2. **run from the source**:
-pyIDM is a python app. so, it can run on any platform that can run python, 
-To run from source, you have to have a python installed, "supported python versions is 3.6, 3.7, and 3.8", then download or clone this repository, and run pyIDM.py (it will install the other required python packages automatically if missing)
-additionally you have to install 'ffmpeg' for merging audio with youtube DASH videos
-if pyIDM failed to install required packages, you should install it manually, refer to "Dependencies" section below.
 
 ---
+# Why another download manager?:
+With all free and paid download manager why someone may need another one?
+I believe in one term, **"if the product is free, then you are the product"**, most (if not all) free applications collect data about you, some of them are toxic and plant trojans and spyware in your system, then I decided to make my own download manager based on python with 👉 **"--GUI--"** relies only on open source tools and libraries, nothing hidden, with source code exposed to thousands of programmers, no one can play dirty games here 😉.
 
-# Dependencies:
-below are the requirements to run from source:
-- Python 3.6+: tested with python 3.6 on windows, and 3.7, 3.8 on linux
-- [ffmpeg](https://www.ffmpeg.org/) : for merging audio with youtube DASH videos 
-
-Required python packages: 
-- [pycurl](http://pycurl.io/docs/latest/index.html): is a Python interface to libcurl / curl as our download engine,
-- [PySimpleGUI](https://github.com/PySimpleGUI/PySimpleGUI): a beautiful gui builder, 
-- [youtube_dl](https://github.com/ytdl-org/youtube-dl): famous youtube downloader, limited use for meta information extraction only but videos are downloaded using pycurl 
-- certifi: required by 'pycurl' for validating the trustworthiness of SSL certificates,
-- mimetypes: converts between a filename or URL and the MIME type associated with the filename extension.,
-- pyperclip: A cross-platform clipboard module for monitoring url copied to clipboard, requires "xclip or xsel to be available on linux"
-- plyer: for systray area notification.
-
-** please read notes below
-
-
-pyIDM application will do its best to install missing packages automatically once you run it. or you can install required packages manually using:
-```
-python -m pip install --user --upgrade certifi PySimpleGUI mimetypes pyperclip plyer youtube_dl pycurl
-```
+---
 
 ### note for pycurl: <br>
 for windows users:
@@ -114,10 +115,6 @@ On Linux, this module makes use of the xclip or xsel commands, which should come
 a standalone frozen version prepared by py2exe or cx_freeze is available on: [latest version](https://github.com/pyIDM/pyIDM/releases/latest) <br>
 for all available build versions you can check https://github.com/pyIDM/pyIDM/releases
 
----
-
-### Alternative to IDM (Internet Download Manager):
-The main reason for making this application is the lack of free open source download managers which has multi-connection, high download speed, and resume capability, also can download youtube videos, in same time has a good gui design, to achieve that, decision made to use the high speed library 'pycurl', a threading module for multi-connection, youtube_dl, and an easy and beautiful PySimpleGUI module for designing the gui user interface
 
 ---
 
@@ -154,7 +151,7 @@ the audio will be merged into video file using FFMPEG external application "subp
 <br><br>
 
 # Versions change log:
-change log / what's new now moved to releases page under each release
+ChangeLog.txt is available in source code
 
 
 
