@@ -1,3 +1,5 @@
+[![Downloads](https://pepy.tech/badge/pyidm)](https://pepy.tech/project/pyidm)
+
 pyIDM is a python open source (Internet Download Manager) 
 with multi-connections, high speed engine, 
 it downloads general files with good youtube support (such as downloading videos, whole playlists at once, or just an audio file for a video stream) . <br>
@@ -28,13 +30,20 @@ Developed in Python, based on "pyCuRL/curl", "youtube_dl", and "PySimpleGUI"
 # How to install pyIDM?
 You have 3 options to run pyIDM on your operating system:
 1. **pip**:
-`pip install pyIDM`
-then you can launch application by writing in Terminal / cmd `python -m pyIDM` or just type 'pyIDM' if "python/scripts" is in PATH. 
+
+    `pip install pyIDM`
+    
+    then you can launch application from Terminal by:
+    `python -m pyidm`          note pyidm pkg name in small letters 
+
+    or just
+    `pyIDM`        where pyIDM.py is script located at "python/scripts", if it doesn't work append "python/scripts" folder to PATH. 
 
 2. **Binary executables**:
 currently binary build "Standalone zip" is available only for windows [here](https://github.com/pyIDM/pyIDM/releases/latest).
 
 3. **run from github source code**:
+
 pyIDM is a python app. so, it can run on any platform that can run python, 
 To run from source, you have to have a python installed, "supported python versions is 3.6, 3.7, and 3.8", then download or clone this repository, and run pyIDM.py (it will install the other required python packages automatically if missing)
 if pyIDM failed to install required packages, you should install it manually, refer to "Dependencies" section below.
@@ -60,9 +69,16 @@ Required python packages:
 
 
 pyIDM application will do its best to install missing packages automatically once you run it. or you can install required packages manually using:
+
+```
+pip install -r requirements.txt
+```
+or
 ```
 python -m pip install --user --upgrade certifi PySimpleGUI mimetypes pyperclip plyer youtube_dl pycurl
 ```
+
+
 
 ---
 
