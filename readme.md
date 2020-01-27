@@ -29,21 +29,19 @@ Developed in Python, based on "pyCuRL/curl", "youtube_dl", and "PySimpleGUI"
 ---
 # How to install pyIDM?
 You have 3 options to run pyIDM on your operating system:
-1. **pip**:
-
+1. **pip**:<br>
     `pip install pyIDM`
     
-    then you can launch application from Terminal by:
+    then you can run application from Terminal by:<br>
     `python -m pyidm`          note pyidm pkg name in small letters 
 
-    or just
+    or just<br>
     `pyIDM`        where pyIDM.py is script located at "python/scripts", if it doesn't work append "python/scripts" folder to PATH. 
 
-2. **Binary executables**:
+2. **Binary executables**:<br>
 currently binary build "Standalone zip" is available only for windows [here](https://github.com/pyIDM/pyIDM/releases/latest).
 
-3. **run from github source code**:
-
+3. **run from github source code**:<br>
 pyIDM is a python app. so, it can run on any platform that can run python, 
 To run from source, you have to have a python installed, "supported python versions is 3.6, 3.7, and 3.8", then download or clone this repository, and run pyIDM.py (it will install the other required python packages automatically if missing)
 if pyIDM failed to install required packages, you should install it manually, refer to "Dependencies" section below.
@@ -60,7 +58,6 @@ Required python packages:
 - [PySimpleGUI](https://github.com/PySimpleGUI/PySimpleGUI): a beautiful gui builder, 
 - [youtube_dl](https://github.com/ytdl-org/youtube-dl): famous youtube downloader, limited use for meta information extraction only but videos are downloaded using pycurl 
 - certifi: required by 'pycurl' for validating the trustworthiness of SSL certificates,
-- mimetypes: converts between a filename or URL and the MIME type associated with the filename extension.,
 - pyperclip: A cross-platform clipboard module for monitoring url copied to clipboard, requires "xclip or xsel to be available on linux"
 - plyer: for systray area notification.
 
@@ -75,7 +72,7 @@ pip install -r requirements.txt
 ```
 or
 ```
-python -m pip install --user --upgrade certifi PySimpleGUI mimetypes pyperclip plyer youtube_dl pycurl
+python -m pip install --user --upgrade certifi PySimpleGUI pyperclip plyer youtube_dl pycurl
 ```
 
 
@@ -106,8 +103,13 @@ I believe in one term, **"if the product is free, then you are the product"**, m
 
 ### note for pycurl: <br>
 for windows users:
-normal pip install i.e `python -m pip install pycurl` will fail on windows because you need to build libcurl on your system first which is a headache. 
-your best choice if pip fail is to download a wheel, zip file, or even a windows installer for pycurl from its official download [link](https://dl.bintray.com/pycurl/pycurl/), find the file that match your windows system and python version installed on your system, last checked on 16-12-2019 available files for Python 3.4 through 3.6, still no wheels or installers for 3.7 or 3.8.
+normal pip install i.e `python -m pip install pycurl` might fail on windows because you need to build libcurl on your system first which is a headache. 
+your best choice if pip fail is to download exe file for pycurl from its official download [link](https://dl.bintray.com/pycurl/pycurl/), find the file that match your windows system and python version installed on your system, last checked on 28-01-2020, found available files for almost all Python versions upto version 3.7
+
+example: if you have python 3.6 installed on windows 32bit, you should download "pycurl-7.43.0.2.win32-py3.6.exe" file and install it, 
+another example: if you have python 3.7 running on windows 64 bit, you should choose and download "pycurl-7.43.0.3.win-amd64-py3.7.exe" file
+
+other download options include a wheel, zip file, or even a windows installer
 
 for linux users:
 there is no issues, since most linux distros have curl preinstalled, so pycurl will link with libcurl library to get built with no issues, checked with python versions 3.6, 3.7, and 3.8 working with no problems.
