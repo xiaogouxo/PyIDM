@@ -26,7 +26,9 @@ def check_for_update():
     """download version.py from github, extract latest version number return app latest version"
     """
 
-    source_code_url = 'https://github.com/pyIDM/pyIDM/raw/master/version.py'
+    # do not use, will use get_changelog() instead
+
+    source_code_url = 'https://github.com/pyIDM/pyIDM/blob/master/pyidm/version.py'
     new_release_url = 'https://github.com/pyIDM/pyIDM/releases/download/extra/version.py'
     url = new_release_url if config.FROZEN else source_code_url
 

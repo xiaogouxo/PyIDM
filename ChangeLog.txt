@@ -1,3 +1,6 @@
+2020.01.28:
+- bug fix, update notification message appear even if application is up to date.
+
 2020.01.27:
 - support for other video stream websites
 - check for app. updates.

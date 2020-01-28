@@ -610,7 +610,7 @@ class MainWindow:
             if time.time() - timer2 >= 1:
                 timer2 = time.time()
                 # update notification
-                if self.new_version_description:
+                if self.new_version_available:
                     self.animate_update_note()
                 else:
                     self.window['update_note']('')
@@ -1516,7 +1516,7 @@ class MainWindow:
 
         if info:
             latest_version, version_description = info
-            self.new_version_available = True if latest_version != current_version else False
+            self.new_version_available = latest_version != current_version
 
             # updaet global values
             config.APP_LATEST_VERSION = latest_version
