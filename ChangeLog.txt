@@ -1,5 +1,7 @@
-2020.01.28:
+2020.1.30:
 - bug fix, update notification message appear even if application is up to date.
+- normalize version number to match pypi release
+- change symbol infront of stream names
 
 2020.01.27:
 - support for other video stream websites
