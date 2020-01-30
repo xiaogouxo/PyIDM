@@ -199,21 +199,14 @@ class Stream:
 
         return self._size
 
-    # @property
-    # def description(self, include_size=False):
-    #     if include_size:
-    #         r = f'      ⮞  {self.extension} - {self.quality} - {size_format(self.size)}'
-    #     else:
-    #         r = f'    ⮞ {self.extension} - {self.quality}'
-    #     return r
 
-    @property
+    @property 
     def name(self):
-        return f'      ⮞  {self.extension} - {self.quality} - {size_format(self.size)}'
+        return f'      ›  {self.extension} - {self.quality} - {size_format(self.size)}'  # ¤ » ›
 
     @property
     def raw_name(self):
-        return f'      ⮞  {self.extension} - {self.quality}'
+        return f'      ›  {self.extension} - {self.quality}'
 
     @property
     def quality(self):
@@ -226,12 +219,6 @@ class Stream:
             return 0
 
     def __repr__(self, include_size=True):
-        # size = f'- {size_format(self.size)}' if include_size else ''
-        # if self.mediatype == 'audio':
-        #     r = f'{self.mediatype}: {self.extension} - abr {self.abr} {size}'
-        # else:
-        #     r = f'{self.mediatype}: {self.extension} - {self.height}p - {self.resolution} {size}'
-        # return r
         return self.name
 
     @property
