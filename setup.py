@@ -6,19 +6,25 @@
     :copyright: (c) 2019-2020 by Mahmoud Elshahat.
     :license: GNU LGPLv3, see LICENSE for more details.
 """
-import setuptools, os
+import setuptools, os, sys
 
-# Read version from version.py file
-with open(os.path.join('pyidm', 'version.py')) as version_file:
-    __version__ = version_file.read().split('=')[-1].strip().replace("'", '')
+# get version
+version = {}
+with open("pyidm/version.py") as f:
+    exec(f.read(), version) # later on we use: version['__version__']
 
+# get long description from readme
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
+# get requirements
+with open("requirements.txt", "r") as fh:
+	requirements = fh.readlines()
+
 setuptools.setup(
     name="pyIDM",
-    version=__version__,
-    scripts=['pyIDM.py'],
+    version=version['__version__'],
+    scripts=[], # ['pyIDM.py'], no need since added an entry_points
     author="Mahmoud Elshahat",
     author_email="mahmoud_elshahhat@yahoo.com",
     description="download manager",
@@ -33,9 +39,19 @@ setuptools.setup(
     'Releases': 'https://github.com/pyIDM/pyIDM/releases',
     'Screenshots': 'https://github.com/pyIDM/pyIDM/issues/13'
     },
-    install_requires=['PySimpleGUI', 'pyperclip', 'plyer', 'certifi', 'youtube_dl', 'pycurl'], #, 'mimetypes'
-    # py_modules=['src/' + x for x in ['about', 'brain', 'config', 'downloaditem', 'gui', 'main', 'pyIDM', 'setting', 'test', 'update', 'utils', 'VERSION', 'version', 'video', 'worker']],
-    # data_files=[('my_data', ['data/data_file'])], # could be used to install desktop shortcut 
+    install_requires= requirements, #['PySimpleGUI', 'pyperclip', 'plyer', 'certifi', 'youtube_dl', 'pycurl'], 
+    # py_modules=[],
+    # data_files=[(os.path.join(sys.prefix, 'Lib/site-packages/pyidm'),['requirements.txt'])],
+    # package_data={
+    #     # can include only files inside the package:
+    #     "": ["*.txt"]
+    # },
+    # include_package_data=True,  # if plan to use MANIFEST.in
+    entry_points={
+    	# our executable "exe file on windows for example"
+        'console_scripts': [
+            'pyidm = pyidm.pyIDM:main',
+        ]},
     classifiers=[
         "Programming Language :: Python :: 3",
         'Programming Language :: Python :: 3.6',
