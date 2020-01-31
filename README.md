@@ -33,10 +33,10 @@ You have 3 options to run pyIDM on your operating system:
     `pip install pyIDM`
     
     then you can run application from Terminal by:<br>
-    `python -m pyidm`          note pyidm pkg name in small letters 
+    `python -m pyidm`          note pyidm name in small letters 
 
     or just<br>
-    `pyIDM`        where pyIDM.py is script located at "python/scripts", if it doesn't work append "python/scripts" folder to PATH. 
+    `pyidm`        an exexutable "i.e. pyidm.exe on windows" will be located at "python/scripts", if it doesn't work append "python/scripts" folder to PATH. 
 
 2. **Binary executables**:<br>
 currently binary build "Standalone zip" is available only for windows [here](https://github.com/pyIDM/pyIDM/releases/latest).
