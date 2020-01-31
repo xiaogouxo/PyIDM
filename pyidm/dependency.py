@@ -17,16 +17,29 @@ import importlib.util
 from . import config
 # import config
 
-# read dependencies from requirement.txt
-path = os.path.dirname(config.current_directory)
-file_name = os.path.join(path, 'requirements.txt')
+# read dependencies from requirement.txt, 
+current_directory = config.current_directory
+parent_directory = os.path.dirname(config.current_directory)
+
+# first look for the file in current directory, if not look for it in parent directory
+if 'requirements.txt' in os.listdir(current_directory):
+    file_name = os.path.join(current_directory, 'requirements.txt')
+elif 'requirements.txt' in os.listdir(parent_directory):
+    file_name = os.path.join(parent_directory, 'requirements.txt')
+else:
+    file_name = None
+
+# print('requirements.txt located at: ', file_name)
+
 
 try:
     with open(file_name) as fh:
     	ext_pkgs = [x.strip() for x in fh.readlines()]
 except Exception as e:
-    print('error loading requirements.txt', e)
-    print('falling back to requirements listed in dependency.py')
+    # no need to print output as an error since requirements.txt won't be available in pypi release and requirements 
+    # will be installed automatically 
+    # print('error loading requirements.txt', e)
+    # print('falling back to requirements listed in dependency.py')
     ext_pkgs = ['PySimpleGUI', 'pyperclip', 'plyer', 'certifi', 'youtube_dl', 'pycurl']
 
 # list of dependency
