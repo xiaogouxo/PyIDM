@@ -175,7 +175,7 @@ class DownloadItem:
 
             # get file name
             name = ''
-            if 'content-disposition' in headers:  # example content-disposition : attachment; filename=ffmpeg.zip
+            if 'content-disposition' in headers and len(headers['content-disposition'].split(';')) > 1:  # example content-disposition : attachment; filename=ffmpeg.zip
                 name = headers['content-disposition'].split(';')[1]
                 name = name.split('=')[1].strip()
 
