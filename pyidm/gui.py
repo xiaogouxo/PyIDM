@@ -391,7 +391,7 @@ class MainWindow:
                 except Exception as e:
                     log("MainWindow.run:if event == 'table': ", e)
 
-            elif event in ('table_double_clicked', 'table_enter_key', 'Open File', 'Watch while downloading'):
+            elif event in ('table_double_clicked', 'table_enter_key', 'Open File', 'Watch while downloading') and self.selected_d:
                 if self.selected_d.status == Status.completed:
                     open_file(self.selected_d.full_name)
                 else:
