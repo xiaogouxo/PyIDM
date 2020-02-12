@@ -7,6 +7,8 @@
     :copyright: (c) 2019-2020 by Mahmoud Elshahat.
     :license: GNU LGPLv3, see LICENSE for more details.
 """
+# main module executed when run command
+# python -m pyidm
 
 import sys
 
