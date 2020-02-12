@@ -33,7 +33,7 @@ APP_LATEST_VERSION = None  # get value from update module
 ytdl_VERSION = 'xxx'  # will be loaded once youtube-dl get imported
 ytdl_LATEST_VERSION = None  # get value from update module
 
-TEST_MODE = True
+TEST_MODE = False
 FROZEN = getattr(sys, "frozen", False)  # check if app is being compiled by cx_freeze
 
 # -------------------------------------------------------------------------------------
