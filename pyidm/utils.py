@@ -41,34 +41,6 @@ def handle_exceptions(error):
         log(error)
 
 
-def append_parts(segment_names=None, src_folder=None, target_file=None, target_folder=None):
-    """expect list of segment_names like ['100-30000', '50000-80000',...]"""
-
-    target_file = os.path.join(target_folder, target_file)
-
-    try:
-        with open(target_file, 'rb+') as target:
-            for segment_name in segment_names[:]:
-                start = int(segment_name.split('-')[0])
-                segment_file = os.path.join(src_folder, segment_name)
-                with open(segment_file, 'rb') as segment:
-                    # no need to fill zeros "if start > size" since seek/write do it automatically
-                    target.seek(start)
-
-                    # write part file
-                    target.write(segment.read())
-
-                    # remove part name from list
-                    segment_names.remove(segment_name)
-
-    except Exception as e:
-        log('append part:> ', repr(e))
-
-    finally:
-        # it will return the failed segments, or an empty list in case of success
-        return segment_names
-
-
 def get_headers(url, verbose=False):
     """return dictionary of headers"""
     curl_headers = {}
@@ -88,7 +60,8 @@ def get_headers(url, verbose=False):
         name = name.strip()
         value = value.strip()
         curl_headers[name] = value
-        if verbose: print(name, ':', value)
+        if verbose:
+            print(name, ':', value)
 
     def write_callback(data):
         return -1  # send terminate flag
@@ -183,7 +156,7 @@ def size_format(size, tail=''):
     # 1 GB = 1024 * 1024 * 1024 = 1_073_741_824 bytes
 
     try:
-        if size == 0: return '---'
+        if size == 0: return '...'
         """take size in num of byte and return representation string"""
         if size < 1024:  # less than KB
             s = f'{round(size)} bytes'
@@ -201,7 +174,7 @@ def size_format(size, tail=''):
 
 def time_format(t, tail=''):
     if t == -1:
-        return '---'
+        return '...'
 
     try:
         if t <= 60:
@@ -269,7 +242,7 @@ def size_splitter(size, part_size):
 
     # decide num of parts
     span = part_size if part_size <= size else size
-    print(f'span={span}, part size = {part_size}')
+    # print(f'span={span}, part size = {part_size}')
     parts = max(size // span, 1)  # will be one part if size < span
 
     x = 0
@@ -284,46 +257,77 @@ def size_splitter(size, part_size):
     return result
 
 
-def delete_folder(folder):
+def delete_folder(folder, verbose=False):
     try:
         shutil.rmtree(folder)
+        if verbose:
+            log('done deleting folder:', folder)
+        return True
     except Exception as e:
-        log(e)
+        if verbose:
+            log('delete_folder()> ', e)
+        return False
+
+
+def delete_file(file, verbose=False):
+    try:
+        os.unlink(file)
+        if verbose:
+            log('done deleting file:', file)
+        return True
+    except Exception as e:
+        if verbose:
+            log('delete_file()> ', e)
+        return False
+
+
+def rename_file(oldname=None, newname=None):
+    try:
+        os.rename(oldname, newname)
+        log('done renaming file:', oldname, '... to:', newname)
+        return True
+    except Exception as e:
+        log('rename_file()> ', e)
+        return False
 
 
 def get_seg_size(seg):
     # calculate segment size from segment name i.e. 200-1000  gives 801 byte
-    a, b = int(seg.split('-')[0]), int(seg.split('-')[1])
-    size = b - a + 1 if b > 0 else 0
-    return size
+    try:
+        a, b = int(seg.split('-')[0]), int(seg.split('-')[1])
+        size = b - a + 1 if b > 0 else 0
+        return size
+    except:
+        return 0
 
 
+def run_command(cmd, verbose=True, shell=False, hide_window=False):
+    if verbose:
+        log('running command:', cmd)
 
-
-
-def run_command(cmd, verbose=True, shell=False):
-    if verbose: log('running command:', cmd)
     error, output = True, f'error running command {cmd}'
     try:
         if shell:
             r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
         else:
             cmd = shlex.split(cmd)  # , posix=False)
+            # print('shlex cmd: ', cmd)
 
-            if config.operating_system == 'Windows':
+            if hide_window and config.operating_system == 'Windows':
                 info = subprocess.STARTUPINFO()
                 info.dwFlags = subprocess.STARTF_USESHOWWINDOW
                 info.wShowWindow = subprocess.SW_HIDE
+                r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, startupinfo=info)
             else:
-                info = None
-            r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, startupinfo=info)
+                r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
         error = r.returncode != 0  # True or False
         output = r.stdout.decode('utf-8')
-        if verbose: log(f"cmd: '{' '.join(cmd)}' - output: '{output.strip()}'")
+        if verbose:
+            log('output: ', output.strip())
 
     except Exception as e:
-        log('error running command: ', ' '.join(cmd), e)
+        log('error running command: ', cmd, e)
         pass
 
     return error, output
@@ -375,7 +379,7 @@ def sort_dictionary(dictionary, descending=True):
 
 def popup(msg, title=''):
     """Send message to main window to spawn a popup"""
-    param = (f'title={title}', msg)
+    param = dict(title=title, msg=msg)
     config.main_window_q.put(('popup', param))
 
 
@@ -497,9 +501,48 @@ def clipboard_write(value):
     clipboard.copy(value)
 
 
+def compare_versions(x, y):
+    """it will compare 2 version numbers and return the higher value
+    example compare_versions('2020.10.6', '2020.3.7') will return '2020.10.6'
+    return None if 2 versions are equal
+    """
+    try:
+        a = [int(x) for x in x.split('.')[:3]]
+        b = [int(x) for x in y.split('.')[:3]]
+
+        for i in range(3):
+            if a[i] > b[i]:
+                return x
+            elif a[i] < b[i]:
+                return y
+    except:
+        pass
+
+    return None
+
+
+def load_json(file=None):
+    try:
+        with open(file, 'r') as f:
+            data = json.load(f)
+        return data
+    except Exception as e:
+        log('load_json() > error: ', e)
+        return None
+
+
+def save_json(file=None, data=None):
+    try:
+        with open(file, 'w') as f:
+            json.dump(data, f)
+    except Exception as e:
+        log('save_json() > error: ', e)
+
+
 __all__ = [
-    'notify', 'handle_exceptions', 'append_parts', 'get_headers', 'download', 'size_format', 'time_format', 'log',
+    'notify', 'handle_exceptions', 'get_headers', 'download', 'size_format', 'time_format', 'log',
     'validate_file_name', 'size_splitter', 'delete_folder', 'get_seg_size',
-    'run_command', 'print_object', 'update_object', 'truncate', 'sort_dictionary', 'popup', 
-    'translate_server_code', 'validate_url', 'open_file', 'clipboard_read', 'clipboard_write'
+    'run_command', 'print_object', 'update_object', 'truncate', 'sort_dictionary', 'popup', 'compare_versions',
+    'translate_server_code', 'validate_url', 'open_file', 'clipboard_read', 'clipboard_write', 'delete_file',
+    'rename_file', 'load_json', 'save_json',
 ]

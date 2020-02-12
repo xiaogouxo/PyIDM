@@ -84,16 +84,15 @@ def save_d_list(d_list):
     try:
         data = []
         for d in d_list:
-            d.q = None
-            data.append(d.__dict__)  # append object attributes dictionary to data list
+            data.append(d.get_persistent_properties())  # append object attributes dictionary to data list
 
         file = os.path.join(sett_folder, 'downloads.cfg')
 
         with open(file, 'w') as f:
             try:
                 json.dump(data, f)
-            except:
-                pass
+            except Exception as e:
+                print('error save d_list:', e)
         log('list saved')
     except Exception as e:
         handle_exceptions(e)
@@ -116,7 +115,7 @@ def load_setting():
             setting = {}
 
         # download folder
-        folder = setting.get('folder', None)
+        folder = setting.get('download_folder', None)
         if folder and os.path.isdir(folder):
             config.download_folder = folder
         else:

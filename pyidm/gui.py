@@ -26,6 +26,7 @@ from .video import Video, check_ffmpeg, download_ffmpeg, unzip_ffmpeg, ydl_opts
 from .about import about_notes
 from .downloaditem import DownloadItem
 
+# todo: this module needs some clean up
 
 # gui setting
 config.all_themes = sg.ListOfLookAndFeelValues()
@@ -69,7 +70,7 @@ class MainWindow:
         self.disabled = True  # for download button
 
         # download list
-        self.d_headers = ['i', 'num', 'name', 'progress', 'speed', 'time_left', 'size', 'downloaded', 'status',
+        self.d_headers = ['i', 'num', 'name', 'progress', 'speed', 'time_left', 'total_size', 'downloaded', 'status',
                           'resumable', 'folder', 'max_connections', 'live_connections', 'remaining_parts']
         self.d_list = d_list  # list of DownloadItem() objects
         self.selected_row_num = None
@@ -92,7 +93,7 @@ class MainWindow:
         self.start_window()
 
         self.reset()
-        self.disable_video_controls()
+        self.reset_video_controls()
 
     def read_q(self):
         # read incoming messages from queue
@@ -125,7 +126,7 @@ class MainWindow:
                 self.start_download(*v)
 
             elif k == 'popup':  # can receive download requests
-                sg.popup(*v)
+                sg.popup(v['msg'], title=v['title'])
 
     # region gui design
     def create_window(self):
@@ -161,12 +162,12 @@ class MainWindow:
             [sg.Text('File name:'), sg.Input('', size=(65, 1), key='name', enable_events=True)],
             [sg.T('File size: '), sg.T('-' * 30, key='size'), sg.T('Type:'), sg.T('-' * 35, key='type'),
              sg.T('Resumable:'), sg.T('-----', key='resumable')],
-            [sg.Text('Save To:  '), sg.Input(self.d.folder, size=(55, 1), key='folder', enable_events=True),
-             sg.FolderBrowse(key='browse')],  #initial_folder=self.d.folder,
+            [sg.Text('Save To:  '), sg.Input(config.download_folder, size=(55, 1), key='folder', enable_events=True),
+             sg.FolderBrowse(key='browse')],
 
             # download button
             [sg.Column([[sg.Button('Download', font='Helvetica 14', border_width=1)]], size=(120, 40),
-                       justification='center')],  # sg.T(' ', size=(29, 1), font='Helvetica 12'),
+                       justification='center')],
 
         ]
 
@@ -197,7 +198,7 @@ class MainWindow:
                            sg.Combo(values=config.all_themes, default_value=config.current_theme, size=(15, 1),
                                     enable_events=True, key='themes'), sg.Text(f' Total: {len(config.all_themes)} Themes')],
                           [sg.Checkbox('Speed Limit:', key= 'speed_limit_switch', change_submits=True,
-                                       tooltip='accepted format: numbers+[k, kb, m, mb] small or capital, examples: 50 k, 10kb, 2m, 3mb, 20, 10MB '),
+                                       tooltip='examples: 50 k, 10kb, 2m, 3mb, 20, 10MB '),
                            sg.Input('', size=(10, 1), key='speed_limit', disabled=True, enable_events=True),
                            sg.T('0', size=(30, 1), key='current_speed_limit')],
                           [sg.Checkbox('Monitor copied urls in clipboard', default=config.monitor_clipboard, key='monitor',
@@ -210,8 +211,8 @@ class MainWindow:
                           [sg.Text('Max connections per download:'),
                            sg.Combo(values=[x for x in range(1, 101)], size=(5, 1), enable_events=True,
                                     key='max_connections', default_value=config.max_connections)],
-                          [sg.Text('file part size:'), sg.Input(default_text=1024, size=(6, 1),
-                                                                enable_events=True, key='part_size'),
+                          [sg.Text('Segment size:'), sg.Input(default_text=config.DEFAULT_SEGMENT_SIZE//1024, size=(6, 1),
+                                                                enable_events=True, key='segment_size'),
                            sg.Text('KBytes   *affects new downloads only')],
                           [sg.T('')],
                           [sg.Checkbox('Check for update on startup', default=config.check_for_update_on_startup,
@@ -285,6 +286,8 @@ class MainWindow:
         try:
             self.selected_row_num = int(row_num)
             self.selected_d = self.d_list[self.selected_row_num]
+
+            # update text widget that display selected row number
             self.window['selected_row_num']('---' if row_num is None else row_num + 1)
 
         except Exception as e:
@@ -302,7 +305,7 @@ class MainWindow:
         try:
             if self.window['name'].get() != self.d.name:  # it will prevent cursor jump to end when modifying name
                 self.window['name'](self.d.name)
-            self.window.Element('size')(size_format(self.d.size))
+            self.window.Element('size')(size_format(self.d.total_size))
             self.window.Element('type')(self.d.type)
             self.window.Element('resumable')('Yes' if self.d.resumable else 'No')
 
@@ -330,7 +333,8 @@ class MainWindow:
             self.window['pyIDM_version_note'](f'pyIDM version = {config.APP_VERSION}, Latest version = {config.APP_LATEST_VERSION}')
 
         except Exception as e:
-            print('MainWindow.update_gui() error:', e)
+            # print('MainWindow.update_gui() error:', e)
+            raise e
 
     def enable(self):
         self.disabled = False
@@ -339,6 +343,7 @@ class MainWindow:
         self.disabled = True
 
     def set_status(self, text):
+        """update text under url input widget"""
         try:
             self.window.Element('status').Update(text)
         except:
@@ -373,9 +378,9 @@ class MainWindow:
 
             elif event == 'folder':
                 if values['folder']:
-                    self.d.folder = values['folder']
+                    config.download_folder = os.path.abspath(values['folder'])
                 else:  # in case of empty entries
-                    self.window.Element('folder').Update(self.d.folder)
+                    self.window.Element('folder').Update(config.download_folder)
 
             elif event == 'name':
                 self.d.name = validate_file_name(values['name'])
@@ -389,13 +394,15 @@ class MainWindow:
                     row_num = values['table'][0]
                     self.select_row(row_num)
                 except Exception as e:
-                    log("MainWindow.run:if event == 'table': ", e)
+                    # log("MainWindow.run:if event == 'table': ", e)
+                    pass
 
-            elif event in ('table_double_clicked', 'table_enter_key', 'Open File', 'Watch while downloading') and self.selected_d:
+            elif event in ('table_double_clicked', 'table_enter_key', 'Open File', 'Watch while downloading') and \
+                    self.selected_d:
                 if self.selected_d.status == Status.completed:
-                    open_file(self.selected_d.full_name)
+                    open_file(self.selected_d.target_file)
                 else:
-                    open_file(self.selected_d.full_temp_name)
+                    open_file(self.selected_d.target_file)
 
             # table right click menu event
             elif event == 'Open File Location':
@@ -417,10 +424,10 @@ class MainWindow:
 
                             msg += f'{self.d_headers[i]}: {info[i]} \n'
                         msg += f'webpage url: {self.selected_d.url} \n\n'
-                        msg += f'playlist url: {self.selected_d.pl_url} \n'
+                        msg += f'playlist url: {self.selected_d.playlist_url} \n'
                         sg.popup_scrolled(msg, title='File properties')
-                except:
-                    pass
+                except Exception as e:
+                    log('gui> properties>', e)
 
             elif event == '⏳ Schedule download':
                 response = self.ask_for_sched_time(msg=self.selected_d.name)
@@ -497,10 +504,9 @@ class MainWindow:
 
                 if switch:
                     self.window['speed_limit'](disabled=False)
-                    event == 'speed_limit'
                 else:
                     config.speed_limit = 0
-                    self.window['speed_limit'](disabled=True)
+                    self.window['speed_limit']('', disabled=True) # clear and disable
 
             elif event == 'speed_limit':
                 sl = values['speed_limit'].replace(' ', '')  # if values['speed_limit'] else 0
@@ -535,7 +541,9 @@ class MainWindow:
 
             elif event == 'max_connections':
                 mc = int(values['max_connections'])
-                if mc > 0: self.max_connections = mc
+                if mc > 0:
+                    # self.max_connections = mc
+                    config.max_connections = mc
 
             elif event == 'monitor':
                 global monitor_clipboard
@@ -545,9 +553,10 @@ class MainWindow:
             elif event == 'show_download_window':
                 config.show_download_window = values['show_download_window']
 
-            elif event == 'part_size':
+            elif event == 'segment_size':
                 try:
-                    self.d.part_size = int(values['part_size']) * 1024
+                    config.segment_size = int(values['segment_size']) * 1024  # convert from kb to bytes
+                    self.d.segment_size = config.segment_size
                 except:
                     pass
 
@@ -572,7 +581,7 @@ class MainWindow:
                 sg.PopupNoButtons(about_notes, title=f'About {config.APP_NAME} DM', non_blocking=True)
 
             # Run every n seconds
-            if time.time() - timer1 >= 1:
+            if time.time() - timer1 >= 0.5:
                 timer1 = time.time()
 
                 # gui update
@@ -652,27 +661,32 @@ class MainWindow:
     # region download
     def start_download(self, d, silent=False):
         """Receive a DownloadItem and pass it to brain
-        :param bool silent: True or False, show a download window
+        :param bool silent: True or False, show a warninig dialogues
         :param DownloadItem d: DownloadItem() object"""
-        # callback = post_download_callback
+
         if d is None:
             return
 
-        # check for ffmpeg availability in case this is a video only stream
-        if d.audio_url:
+        # check for ffmpeg availability in case this is a dash video
+        if d.type == 'dash':
             log('Dash video detected')
             self.ffmpeg_check()
 
-        # validate destination folder for existence and permission
+        # validate destination folder for existence and permissions
+        # in case of missing download folder value will fallback to current download folder
+        folder = d.folder or config.download_folder
         try:
-            with open(os.path.join(d.folder, 'test'), 'w') as test_file:
+            with open(os.path.join(folder, 'test'), 'w') as test_file:
                 test_file.write('0')
-            os.unlink(os.path.join(d.folder, 'test'))
+            os.unlink(os.path.join(folder, 'test'))
+
+            # update download item
+            d.folder = folder
         except FileNotFoundError:
-            sg.Popup(f'destination folder {d.folder} does not exist', title='folder error')
+            sg.Popup(f'destination folder {folder} does not exist', title='folder error')
             return 'error'
         except PermissionError:
-            sg.Popup(f"you don't have enough permission for destination folder {d.folder}", title='folder error')
+            sg.Popup(f"you don't have enough permission for destination folder {folder}", title='folder error')
             return 'error'
         except Exception as e:
             sg.Popup(f'problem in destination folder {repr(e)}', title='folder error')
@@ -682,140 +696,119 @@ class MainWindow:
         if d.name == '':
             sg.popup("File name can't be empty!!", title='invalid file name!!')
             return 'error'
-        # elif d.name.rsplit('.', 1) != d.extension:  # no extension yet for download item d
-        #     r = sg.popup_ok_cancel(f"Warning, File name doesn't have correct file extension: {d.type} \nContinue?", title=Warning)
-        #     if r != 'Ok':
-        #         return 'error'
-
-        d.max_connections = config.max_connections if d.resumable else 1
-        if silent is None:
-            silent = not config.show_download_window
 
         # check if file with the same name exist in destination
-        if os.path.isfile(os.path.join(d.folder, d.name)):
+        if os.path.isfile(d.target_file):
             #  show dialogue
-            msg = 'File with the same name already exist in ' + self.d.folder + '\n Do you want to overwrite file?'
+            msg = 'File with the same name already exist in ' + d.folder + '\n Do you want to overwrite file?'
             response = sg.PopupYesNo(msg)
 
             if response != 'Yes':
                 log('Download cancelled by user')
                 return 'cancelled'
             else:
-                log('deleting existing file:', d.full_name)
-                try:
-                    os.unlink(d.full_name)
-                    os.unlink(d.full_audio_name)
-                except:
-                    pass
+                delete_file(d.target_file)
 
-        # check if file already existed in download list
-        i = self.file_in_d_list(d.name, d.folder)
-        if i is not None:  # file already exist in d_list
-            _d = self.d_list[i]
-            log(f'start download fn> file exist in d_list, num {_d.num}')
 
-            # if item in active downloads, quit or if status is downloading, quit
-            if _d.status == Status.downloading:
-                log('start download fn> file is being downloaded already, abort mission, taking no action')
-                return
+# ------------------------------------------------------------------
+        # search current list for previous item with same name, folder
+        found_index = self.file_in_d_list(d.target_file)
+        if found_index is not None:  # might be zero, file already exist in d_list
+            log('download item', d.num, 'already in list, check resume availability')
+            # get download item from the list
+            d_from_list = self.d_list[found_index]
+            d.id = d_from_list.id
+
+            # default
+            response = 'Resume'
+
+            if not silent:
+                #  show dialogue
+                msg = f'File with the same name: \n{self.d.name},\n already exist in download list\n' \
+                      'Do you want to resume this file?\n' \
+                      'Resume ==> continue if it has been partially downloaded ... \n' \
+                      'Overwrite ==> delete old downloads and overwrite existing item... \n' \
+                      'note: "if you need fresh download, you have to change file name \n' \
+                      'or target folder or delete same entry from download list'
+                # response = sg.PopupYesNo(msg)
+                window = sg.Window(title='', layout=[[sg.T(msg)], [sg.B('Resume'), sg.B('Overwrite'), sg.B('Cancel')]])
+                response, _ = window()
+                window.close()
+
+            #
+            if response == 'Resume':
+                print('resuming')
+
+                # to resume, size must match, otherwise it will just overwrite
+                if d.size == d_from_list.size:
+                    log('resume is possible')
+                    # get the same segment size
+                    d.segment_size = d_from_list.segment_size
+                else:
+                    log('file: ', d.name, 'has different size and will be downloaded from beginning')
+                    d.delete_tempfiles()
+
+            elif response == 'Overwrite':
+                print('overwrite')
+                d.delete_tempfiles()
+
             else:
-                # get some info from old one
-                d.id = _d.id
-                d.part_size = d.segment_size
+                log('Download cancelled by user')
+                return
 
-                self.d_list[i] = d
+
+# ------------------------------------------------------------------
 
         else:  # new file
+            print('new file')
             # generate unique id number for each download
             d.id = len(self.d_list)
 
             # add to download list
             self.d_list.append(d)
 
-        # if max concurrent downloads exceeded download job will be added to pending deque
+        # if max concurrent downloads exceeded, this download job will be added to pending queue
         if len(config.active_downloads) >= config.max_concurrent_downloads:
             d.status = Status.pending
             self.pending.append(d)
             return
 
         # start downloading
-        if not silent:
+        if config.show_download_window and not silent:
             # create download window
             self.download_windows[d.id] = DownloadWindow(d)
 
         # create and start brain in a separate thread
-        Thread(target=brain, daemon=True, args=(d, config.speed_limit)).start()
+        Thread(target=brain, daemon=True, args=(d,)).start()
 
     def stop_all_downloads(self):
         # change status of pending items to cancelled
-        for i, d in enumerate(self.d_list):
-            if d.status == Status.pending:
-                d.status = Status.cancelled
-
-        # send cancelled status for all queues
-        for i in config.active_downloads:
-            d = self.d_list[i]
-            d.q.brain.put(('status', Status.cancelled))
+        for d in self.d_list:
+            d.status = Status.cancelled
 
         self.pending.clear()
 
     def resume_all_downloads(self):
         # change status of all non completed items to pending
-        for i, d in enumerate(self.d_list):
+        for d in self.d_list:
             if d.status == Status.cancelled:
                 self.start_download(d, silent=True)
 
-    def file_in_d_list(self, name, folder):
+    def file_in_d_list(self, target_file):
         for i, d in enumerate(self.d_list):
-            if name == d.name and folder == d.folder:
+            if d.target_file == target_file:
                 return i
         return None
 
     def download_btn(self):
-        d = copy.copy(self.d)
 
         if self.disabled:
             sg.popup_ok('Nothing to download', 'it might be a web page or invalid url link',
                         'check your link or click "Retry"')
             return
 
-        # search current list for previous item with same name, folder
-        found_index = self.file_in_d_list(self.d.name, self.d.folder)
-        if found_index is not None: # might be zero
-            #  show dialogue
-            msg = f'File with the same name: \n{self.d.name},\n already exist in download list\n' \
-                  'Do you want to resume this file?\n' \
-                  'Resume ==> continue if it has been partially downloaded ... \n' \
-                  'Overwrite ==> delete old downloads and overwrite existing item... \n' \
-                  'note: "if you need fresh download, you have to change file name \n' \
-                  'or target folder or delete same entry from download list'
-            # response = sg.PopupYesNo(msg)
-            window = sg.Window(title='', layout=[[sg.T(msg)], [sg.B('Resume'), sg.B('Overwrite'), sg.B('Cancel')]])
-            response, _ = window()
-            window.close()
-            if response == 'Resume':
-                eff_url = self.d.eff_url
-                d = self.d_list[found_index]
-                d.eff_url = eff_url
-
-            elif response == 'Overwrite':
-                _d = self.d_list[found_index]
-
-                # delete temp folder on disk
-                delete_folder(_d.temp_folder)
-                os.unlink(_d.temp_file)
-
-                d.id = _d.id
-
-            else:
-                log('Download cancelled by user')
-                return
-
-        # if max concurrent downloads exceeded download job will be added to pending deque
-        if len(config.active_downloads) >= config.max_concurrent_downloads:
-            #  show dialogue
-            msg = 'File has been added to pending list'
-            sg.Popup(msg)
+        d = copy.copy(self.d)
+        d.folder = config.download_folder
 
         r = self.start_download(d)
 
@@ -829,7 +822,7 @@ class MainWindow:
     @staticmethod
     def format_cell_data(k, v):
         """take key, value and prepare it for display in cell"""
-        if k in ['size', 'downloaded']:
+        if k in ['size', 'total_size', 'downloaded']:
             v = size_format(v)
         elif k == 'speed':
             v = size_format(v, '/s')
@@ -837,7 +830,7 @@ class MainWindow:
             v = f'{v}%' if v else '---'
         elif k == 'time_left':
             v = time_format(v)
-        elif k == 'resume':
+        elif k == 'resumable':
             v = 'yes' if v else 'no'
         elif k == 'name':
             v = validate_file_name(v)
@@ -848,28 +841,28 @@ class MainWindow:
         if self.selected_row_num is None:
             return
 
-        if self.selected_d.status == Status.completed:
-            response = sg.PopupYesNo('File already completed before \ndo you want to re-download again?',
-                                     title='Warning!!!')
-            if response == 'No':
-                return
+        # print_object(self.selected_d)
 
-        self.start_download(self.selected_d)
+        self.start_download(self.selected_d, silent=True)
 
     def cancel_btn(self):
         if self.selected_row_num is None:
             return
+
         d = self.selected_d
         if d.status == Status.pending:
             self.d_list[d.id].status = Status.cancelled
-            config.active_downloads.pop(d.id)
-        elif d.status == Status.downloading and d.q:
-            d.q.brain.put(('status', Status.cancelled))
+            self.pending.pop(d.id)
+
+        elif d.status == Status.downloading:
+            d.status = Status.cancelled
+            config.active_downloads.remove(d.id)
 
     def delete_btn(self):
         if self.selected_row_num is None:
             return
 
+        # todo: should be able to delete items anytime by making download item id unique and number changeable
         # abort if there is items in progress or paused
         if config.active_downloads:
             msg = "Can't delete items while downloading.\nStop or cancel all downloads first!"
@@ -898,8 +891,7 @@ class MainWindow:
                 if self.selected_row_num > last_num: self.selected_row_num = last_num
 
             # delete temp folder on disk
-            delete_folder(d.temp_folder)
-            os.unlink(d.temp_file)
+            d.delete_tempfiles()
 
         except:
             pass
@@ -927,13 +919,11 @@ class MainWindow:
 
         # pop item
         n = len(self.d_list)
+
+        # delete temp files
         for i in range(n):
-            try:  # to delete temp folder on disk
-                d = self.d_list[i]
-                delete_folder(d.temp_folder)
-                os.unlink(d.temp_file)
-            except Exception as e:
-                handle_exceptions(e)
+            d = self.d_list[i]
+            d.delete_tempfiles()
 
         self.d_list.clear()
 
@@ -945,18 +935,19 @@ class MainWindow:
 
         try:
             folder = os.path.abspath(d.folder)
-            file = os.path.join(folder, d.name)
+            file = d.target_file
 
-            if os.name == 'nt':
-                # windows
-                if d.name not in os.listdir(folder):
+            if config.operating_system == 'Windows':
+                if not os.path.isfile(file):
                     os.startfile(folder)
                 else:
-                    param = r'explorer /select, ' + '"' + file + '"'
-                    subprocess.Popen(param)
+                    cmd = f'explorer /select, "{file}"'
+                    run_command(cmd)
             else:
                 # linux
-                os.system('xdg-open "%s"' % folder)
+                cmd = f'xdg-open "folder"'
+                # os.system(cmd)
+                run_command(cmd)
         except Exception as e:
             handle_exceptions(e)
 
@@ -965,18 +956,13 @@ class MainWindow:
             return
 
         d = self.selected_d
-
-        # update current d
-        self.d.size = d.size
-        self.d.segment_size = d.segment_size
-        self.d.folder = d.folder
+        config.download_folder = d.folder
 
         self.window['url'](d.url)
         self.url_text_change()
 
-        self.window['folder'](self.d.folder)
+        self.window['folder'](config.download_folder)
         self.select_tab('Main')
-
 
     # endregion
 
@@ -984,59 +970,61 @@ class MainWindow:
 
     @property
     def m_bar(self):
+        """playlist progress bar"""
         return self._m_bar
 
     @m_bar.setter
     def m_bar(self, value):
+        """playlist progress bar"""
         self._m_bar = value if value <= 100 else 100
         try:
-            self.window.Element('m_bar').UpdateBar(value)
+            self.window['m_bar'].UpdateBar(value)
         except:
             pass
 
     @property
     def s_bar(self):
+        """streams progress bar"""
         return self._s_bar
 
     @s_bar.setter
     def s_bar(self, value):
+        """streams progress bar"""
         self._s_bar = value if value <= 100 else 100
         try:
-            self.window.Element('s_bar').UpdateBar(value)
+            self.window['s_bar'].UpdateBar(value)
         except:
             pass
 
     @property
     def pl_menu(self):
+        """video playlist menu"""
         return self._pl_menu
 
     @pl_menu.setter
     def pl_menu(self, rows):
+        """video playlist menu"""
         self._pl_menu = rows
         try:
-            self.window.Element('pl_menu').Update(values=rows)
+            self.window['pl_menu'](values=rows)
         except:
             pass
 
     @property
     def stream_menu(self):
+        """video streams menu"""
         return self._stream_menu
 
     @stream_menu.setter
     def stream_menu(self, rows):
+        """video streams menu"""
         self._stream_menu = rows
         try:
-            self.window.Element('stream_menu').Update(values=rows)
+            self.window['stream_menu'](values=rows)
         except:
             pass
 
-    # def enable_video_controls(self):
-    #     try:
-    #         pass # self.window.Element('pl_download').Update(disabled=False)
-    #     except:
-    #         pass
-
-    def disable_video_controls(self):
+    def reset_video_controls(self):
         try:
             self.reset_progress_bar()
             self.pl_menu = ['Playlist']
@@ -1049,13 +1037,7 @@ class MainWindow:
         self.s_bar = 0
 
     def youtube_func(self):
-        """fetch metadata from youtube and other websites"""
-
-        # validate youtube url
-        # pattern = r'^(http(s)?:\/\/)?((w){3}.)?youtu(be|.be)?(\.com)?\/.+'
-        # match = re.match(pattern, self.d.url)
-        # if not match:
-        #     return  # quit if url is not a valid youtube watch url
+        """fetch metadata from youtube and other stream websites"""
 
         # getting videos from youtube is time consuming, if another thread starts, it should cancel the previous one
         # create unique identification for this thread
@@ -1068,7 +1050,7 @@ class MainWindow:
         self.set_status(msg)
 
         # reset video controls
-        self.disable_video_controls()
+        self.reset_video_controls()
         self.disable()
         self.change_cursor('busy')
 
@@ -1082,17 +1064,17 @@ class MainWindow:
         if config.terminate: return
 
         try:
-            # we import youtube-dl in separate thread to minimize startup time
+            # we import youtube-dl in separate thread to minimize startup time, will wait in loop until it gets imported
             if video.ytdl is None:
                 log('youtube-dl module still not loaded completely, please wait')
                 while not video.ytdl:
-                    time.sleep(0.1)  # wait until module get imported
+                    time.sleep(0.1)  # wait until module gets imported
 
             # youtube-dl process
             with video.ytdl.YoutubeDL(ydl_opts) as ydl:
                 result = ydl.extract_info(self.d.url, download=False, process=False)
 
-                print(result)
+                # print(result)
 
                 # set playlist / video title
                 self.pl_title = result.get('title', '')
@@ -1115,6 +1097,7 @@ class MainWindow:
                     self.playlist = [None for _ in range(len(pl_info))]  # fill list so we can store videos in order
                     v_threads = []
                     for num, item in enumerate(pl_info):
+                        # todo: get a full webpage url for refresh button to work correctly
                         # we have an issue here with youtube-dl doesn't get full video url from playlist
                         # print("item.get('url')=", item.get('url'))
                         # print("item.get('webpage_url')=", item.get('webpage_url'))
@@ -1139,7 +1122,7 @@ class MainWindow:
 
             # quit if we couldn't extract any videos info (playlist or single video)
             if not self.playlist:
-                self.disable_video_controls()
+                self.reset_video_controls()
                 self.disable()
                 self.set_status('')
                 self.change_cursor('default')
@@ -1149,7 +1132,7 @@ class MainWindow:
 
             # quit if url changed by user
             if url != self.d.url:
-                self.disable_video_controls()
+                self.reset_video_controls()
                 self.change_cursor('default')
                 log('youtube func: quitting, url changed by user')
                 return
@@ -1171,7 +1154,7 @@ class MainWindow:
 
         except Exception as e:
             handle_exceptions(e)
-            self.disable_video_controls()
+            self.reset_video_controls()
             self.disable()
             self.reset()
 
@@ -1210,16 +1193,7 @@ class MainWindow:
             pass
 
     def update_video_param(self):
-
-        # update file properties
-        self.d.url = self.video.url
-        self.d.eff_url = self.video.eff_url
-        self.d.name = self.video.name
-        self.d.size = self.video.size
-        self.d.type = self.video.type
-        self.d.audio_url = self.video.audio_url
-        self.d.audio_size = self.video.audio_size
-        self.d.resumable = True
+        self.d = self.video
 
     def update_stream_menu(self):
         try:
@@ -1279,7 +1253,6 @@ class MainWindow:
         master_stream_menu = ['● Video streams:                     '] + list(mp4_videos.keys()) + list(other_videos.keys()) + \
                       ['', '● Audio streams:                 '] + list(audio_streams.keys())
         master_stream_combo_selection = ''
-
 
         video_checkboxes = []
         stream_combos = []
@@ -1353,9 +1326,10 @@ class MainWindow:
 
                 video = self.playlist[num]
                 selected_text = w[e].get()
-
+                # print(f'"{selected_text}", {video.raw_streams}')
                 if selected_text in video.raw_streams:
                     video.selected_stream = video.raw_streams[selected_text]
+
                 else:
                     w[e](video.selected_stream.raw_name)
 
@@ -1369,19 +1343,10 @@ class MainWindow:
             log('download playlist fn>', 'stream', repr(video.selected_stream))
             log(f'download playlist fn> media size= {video.size}, name= {video.name}')
 
-            # start download
-            d = DownloadItem(url=video.url,  name=video.name, folder=self.d.folder)
+            video.folder = config.download_folder
+            # video.max_connections = config.max_connections
 
-            # update file properties
-            d.eff_url = video.eff_url
-            d.size=video.size
-            d.type = video.type
-            d.audio_url = video.audio_url
-            d.audio_size = video.audio_size
-            d.max_connections=config.max_connections
-            d.resumable=True
-
-            self.start_download(d, silent=True)
+            self.start_download(video, silent=True)
 
     def ffmpeg_check(self):
         if not check_ffmpeg():
@@ -1399,7 +1364,6 @@ class MainWindow:
                     '',
                     'you can download it manually from https://www.ffmpeg.org/download.html',
                     title='ffmpeg is missing')
-
 
     # endregion
 
@@ -1440,16 +1404,19 @@ class MainWindow:
 
         # widgets
         self.disable()
-        self.disable_video_controls()
+        self.reset_video_controls()
 
-    def change_cursor(self, cursor='busy'):
+    def change_cursor(self, cursor='default'):
+        # todo: check if we can set cursor  for window not individual tabs
         if cursor == 'busy':
-            self.window['Main'].set_cursor('watch')
-        else:
-            self.window['Main'].set_cursor('arrow')
+            cursor_name = 'watch'
+        else:  # default
+            cursor_name = 'arrow'
+
+        self.window['Main'].set_cursor(cursor_name)
+        self.window['Setting'].set_cursor(cursor_name)
 
     def main_frameOnClose(self):
-        # global terminate
         config.terminate = True
 
         log('main frame closing')
@@ -1459,7 +1426,7 @@ class MainWindow:
         try:
             for i in config.active_downloads:
                 d = self.d_list[i]
-                d.q.brain.put(('status', Status.cancelled))
+                d.status = Status.cancelled
         except:
             pass
 
@@ -1510,42 +1477,57 @@ class MainWindow:
 
     # region update
     def check_for_update(self):
+        # todo: use a separate thread, application becomes unresponsive during "update.get_changelog()"
+        self.change_cursor('busy')
+
         # check for update
         current_version = config.APP_VERSION
         info = update.get_changelog()
 
         if info:
             latest_version, version_description = info
-            self.new_version_available = latest_version != current_version
+
+            # compare with current application version
+            newer_version = compare_versions(current_version, latest_version)  # return None if both equal
+            # print(newer_version, current_version, latest_version)
+
+            if not newer_version or newer_version == current_version:
+                self.new_version_available = False
+                log("check_for_update() --> App. is up-to-date, server version=", latest_version)
+            else:  # newer_version == latest_version
+                self.new_version_available = True
 
             # updaet global values
             config.APP_LATEST_VERSION = latest_version
             self.new_version_description = version_description
+        else:
+            self.new_version_description = None
+            self.new_version_available = False
+
+        self.change_cursor('default')
 
     def update_app(self):
         """show changelog with latest version and ask user for update"""
-        if not self.new_version_description:
-            self.check_for_update()
+        self.check_for_update()
 
-        if not self.new_version_description:
-            sg.popup_ok('couldnt check for update')
-            return
+        if self.new_version_available:
+            layout = [
+                [sg.T('New version available:')],
+                [sg.Multiline(self.new_version_description, size=(50, 10))],
+                [sg.B('Update'), sg.Cancel()]
+            ]
+            window = sg.Window('Update Application', layout, finalize=True, keep_on_top=True)
+            event, _ = window()
+            if event == 'Update':
+                update.update()
 
-        if config.APP_VERSION == config.APP_LATEST_VERSION:
-            sg.popup_ok(f'{config.APP_NAME} is up-to-date!')
-            return
+            window.close()
+        else:
+            if self.new_version_description:
+                popup(f"App. is up-to-date, server version= {config.APP_LATEST_VERSION}")
+            else:
+                popup("couldn't check for update")
 
-        layout = [
-            [sg.T('New version available:')],
-            [sg.Multiline(self.new_version_description, size=(50, 10))],
-            [sg.B('Update'), sg.Cancel()]
-        ]
-        window = sg.Window('Update Application', layout, finalize=True, keep_on_top=True)
-        event, _ = window()
-        if event == 'Update':
-            update.update()
-
-        window.close()
 
     def animate_update_note(self):
         # display word by word
@@ -1613,6 +1595,11 @@ class DownloadWindow:
         self.timeout = 10
         self.timer = 0
 
+        # todo: an 'indeterminate' progress bar should be used for (zero size - one segment) downloads
+        # something to animate progress_bar if d.total_size = 0
+        # we should use (mode = 'indeterminate') for tkinter, check with pysimplegui first
+        self.progress_bar_i = 0
+
         self.create_window()
 
     def create_window(self):
@@ -1634,6 +1621,9 @@ class DownloadWindow:
         self.window = sg.Window(title=self.d.name, layout=layout, finalize=True, margins=(2, 2), size=(460, 240))
         self.window['progress_bar'].expand()
 
+        # if not self.d.total_size:
+        #     self.window['progress_bar'].Widget.mode = 'indeterminate'
+
     def update_gui(self):
         # trim name and folder length
         name = truncate(self.d.name, 50)
@@ -1642,28 +1632,34 @@ class DownloadWindow:
         out = (f"File: {name}\n"
                f"Folder: {folder}\n"
                f"Downloaded:    {size_format(self.d.downloaded)} out of"
-               f" {size_format(self.d.size)} ----  {self.d.progress}%\n"
+               f" {size_format(self.d.total_size)} ----  {self.d.progress}%\n"
                f"speed: {size_format(self.d.speed, '/s')}\n"
                f"Time remaining: {time_format(self.d.time_left)}\n"
                f"Live Connections: {self.d.live_connections} - Remaining parts: {self.d.remaining_parts} x "
                f"({size_format(self.d.segment_size)})")
 
         # update log
-        if self.d.q and self.d.q.d_window.qsize():
-            k, v = self.d.q.d_window.get()
-            # print(k, v)
-            if k == 'log':
-                try:
-                    if len(self.window['log'].get()) > 3000:
-                        self.window['log'](self.window['log'].get()[:2000])
-                    self.window['log'](v, append=True)
-                except:
-                    pass
+        if self.d.q:
+            while self.d.q.d_window.qsize():
+                k, v = self.d.q.d_window.get()
+                # print(k, v)
+                if k == 'log':
+                    try:
+                        if len(self.window['log'].get()) > 3000:
+                            self.window['log'](self.window['log'].get()[:2000])
+                        self.window['log'](v, append=True)
+                    except:
+                        pass
 
 
         try:
             self.window.Element('out').Update(value=out)
+
+            # if self.d.total_size:
             self.window.Element('progress_bar').UpdateBar(self.d.progress)
+            # else:  # size is zero, will make random animation
+            #     self.progress_bar_i = self.progress_bar_i + 1 if self.progress_bar_i < 100 else 0
+            #     self.window.Element('progress_bar').UpdateBar(self.progress_bar_i)
 
             if self.d.status in (Status.completed, Status.cancelled):
                 self.event = None
@@ -1674,7 +1670,8 @@ class DownloadWindow:
     def run(self):
         self.event, self.values = self.window.Read(timeout=self.timeout)
         if self.event in ('cancel', None):
-            self.d.q.brain.put(('status', Status.cancelled))
+            # self.d.q.brain.put(('status', Status.cancelled))
+            self.d.status = Status.cancelled
             self.close()
 
         elif self.event == 'hide':

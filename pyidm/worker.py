@@ -19,157 +19,122 @@ from .utils import get_seg_size
 
 
 class Worker:
-    """worker connection, it will download individual segment and write it to disk"""
-
-    def __init__(self, tag=0, url='', temp_folder='', q=None, resumable=False, report=True):
-        self.url = url
-        self.tag = tag  # instant number
-        self.q = q
-        self.temp_folder = temp_folder
-        self.resumable = resumable
-
-        # General parameters
-        self.seg = '0-0'  # segment name
-        self.seg_range = '0-0'  # byte range it must be formatted as 'start_byte-end_byte' example '100-600'
-        self.target_size = 0  # target size calculated from segment name
-        self.start_size = 0  # initial file size before start resuming
+    def __init__(self, tag=0, d=None):
+        self.tag = tag
+        self.d = d
+        self.q = d.q
+        self.seg = None
+        self.resume_range = None
 
         # writing data parameters
-        self.f_name = ''  # segment name with full path
-        self.mode = 'wb'  # file opening mode default to new write binary
         self.file = None
-        self.buff = 0
+        self.mode = 'wb'  # file opening mode default to new write binary
 
-        # reporting parameters
-        self.report = report
-        self.done_before = False
-        self.timer1 = 0
-        self.reporting_rate = 0.5  # rate of reporting download progress every n seconds
         self.downloaded = 0
+        self.start_size = 0  # initial file size before start resuming
 
         # connection parameters
         self.c = pycurl.Curl()
         self.speed_limit = 0
         self.headers = {}
-        self.use_range = True # if false will set pycurl option not to use ranges
 
     @property
-    def actual_size(self):
-        return self.start_size + self.downloaded + self.buff
+    def current_filesize(self):
+        return self.start_size + self.downloaded
 
-    def reuse(self, seg='0-0', speed_limit=0, use_range=True):
+    def reuse(self, seg=None, speed_limit=0):
         """Recycle same object again, better for performance as recommended by curl docs"""
         self.reset()
 
-        # assign new values
-        self.seg = seg  # segment name
-        self.seg_range = seg  # byte range it must be formatted as 'start_byte-end_byte' example '100-600'
-        self.target_size = get_seg_size(seg)
-        self.f_name = os.path.join(self.temp_folder, seg)  # segment name with full path
+        self.seg = seg
         self.speed_limit = speed_limit
-        self.use_range = use_range
 
-        self.q.log('start worker', self.tag, 'seg', self.seg, 'range:', self.seg_range, 'SL=', self.speed_limit)
+        self.q.log('start worker', self.tag, 'seg', self.seg.num, 'range:', self.seg.range, 'SL=', self.speed_limit)
 
-        # run
-        if os.path.exists(self.f_name) and self.target_size and self.resumable:
-            self.start_size = os.path.getsize(self.f_name)
+        # get start file size if this segment file partially downloaded before
+        if os.path.exists(self.seg.name) and self.seg.size and self.seg.range:
+            with open(self.seg.name, 'rb') as f:
+                self.start_size = len(f.read())
+
+            # try to get missing segment size, if this is a fresh file, segment size will be updated from
+            # self.header_callback() method
+            if not self.seg.size:
+                self.seg.get_size()
+
             self.check_previous_download()
+
+        # print(self.seg.url)
 
     def reset(self):
         # reset curl
         self.c.reset()
 
         # reset variables
-        self.target_size = 0  # target size calculated from segment name
         self.start_size = 0
-        self.mode = 'wb'  # file opening mode default to new write binary
         self.file = None
-        self.done_before = False
-        self.buff = 0
-        self.timer1 = 0
+        self.mode = 'wb'  # file opening mode default to new write binary
         self.downloaded = 0
+        self.resume_range = None
 
     def check_previous_download(self):
-        if self.actual_size == self.target_size:  # segment is completed before
-            self.report_completed()
-            self.q.log('Thread', self.tag, ': File', self.seg, 'already completed before')
 
-            # send downloaded value to brain, -1 means this data from local disk, not from server side
-            # self.q.data[self.tag].put((-1, self.target_size))
-            self.report_to_brain((-1, self.target_size))
-            self.done_before = True
+        if self.current_filesize == self.seg.size:  # segment is completed before
+            # self.report_completed()
+            self.q.log('worker', self.tag, ': File', self.seg.num, 'already completed before')
+            self.seg.downloaded = True
 
         # in case the server sent extra bytes from last session by mistake, truncate file
-        elif self.actual_size > self.target_size:
-            self.q.log(f'found seg {self.seg} oversized {self.actual_size}')
-            # self.mode = 'wb'  # open file for re-write
-            # self.start_size = 0
-            # truncate file
-            with open(self.f_name, 'rb+') as f:
-                f.truncate(self.target_size)
-            self.report_completed()
+        elif self.current_filesize > self.seg.size:
+            self.q.log(f"found seg {self.seg.num} over-sized {self.current_filesize}")
 
-            # send downloaded value to brain, -1 means this data from local disk, not from server side
-            # self.q.data[self.tag].put((-1, self.target_size))
-            self.report_to_brain((-1, self.target_size))
-            self.done_before = True
+            # truncate file
+            with open(self.seg.name, 'rb+') as f:
+                f.truncate(self.seg.size)
+            # self.report_completed()
+            self.seg.downloaded = True
 
         else:  # should resume
             # set new range and file open mode
-            a, b = [int(x) for x in self.seg.split('-')]
-            # a, b = int(self.seg.split('-')[0]), int(self.seg.split('-')[1])
-            self.seg_range = f'{a + self.actual_size}-{b}'
+            a, b = [int(x) for x in self.seg.range.split('-')]
+            self.resume_range = f'{a + self.current_filesize}-{b}'
             self.mode = 'ab'  # open file for append
 
             # report
-            self.q.log('Thread', self.tag, ': File', self.seg, 'resuming, new range:', self.seg_range,
-                       'actual size:', self.actual_size)
-            # self.q.data[self.tag].put((-1, self.actual_size))  # send downloaded value to brain
-            self.report_to_brain((-1, self.actual_size))
-
-    def report_to_brain(self, msg):
-        # if self.report:
-        self.q.data[self.tag].put(msg)
-
-    def report_every(self, seconds=0.0):
-        if time.time() - self.timer1 >= seconds:
-            # self.q.data[self.tag].put((self.tag, self.buff))  # report the downloaded data length
-            self.report_to_brain((self.tag, self.buff))
-            self.downloaded += self.buff
-            self.buff = 0
-            self.timer1 = time.time()
-
-    def report_now(self):
-        self.report_every(seconds=0)  # report data remained in buffer now
+            self.q.log('Thread', self.tag, ': File', self.seg.num, 'resuming, new range:', self.resume_range,
+                       'current file size:', self.current_filesize)
 
     def verify(self):
         """check if segment completed"""
-        return self.actual_size == self.target_size or self.target_size == 0
+        # print('self.current_filesize =', self.current_filesize,  "self.seg.size", self.seg.size)
+        if self.current_filesize == self.seg.size or self.seg.size == 0:
+            return True
+        else:
+            return False
 
     def report_not_completed(self):
-        self.q.log('worker', self.tag, 'did not complete', self.seg, 'downloaded',
-                   self.actual_size, 'target size:', self.target_size, 'remaining:',
-                   self.target_size - self.actual_size)
+        self.q.log('worker', self.tag, 'did not complete', self.seg.name, 'downloaded',
+                   self.current_filesize, 'target size:', self.seg.size, 'remaining:',
+                   self.seg.size - self.current_filesize)
 
-        self.report_now()  # report data remained in buffer now
-
-        # remove the previously reported download size and put unfinished job back to queue
-        # self.q.data[self.tag].put((-1, - self.actual_size))
-        self.report_to_brain((-1, - self.actual_size))
+        # put back to jobs queue to try again
         self.q.jobs.put(self.seg)
 
     def report_completed(self):
-        if self.report:
-            self.q.completed_jobs.put(self.seg)
+        self.q.log('worker', self.tag, 'completed', self.seg.name)
+        self.seg.downloaded = True
+
+        self.q.log('downloaded: ', self.seg.name)
+        # print(self.headers)
 
     def set_options(self):
         agent = f"{APP_NAME} Download Manager"
         self.c.setopt(pycurl.USERAGENT, agent)
 
-        self.c.setopt(pycurl.URL, self.url)
-        if self.use_range:
-            self.c.setopt(pycurl.RANGE, self.seg_range)  # download segment only not the whole file
+        self.c.setopt(pycurl.URL, self.seg.url)
+
+        range_ = self.resume_range or self.seg.range
+        if range_:
+            self.c.setopt(pycurl.RANGE, range_)  # download segment only not the whole file
 
         # re-directions
         self.c.setopt(pycurl.FOLLOWLOCATION, 1)
@@ -193,8 +158,8 @@ class Worker:
         # verbose
         self.c.setopt(pycurl.VERBOSE, 0)
 
-        # # it tells curl not to include headers with the body
-        # self.c.setopt(pycurl.HEADEROPT, 0)
+        # it tells curl not to include headers with the body
+        self.c.setopt(pycurl.HEADEROPT, 0)
 
         # call back functions
         self.c.setopt(pycurl.HEADERFUNCTION, self.header_callback)
@@ -213,37 +178,45 @@ class Worker:
         value = value.strip()
         self.headers[name] = value
 
+        # update segment size if not available
+        if not self.seg.size and name == 'content-length':
+            try:
+                self.seg.size = int(self.headers.get('content-length', 0))
+                # print('self.seg.size = ', self.seg.size)
+            except:
+                pass
+
     def progress(self, *args):
         """it receives progress from curl and can be used as a kill switch
         Returning a non-zero value from this callback will cause curl to abort the transfer
         """
 
         # check termination by user
-        n = self.q.worker[self.tag].qsize()
-        for _ in range(n):
-            k, v = self.q.worker[self.tag].get()
-            if k == 'status':
-                status = v
-                if status in [Status.cancelled, Status.paused]:
-                    return -1  # abort
+        if self.d.status != Status.downloading:
+            return -1  # abort
 
-    def worker(self):
+    def run(self):
         # check if file completed before and exit
-        if self.done_before:
+        if self.seg.downloaded:
             return
 
         self.set_options()
 
+        # make sure target directory exist
+        target_directory = os.path.dirname(self.seg.name)
+        if not os.path.isdir(target_directory):
+            os.makedirs(target_directory)  # it will also create any intermediate folders in the given path
+
         try:
-            with open(self.f_name, self.mode) as self.file:
+            with open(self.seg.name, self.mode) as self.file:
                 self.c.perform()
 
-            # after curl connection ended
-            self.report_now()  # report data remained in buffer now
+            # print('worker', self.tag, 'curl done')
 
             completed = self.verify()
             if completed:
                 self.report_completed()
+                # print('worker', self.tag, 'completed')
             else:
                 self.report_not_completed()
 
@@ -264,10 +237,13 @@ class Worker:
     def write(self, data):
         """write to file"""
         self.file.write(data)
-        self.buff += len(data)
+        self.downloaded += len(data)
 
-        self.report_every(seconds=self.reporting_rate)  # tell brain how much data received every n seconds
+        self.d.downloaded += len(data)
 
         # check if we getting over sized
-        if self.actual_size > self.target_size > 0:
+        if self.current_filesize > self.seg.size > 0:
             return -1  # abort
+
+
+

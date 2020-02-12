@@ -8,12 +8,14 @@
 """
 
 import os
+import subprocess
 import zipfile
 import time
+from urllib.parse import urljoin
 
 from . import config
 from .downloaditem import DownloadItem
-from .utils import log, validate_file_name, get_headers, size_format, run_command
+from .utils import log, validate_file_name, get_headers, size_format, run_command, size_splitter, get_seg_size
 
 # youtube-dl
 ytdl = None  # youtube-dl will be imported in a separate thread to save loading time
@@ -32,21 +34,25 @@ class Logger(object):
         log('warning: %s' % msg)
 
 
+# todo: add proxy option in gui setting
 ydl_opts = {'quiet': True, 'prefer_insecure': True, 'no_warnings': True, 'logger': Logger()}  # youtube-dl options
+            # 'proxy': "157.245.224.29:3128"}
 
 
-class Video:
+class Video(DownloadItem):
     """represent a youtube video object, interface for youtube-dl"""
 
     def __init__(self, url, vid_info=None, get_size=True):
+        super().__init__(folder=config.download_folder)
         self.url = url
+        self.resumable = True
         self.vid_info = vid_info  # a youtube-dl dictionary contains video information
 
         if self.vid_info is None:
             with ytdl.YoutubeDL(ydl_opts) as ydl:
                 self.vid_info = ydl.extract_info(self.url, download=False)
 
-        self.webpage_url = url # self.vid_info.get('webpage_url')
+        self.webpage_url = url  # self.vid_info.get('webpage_url')
         self.title = validate_file_name(self.vid_info.get('title', f'video{int(time.time())}'))
         self.name = self.title
 
@@ -65,17 +71,17 @@ class Video:
         self.raw_stream_menu = [] # same as self.stream_menu but without size
         self._selected_stream = None
 
-        if get_size:
-            for s in self.stream_list:
-                _ = s.size
-
-        self._process_streams()
-
-        self.eff_url = ''
-        self.type = ''
-        self.size = self.selected_stream.size
         self.audio_url = None  # None for non dash videos
         self.audio_size = 0
+
+        self.setup()
+
+    def setup(self):
+        self._process_streams()
+
+        # # get streams size if missing
+        # for s in self.stream_list:
+        #     s.get_size()
 
     def _process_streams(self):
         """ Create Stream object lists"""
@@ -151,8 +157,10 @@ class Video:
         stream = self.selected_stream
         self.name = self.title + '.' + stream.extension
         self.eff_url = stream.url
-        self.type = stream.extension
+        self.type = stream.mediatype
         self.size = stream.size
+        self.fragment_base_url = stream.fragment_base_url
+        self.fragments = stream.fragments
 
         # select an audio to embed if our stream is dash video
         if stream.mediatype == 'dash':
@@ -160,8 +168,12 @@ class Video:
                             or (audio.extension == 'm4a' and stream.extension == 'mp4')][0]
             self.audio_url = audio_stream.url
             self.audio_size = audio_stream.size
+            self.audio_fragment_base_url = audio_stream.fragment_base_url
+            self.audio_fragments = audio_stream.fragments
         else:
             self.audio_url = None
+            self.audio_fragment_base_url = None
+            self.audio_fragments = None
 
 
 class Stream:
@@ -177,7 +189,7 @@ class Stream:
         self.format_note = stream_info.get('format_note', None)
         self.acodec = stream_info.get('acodec', None)
         self.abr = stream_info.get('abr', 0)
-        self._size = stream_info.get('filesize', None)
+        self.size = stream_info.get('filesize', None)
         self.tbr = stream_info.get('tbr', None)
         # self.quality = stream_info.get('quality', None)
         self.vcodec = stream_info.get('vcodec', None)
@@ -191,16 +203,27 @@ class Stream:
         self._mediatype = None
         self.resolution = f'{self.width}x{self.height}' if (self.width and self.height) else ''
 
+        # fragmented video streams
+        self.fragment_base_url = stream_info.get('fragment_base_url', None)
+        self.fragments = stream_info.get('fragments', None)
+
+        # get missing size
+        if self.fragments:
+            self.size = 0
+        if not isinstance(self.size, int):
+            self.size = self.get_size()
+
+        # print(self.name, self.size, isinstance(self.size, int))
+
+    def get_size(self):
+        # ignore fragmented streams, since the size coming from the server belongs to first fragment not whole file
+        headers = get_headers(self.url)
+        size = int(headers.get('content-length', 0))
+        print('stream.get_size()>', self.name)
+        return size
+
+
     @property
-    def size(self):
-        if not self._size:
-            headers = get_headers(self.url)
-            self._size = int(headers.get('content-length', 0))
-
-        return self._size
-
-
-    @property 
     def name(self):
         return f'      ›  {self.extension} - {self.quality} - {size_format(self.size)}'  # ¤ » ›
 
@@ -252,7 +275,7 @@ def download_ffmpeg():
     d = DownloadItem(url=url, folder=config.ffmpeg_installation_folder)
     d.update(url)
     d.name = 'ffmpeg.zip'  # not necessary, will use it just in case, name didn't supplied with headers.
-    d.max_connections = 4
+    # d.max_connections = 4
 
     # post download
     d.callback = 'unzip_ffmpeg'
@@ -286,8 +309,8 @@ def check_ffmpeg():
     # search in default installation folder then current directory
     for folder in [config.ffmpeg_installation_folder, config.current_directory]:
         for file in os.listdir(folder):
-            print(file)
-            if file.startswith('ffmpeg') and os.path.isfile(os.path.join(folder, file)):
+            # print(file)
+            if file == 'ffmpeg.exe' and os.path.isfile(os.path.join(folder, file)):
                 found = True
                 config.ffmpeg_actual_path = os.path.join(config.ffmpeg_installation_folder, file)
                 break
@@ -312,16 +335,21 @@ def check_ffmpeg():
 
 
 def merge_video_audio(video, audio, output):
+    log('merging video and audio')
     # ffmpeg
     ffmpeg = config.ffmpeg_actual_path  # 'ffmpeg'  # os.path.join(current_directory, 'ffmpeg', 'ffmpeg')
 
     # very fast audio just copied, format must match [mp4, m4a] and [webm, webm]
-    cmd1 = f'{ffmpeg} -i "{video}" -i "{audio}" -c copy "{output}"'
+    cmd1 = f'"{ffmpeg}" -i "{video}" -i "{audio}" -c copy "{output}"'
 
     # slow, mix different formats
-    # cmd2 = f'{ffmpeg} -i "{video}" -i "{audio}" "{output}"'
+    cmd2 = f'"{ffmpeg}" -i "{video}" -i "{audio}" "{output}"'
 
-    error, output = run_command(cmd1, verbose=True, shell=True)
+    # run command with shell=False if failed will use shell=True option
+    error, output = run_command(cmd1, verbose=True, shell=False)
+
+    if error:
+        error, output = run_command(cmd1, verbose=True, shell=True)
 
     return error, output
             

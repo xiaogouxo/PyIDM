@@ -51,7 +51,7 @@ def clipboard_listener():
 
         new_data = clipboard_read()
 
-        if new_data == 'any one there?': # a possible message coming from new instance of this script
+        if new_data == 'any one there?':  # a possible message coming from new instance of this script
             clipboard_write('yes')  # it will be read by singleApp() as an exit signal
             config.main_window_q.put(('visibility', 'show'))  # restore main window if minimized
 
@@ -103,7 +103,6 @@ def main():
 
     # run clipboard monitor thread
     Thread(target=clipboard_listener, daemon=True).start()
-
 
     # start gui main loop
     main_window = MainWindow(config.d_list)
