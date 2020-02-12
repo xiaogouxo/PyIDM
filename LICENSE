@@ -4,7 +4,7 @@ Copyright (c) 2019, 2020 pyIDM, by Mahmoud Elshahat, "mahmoud_elshahhat@yahoo.co
 # copyright notice                                                                                                   #
 # ####################################################################################################################
 # pyIDM is an open source multi-connections download manager developed in Python,                                    #
-# it downloads general files, support downloading videos, and playlists from youtube.                                #
+# it downloads general files, support downloading videos, and playlists from youtube, and other media websites.      #
 # Mainly based on "pyCuRL/curl", "youtube_dl", and "PySimpleGUI"                                                     #
 #                                                                                                                    #
 # Project url: https://github.com/pyIDM/pyIDM                                                                        #
