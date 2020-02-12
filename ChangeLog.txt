@@ -1,3 +1,8 @@
+2020.2.12
+- Add support for fragmented video streams
+- Simultaneous download of video and audio streams
+- some bug fixes
+
 2020.1.30:
 - bug fix, update notification message appear even if application is up to date.
 - normalize version number to match pypi release
