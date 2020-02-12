@@ -15,7 +15,6 @@
 import os, sys
 from threading import Thread
 import time
-import importlib.util
 
 
 # This code should stay on top to handle relative imports in case of direct call of pyIDM.py
