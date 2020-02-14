@@ -139,6 +139,9 @@ def load_setting():
         # ffmpeg folder, will be loaded if it has been set by user otherwise will use setting folder as a fallback
         config.ffmpeg_installation_folder = setting.get('ffmpeg_installation_folder', sett_folder)
 
+        # proxy
+        config.proxy = setting.get('proxy', None)
+
 
 def save_setting():
     setting = dict()
@@ -149,6 +152,7 @@ def save_setting():
     setting['theme'] = config.current_theme
     setting['check_for_update_on_startup'] = config.check_for_update_on_startup
     setting['ffmpeg_installation_folder'] = config.ffmpeg_installation_folder
+    setting['proxy'] = config.proxy
 
     try:
         file = os.path.join(sett_folder, 'setting.cfg')

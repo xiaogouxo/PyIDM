@@ -15,7 +15,8 @@ from urllib.parse import urljoin
 
 from . import config
 from .downloaditem import DownloadItem
-from .utils import log, validate_file_name, get_headers, size_format, run_command, size_splitter, get_seg_size
+from .utils import log, validate_file_name, get_headers, size_format, run_command, size_splitter, get_seg_size, \
+    delete_file
 
 # youtube-dl
 ytdl = None  # youtube-dl will be imported in a separate thread to save loading time
@@ -35,8 +36,11 @@ class Logger(object):
 
 
 # todo: add proxy option in gui setting
-ydl_opts = {'quiet': True, 'prefer_insecure': True, 'no_warnings': True, 'logger': Logger()}  # youtube-dl options
-            # 'proxy': "157.245.224.29:3128"}
+def get_ytdl_options():
+    ydl_opts = {'quiet': True, 'prefer_insecure': True, 'no_warnings': True, 'logger': Logger(), }
+    if config.proxy:
+        ydl_opts['proxy'] = config.proxy
+    return ydl_opts
 
 
 class Video(DownloadItem):
@@ -49,7 +53,7 @@ class Video(DownloadItem):
         self.vid_info = vid_info  # a youtube-dl dictionary contains video information
 
         if self.vid_info is None:
-            with ytdl.YoutubeDL(ydl_opts) as ydl:
+            with ytdl.YoutubeDL(get_ytdl_options()) as ydl:
                 self.vid_info = ydl.extract_info(self.url, download=False)
 
         self.webpage_url = url  # self.vid_info.get('webpage_url')
@@ -71,8 +75,8 @@ class Video(DownloadItem):
         self.raw_stream_menu = [] # same as self.stream_menu but without size
         self._selected_stream = None
 
-        self.audio_url = None  # None for non dash videos
-        self.audio_size = 0
+        # self.audio_url = None  # None for non dash videos
+        # self.audio_size = 0
 
         self.setup()
 
@@ -161,6 +165,8 @@ class Video(DownloadItem):
         self.size = stream.size
         self.fragment_base_url = stream.fragment_base_url
         self.fragments = stream.fragments
+        self.protocol = stream.protocol
+        self.format_id = stream.format_id
 
         # select an audio to embed if our stream is dash video
         if stream.mediatype == 'dash':
@@ -170,6 +176,7 @@ class Video(DownloadItem):
             self.audio_size = audio_stream.size
             self.audio_fragment_base_url = audio_stream.fragment_base_url
             self.audio_fragments = audio_stream.fragments
+            self.audio_format_id = audio_stream.format_id
         else:
             self.audio_url = None
             self.audio_fragment_base_url = None
@@ -198,6 +205,9 @@ class Stream:
         self.format = stream_info.get('format', None)
         self.container = stream_info.get('container', None)
 
+        # protocol
+        self.protocol = stream_info.get('protocol', None)
+
         # calculate some values
         self.rawbitrate = stream_info.get('abr', 0) * 1024
         self._mediatype = None
@@ -221,7 +231,6 @@ class Stream:
         size = int(headers.get('content-length', 0))
         print('stream.get_size()>', self.name)
         return size
-
 
     @property
     def name(self):
@@ -363,4 +372,66 @@ def import_ytdl():
 
     load_time = time.time() - start
     log(f'youtube-dl load_time= {load_time}')
+
+
+def youtube_dl_downloader(d=None, extra_options=None):
+    """download with youtube_dl"""
+    options = {}
+    downloaded = {}
+    file_names = set()
+
+    def progress_hook(progress_dict):
+        # print(progress_dict)
+        # get filenames
+        file_name = progress_dict.get('filename', None)
+        if file_name:
+            file_names.add(file_name)
+
+        # when downloading 2 streams "i.e. dash video and audio" downloaded_bytes will be reset to zero and report
+        # wrong total downloaded bytes, fix >> use  a dictionary to store every stream progress
+        downloaded_bytes = progress_dict.get('downloaded_bytes', 0)
+        total_bytes = progress_dict.get('total_bytes', 0)
+        downloaded[total_bytes] = downloaded_bytes
+
+        d.downloaded = sum(downloaded.values())
+
+    options.update(**get_ytdl_options())
+
+    if isinstance(extra_options, dict):
+        options.update(**extra_options)
+
+    options['progress_hooks'] = [progress_hook]
+    options['quiet'] = False
+    options['verbose'] = True
+    options['hls-prefer-native'] = True
+
+    # audio file
+    if d.type == 'dash':
+        options['format'] = d.format_id + ',' + d.audio_format_id
+        options['outtmpl'] = d.folder + '/%(id)s.%(ext)s'
+    else:
+        options['format'] = d.format_id
+        options['outtmpl'] = d.target_file
+
+    # start downloading
+    try:
+        with ytdl.YoutubeDL(options) as ydl:
+            ydl.download([d.url])
+    except Exception as e:
+        log('youtube_dl_downloader()> ', e)
+        raise e
+        return False
+
+    # mux audio/video
+    if d.type == 'dash':
+        audio, video = file_names.pop(), file_names.pop()
+        error, output = merge_video_audio(video, audio, d.target_file)
+        if error:
+            log('failed to merge', d.target_file)
+            return False
+        else:
+            delete_file(video)
+            delete_file(audio)
+
+    return True
 

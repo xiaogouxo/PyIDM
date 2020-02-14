@@ -54,6 +54,7 @@ max_concurrent_downloads = DEFAULT_CONCURRENT_CONNECTIONS
 max_connections = DEFAULT_CONNECTIONS
 segment_size = DEFAULT_SEGMENT_SIZE
 check_for_update_on_startup = True
+proxy = None
 
 # -------------------------------------------------------------------------------------
 

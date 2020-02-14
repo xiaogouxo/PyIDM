@@ -22,7 +22,7 @@ from .config import Status
 from . import update
 from .brain import brain
 from . import video
-from .video import Video, check_ffmpeg, download_ffmpeg, unzip_ffmpeg, ydl_opts
+from .video import Video, check_ffmpeg, download_ffmpeg, unzip_ffmpeg, get_ytdl_options
 from .about import about_notes
 from .downloaditem import DownloadItem
 
@@ -133,9 +133,11 @@ class MainWindow:
     # region gui design
     def create_window(self):
         # main tab
+        # column for playlist menu
         col1 = [[sg.Combo(values= self.pl_menu, size=(34, 1), key='pl_menu', enable_events=True)],
                 [sg.ProgressBar(max_value=100, size=(20, 5), key='m_bar')]]
 
+        # column for stream menu
         col2 = [[sg.Combo(values= self.stream_menu, size=(34, 1), key='stream_menu', enable_events=True)],
                 [sg.ProgressBar(max_value=100, size=(20, 5), key='s_bar')]]
 
@@ -212,6 +214,8 @@ class MainWindow:
                           [sg.Text('Max connections per download:'),
                            sg.Combo(values=[x for x in range(1, 101)], size=(5, 1), enable_events=True,
                                     key='max_connections', default_value=config.max_connections)],
+                          [sg.T('Proxy: '), sg.I(size=(30, 1), tooltip='proxy server ip:port, ex: 157.245.224.29:3128',
+                                                 key='proxy', enable_events=True)],
                           [sg.Text('Segment size:'), sg.Input(default_text=config.DEFAULT_SEGMENT_SIZE//1024, size=(6, 1),
                                                                 enable_events=True, key='segment_size'),
                            sg.Text('KBytes   *affects new downloads only')],
@@ -221,8 +225,13 @@ class MainWindow:
                           [sg.T('    '), sg.T('Youtube-dl version = 00.00.00', size=(50,1), key='youtube_dl_update_note'),
                            sg.Button('update youtube-dl', key='update_youtube_dl')],
                           [sg.T('    '), sg.T(f'pyIDM version = {config.APP_VERSION}', size=(50, 1), key='pyIDM_version_note'),
-                           sg.Button('update pyIDM', key='update_pyIDM')]
+                           sg.Button('update pyIDM', key='update_pyIDM')],
+                          [sg.T('')],
+
                           ]
+        # put setting layout in a scrollable column, to add more options
+        setting_layout = [[sg.Column(setting_layout, scrollable=True, vertical_scroll_only=True, size=(650, 370),
+                                     key='col')]]
 
         log_layout = [[sg.T('Details events:')], [sg.Multiline(default_text='', size=(70, 17), key='log',
                                                                autoscroll=True)],
@@ -555,6 +564,10 @@ class MainWindow:
 
             elif event == 'show_download_window':
                 config.show_download_window = values['show_download_window']
+
+            elif event == 'proxy':
+                config.proxy = values['proxy']
+                print('config.proxy = ', config.proxy)
 
             elif event == 'segment_size':
                 try:
@@ -1085,10 +1098,9 @@ class MainWindow:
                     time.sleep(0.1)  # wait until module gets imported
 
             # youtube-dl process
-            with video.ytdl.YoutubeDL(ydl_opts) as ydl:
+            print(get_ytdl_options())
+            with video.ytdl.YoutubeDL(get_ytdl_options()) as ydl:
                 result = ydl.extract_info(self.d.url, download=False, process=False)
-
-                # print(result)
 
                 # set playlist / video title
                 self.pl_title = result.get('title', '')
