@@ -73,7 +73,7 @@ class MainWindow:
                           'resumable', 'folder', 'max_connections', 'live_connections', 'remaining_parts']
         self.d_list = d_list  # list of DownloadItem() objects
         self.selected_row_num = None
-        self.selected_d = None
+        self._selected_d = None
 
         # update
         self.new_version_available = False
@@ -287,7 +287,7 @@ class MainWindow:
     def select_row(self, row_num):
         try:
             self.selected_row_num = int(row_num)
-            self.selected_d = self.d_list[self.selected_row_num]
+            # self.selected_d = self.d_list[self.selected_row_num]
 
             # update text widget that display selected row number
             self.window['selected_row_num']('---' if row_num is None else row_num + 1)
@@ -399,12 +399,12 @@ class MainWindow:
                     # log("MainWindow.run:if event == 'table': ", e)
                     pass
 
-            elif event in ('table_double_clicked', 'table_enter_key', 'Open File', 'Watch while downloading') and \
+            elif event in ('table_double_clicked', 'table_enter_key', 'Open File', '▶ Watch while downloading') and \
                     self.selected_d:
                 if self.selected_d.status == Status.completed:
                     open_file(self.selected_d.target_file)
                 else:
-                    open_file(self.selected_d.target_file)
+                    open_file(self.selected_d.temp_file)
 
             # table right click menu event
             elif event == 'Open File Location':
@@ -453,7 +453,7 @@ class MainWindow:
 
             elif event == 'D.Window':
                 # create download window
-                if self.selected_d.status == Status.downloading:
+                if self.selected_d and self.selected_d.status == Status.downloading:
                     d = self.selected_d
                     if d.id not in self.download_windows:
                         self.download_windows[d.id] = DownloadWindow(d=d)
@@ -820,6 +820,14 @@ class MainWindow:
     # endregion
 
     # region downloads tab
+    @property
+    def selected_d(self):
+        self._selected_d = self.d_list[self.selected_row_num] if self.selected_row_num is not None else None
+        return self._selected_d
+
+    @selected_d.setter
+    def selected_d(self, value):
+        self._selected_d = value
 
     @staticmethod
     def format_cell_data(k, v):
@@ -890,7 +898,8 @@ class MainWindow:
                 self.selected_row_num = None
             else:
                 last_num = len(self.d_list) - 1
-                if self.selected_row_num > last_num: self.selected_row_num = last_num
+                if self.selected_row_num > last_num:
+                    self.selected_row_num = last_num
 
             # delete temp folder on disk
             d.delete_tempfiles()
