@@ -30,7 +30,6 @@ from .downloaditem import DownloadItem
 
 # gui setting
 config.all_themes = sg.ListOfLookAndFeelValues()
-sg.ChangeLookAndFeel(config.current_theme)
 sg.SetOptions(icon=config.APP_ICON, font='Helvetica 11', auto_size_buttons=True, progress_meter_border_depth=0,
               border_width=1)
 
@@ -85,6 +84,9 @@ class MainWindow:
 
     def setup(self):
         """initial setup"""
+        # theme
+        sg.ChangeLookAndFeel(config.current_theme)
+
         # download folder
         if not self.d.folder:
             self.d.folder = config.download_folder
