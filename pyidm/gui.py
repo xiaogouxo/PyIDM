@@ -162,8 +162,7 @@ class MainWindow:
 
             # file info
             [sg.Text('File name:'), sg.Input('', size=(65, 1), key='name', enable_events=True)],
-            [sg.T('File size: '), sg.T('-' * 30, key='size'), sg.T('Type:'), sg.T('-' * 35, key='type'),
-             sg.T('Resumable:'), sg.T('-----', key='resumable')],
+            [sg.T('-'*300, key='file_properties')],
             [sg.Text('Save To:  '), sg.Input(config.download_folder, size=(55, 1), key='folder', enable_events=True),
              sg.FolderBrowse(key='browse')],
 
@@ -248,7 +247,7 @@ class MainWindow:
 
         # expand elements to fit
         elements = ['url', 'name', 'folder', 'youtube_frame', 'm_bar', 's_bar', 'pl_menu', 'update_note', 'app_title',
-                    'stream_menu', 'log', 'status_bar']  # elements to be expanded
+                    'stream_menu', 'log', 'status_bar', 'file_properties']  # elements to be expanded
         for e in elements:
             self.window[e].expand(expand_x=True)
 
@@ -307,9 +306,11 @@ class MainWindow:
         try:
             if self.window['name'].get() != self.d.name:  # it will prevent cursor jump to end when modifying name
                 self.window['name'](self.d.name)
-            self.window.Element('size')(size_format(self.d.total_size))
-            self.window.Element('type')(self.d.type)
-            self.window.Element('resumable')('Yes' if self.d.resumable else 'No')
+
+            file_properties = f'Size: {size_format(self.d.total_size)} - Type: {self.d.type} ' \
+                              f'{"fragments" if self.d.fragments else ""} - ' \
+                              f'Protocol: {self.d.protocol} - Resumable: {"Yes" if self.d.resumable else "No"} ...'
+            self.window['file_properties'](file_properties)
 
             # download list / table
             table_values = [[self.format_cell_data(key, getattr(item, key, '')) for key in self.d_headers] for item in
@@ -360,7 +361,7 @@ class MainWindow:
         one_time = True
         while True:
             event, values = self.window.Read(timeout=50)
-            self.event, self.values = event, values
+            # self.event, self.values = event, values
             # if event != '__TIMEOUT__': print(event, values)
 
             if event is None:
@@ -803,6 +804,8 @@ class MainWindow:
         return None
 
     def download_btn(self):
+        print(self.d.protocol)
+        return
 
         if self.disabled:
             sg.popup_ok('Nothing to download', 'it might be a web page or invalid url link',
