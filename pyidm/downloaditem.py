@@ -169,6 +169,12 @@ class DownloadItem:
         self.audio_fragment_base_url = None
         self.audio_fragments = None
 
+        # protocol
+        self.protocol = None
+
+        self.format_id = None
+        self.audio_format_id = None
+
     def get_persistent_properties(self):
         """return a dict of important parameters to be saved in file"""
         a = dict(id=self.id, _name=self._name, folder=self.folder, url=self.url, eff_url=self.eff_url,
@@ -242,8 +248,12 @@ class DownloadItem:
         else:
             size = self.size
 
-        # if not size and self._segments:
-        #     size = sum([seg.size for seg in self.segments])
+        # estimate size based on size of downloaded fragments
+        if not size and self._segments:
+            sizes = [seg.size for seg in self.segments if seg.size]
+            if sizes:
+                avg_seg_size = sum(sizes)//len(sizes)
+                size = avg_seg_size * len(self._segments)  # estimated
 
         return size
 
