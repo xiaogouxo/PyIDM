@@ -28,6 +28,7 @@ DEFAULT_SEGMENT_SIZE = 524288  # 1048576
 DEFAULT_CONCURRENT_CONNECTIONS = 3
 APP_URL = 'https://github.com/pyIDM/pyIDM'
 LATEST_RELEASE_URL = 'https://github.com/pyIDM/pyIDM/releases/latest'
+# USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3721.3'
 
 APP_LATEST_VERSION = None  # get value from update module
 ytdl_VERSION = 'xxx'  # will be loaded once youtube-dl get imported
@@ -54,7 +55,7 @@ max_concurrent_downloads = DEFAULT_CONCURRENT_CONNECTIONS
 max_connections = DEFAULT_CONNECTIONS
 segment_size = DEFAULT_SEGMENT_SIZE
 check_for_update_on_startup = True
-proxy = None
+proxy = ''  # must be string example: 127.0.0.1:8080
 
 # -------------------------------------------------------------------------------------
 
@@ -80,7 +81,13 @@ d_list = []
 
 # queues
 main_window_q = Queue()  # queue for Main application window
-clipboard_q = Queue()
+clipboard_q = Queue()  # todo: delete this queue
+
+# todo: more testing required, make non_supported_protocols = [] to disable this feature
+# youtube-dl protocols
+# protocol: (http, https, rtsp, rtmp, rtmpe, mms, f4m, ism, http_dash_segments, m3u8, or m3u8_native)
+# below is the list where we'll use native youtube-dl downloader
+non_supported_protocols = []  # ['m3u8', 'm3u8_native']
 
 # -------------------------------------------------------------------------------------
 
