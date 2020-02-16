@@ -78,6 +78,9 @@ def get_headers(url, verbose=False):
     agent = f"{config.APP_NAME} Download Manager"
     c = pycurl.Curl()
     c.setopt(pycurl.URL, url)
+
+    c.setopt(pycurl.PROXY, config.proxy)  # set proxy, must be string empty '' means no proxy
+
     c.setopt(pycurl.FOLLOWLOCATION, 1)
     c.setopt(pycurl.MAXREDIRS, 10)
     c.setopt(pycurl.CONNECTTIMEOUT, 30)

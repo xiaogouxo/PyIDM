@@ -35,7 +35,6 @@ class Logger(object):
         log('warning: %s' % msg)
 
 
-# todo: add proxy option in gui setting
 def get_ytdl_options():
     ydl_opts = {'quiet': True, 'prefer_insecure': True, 'no_warnings': True, 'logger': Logger(), }
     if config.proxy:
@@ -360,6 +359,9 @@ def merge_video_audio(video, audio, output):
     if error:
         error, output = run_command(cmd1, verbose=True, shell=True)
 
+    if error:
+        error, output = run_command(cmd2, verbose=True, shell=True)
+
     return error, output
             
 
@@ -381,19 +383,28 @@ def youtube_dl_downloader(d=None, extra_options=None):
     file_names = set()
 
     def progress_hook(progress_dict):
-        # print(progress_dict)
-        # get filenames
-        file_name = progress_dict.get('filename', None)
-        if file_name:
-            file_names.add(file_name)
+        print(progress_dict)
 
         # when downloading 2 streams "i.e. dash video and audio" downloaded_bytes will be reset to zero and report
         # wrong total downloaded bytes, fix >> use  a dictionary to store every stream progress
         downloaded_bytes = progress_dict.get('downloaded_bytes', 0)
-        total_bytes = progress_dict.get('total_bytes', 0)
-        downloaded[total_bytes] = downloaded_bytes
-
+        file_name = progress_dict.get('filename', 'unknown')
+        downloaded[file_name] = downloaded_bytes
         d.downloaded = sum(downloaded.values())
+
+        total_bytes = progress_dict.get('total_bytes', 0)
+
+        if file_name == d.temp_file:
+            d.size = total_bytes
+
+        elif file_name == d.audio_file:
+            d.audio_size == total_bytes
+
+        # monitor cancel flag
+        if d.status == config.Status.cancelled:
+            log('youtube-dl cancelled download')
+            raise KeyboardInterrupt
+
 
     options.update(**get_ytdl_options())
 
@@ -402,16 +413,16 @@ def youtube_dl_downloader(d=None, extra_options=None):
 
     options['progress_hooks'] = [progress_hook]
     options['quiet'] = False
-    options['verbose'] = True
+    options['verbose'] = False
     options['hls-prefer-native'] = True
 
-    # audio file
-    if d.type == 'dash':
-        options['format'] = d.format_id + ',' + d.audio_format_id
-        options['outtmpl'] = d.folder + '/%(id)s.%(ext)s'
-    else:
-        options['format'] = d.format_id
-        options['outtmpl'] = d.target_file
+    # # audio file
+    # if d.type == 'dash':
+    #     options['format'] = d.format_id + ',' + d.audio_format_id
+    #     options['outtmpl'] = d.folder + '/%(id)s.%(ext)s'
+    # else:
+    options['format'] = d.format_id
+    options['outtmpl'] = d.temp_file
 
     # start downloading
     try:
@@ -419,15 +430,33 @@ def youtube_dl_downloader(d=None, extra_options=None):
             ydl.download([d.url])
     except Exception as e:
         log('youtube_dl_downloader()> ', e)
-        raise e
+        # raise e
         return False
+
+    # audio file -------------------------------------
+    if d.type == 'dash':
+        options['format'] = f'{d.audio_format_id}/bestaudio'
+        options['outtmpl'] = d.audio_file
+
+        # start downloading
+        try:
+            with ytdl.YoutubeDL(options) as ydl:
+                ydl.download([d.url])
+        except Exception as e:
+            log('youtube_dl_downloader()> ', e)
+            # raise e
+            return False
 
     # mux audio/video
     if d.type == 'dash':
-        audio, video = file_names.pop(), file_names.pop()
+        audio, video = d.audio_file, d.temp_file  # file_names.pop(), file_names.pop()
+
+        # set status to merge
+        d.status = config.Status.merging_audio
+
         error, output = merge_video_audio(video, audio, d.target_file)
         if error:
-            log('failed to merge', d.target_file)
+            log('failed to merge', d.target_file, output)
             return False
         else:
             delete_file(video)

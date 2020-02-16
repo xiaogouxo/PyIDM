@@ -84,7 +84,7 @@ def save_d_list(d_list):
     try:
         data = []
         for d in d_list:
-            data.append(d.get_persistent_properties())  # append object attributes dictionary to data list
+            data.append(d.get_persistent_properties())
 
         file = os.path.join(sett_folder, 'downloads.cfg')
 
@@ -121,38 +121,37 @@ def load_setting():
         else:
             config.download_folder = os.path.join(os.path.expanduser("~"), 'Downloads')
 
-        # clipboard monitor
-        config.monitor_clipboard = setting.get('monitor', True)
-
-        # max concurrent downloads
-        config.concurrent_downloads = setting.get('concurrent_downloads', config.DEFAULT_CONCURRENT_CONNECTIONS)
-
-        # download window
+        config.current_theme = setting.get('current_theme', config.DEFAULT_THEME)
+        config.speed_limit = setting.get('speed_limit', 0)
+        config.monitor_clipboard = setting.get('monitor_clipboard', True)
         config.show_download_window = setting.get('show_download_window', True)
-
-        # theme
-        config.current_theme = setting.get('theme', config.DEFAULT_THEME)
-
-        # check_for_update_on_startup
+        config.max_concurrent_downloads = setting.get('max_concurrent_downloads', config.DEFAULT_CONCURRENT_CONNECTIONS)
+        config.max_connections = setting.get('max_connections', config.DEFAULT_CONNECTIONS)
+        config.proxy = setting.get('proxy', None)
+        config.segment_size = setting.get('segment_size', config.DEFAULT_SEGMENT_SIZE)
         config.check_for_update_on_startup = setting.get('check_for_update_on_startup', True)
 
+        # todo: to be removed
         # ffmpeg folder, will be loaded if it has been set by user otherwise will use setting folder as a fallback
         config.ffmpeg_installation_folder = setting.get('ffmpeg_installation_folder', sett_folder)
 
-        # proxy
-        config.proxy = setting.get('proxy', None)
 
 
 def save_setting():
     setting = dict()
     setting['download_folder'] = config.download_folder
-    setting['monitor'] = config.monitor_clipboard
-    setting['max_concurrent_downloads'] = config.max_concurrent_downloads
+    setting['current_theme'] = config.current_theme
+    setting['speed_limit'] = config.speed_limit
+    setting['monitor_clipboard'] = config.monitor_clipboard
     setting['show_download_window'] = config.show_download_window
-    setting['theme'] = config.current_theme
-    setting['check_for_update_on_startup'] = config.check_for_update_on_startup
-    setting['ffmpeg_installation_folder'] = config.ffmpeg_installation_folder
+    setting['max_concurrent_downloads'] = config.max_concurrent_downloads
+    setting['max_connections'] = config.max_connections
     setting['proxy'] = config.proxy
+    setting['segment_size'] = config.segment_size
+    setting['check_for_update_on_startup'] = config.check_for_update_on_startup
+
+    # todo: check if necessary
+    setting['ffmpeg_installation_folder'] = config.ffmpeg_installation_folder
 
     try:
         file = os.path.join(sett_folder, 'setting.cfg')

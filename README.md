@@ -2,17 +2,18 @@
 
 pyIDM is a python open source (Internet Download Manager) 
 with multi-connections, high speed engine, 
-it downloads general files with good youtube support (such as downloading videos, whole playlists at once, or just an audio file for a video stream) . <br>
-Developed in Python, based on "pyCuRL/curl", "youtube_dl", and "PySimpleGUI"
+it downloads general files and videos from youtube and tons of other streaming websites . <br>
+Developed in Python, based on "pyCuRL/libcurl", "youtube_dl", and "PySimpleGUI"
 
 ![main window](https://user-images.githubusercontent.com/58998813/71563996-a2580480-2aa1-11ea-8818-6476b500d200.png)
 
 ---
 **Features**:
-* High download speeds "based on cuRL"
-* Multi-connection downloading
+* High download speeds "based on libcurl"
+* Multi-connection downloading "Multithreading"
 * Scan and resume uncompleted downloads.
 * Support for Youtube, and a lot of stream websites "using youtube-dl to fetch data".
+* support for fragmented video streams.
 * Auto check for application updates.
 * Scheduling downloads
 * Re-using existing connection to remote server.
@@ -38,8 +39,9 @@ You have 3 options to run pyIDM on your operating system:
     or just<br>
     `pyidm`        an exexutable "i.e. pyidm.exe on windows" will be located at "python/scripts", if it doesn't work append "python/scripts" folder to PATH. 
 
-2. **Binary executables**:<br>
-currently binary build "Standalone zip" is available only for windows [here](https://github.com/pyIDM/pyIDM/releases/latest).
+2. **Windows portable version**:<br>
+Latest Windows portable version available [here](https://github.com/pyIDM/pyIDM/releases/latest). <br>
+unzip, and run from pyidm.exe, no installation required.
 
 3. **run from github source code**:<br>
 pyIDM is a python app. so, it can run on any platform that can run python, 
@@ -98,6 +100,8 @@ example multi-downloading with speed limit of 20 KB/sec as a test
 # Why another download manager?:
 With all free and paid download manager why someone may need another one?
 I believe in one term, **"if the product is free, then you are the product"**, most (if not all) free applications collect data about you, some of them are toxic and plant trojans and spyware in your system, then I decided to make my own download manager based on python with 👉 **"--GUI--"** relies only on open source tools and libraries, nothing hidden, with source code exposed to thousands of programmers, no one can play dirty games here 😉.
+
+why not just use youtube-dl from command line or just use youtube-dl gui? answer is multithreading / multiconnection is not available in youtube-dl, most of the time streaming servers like youtube limit speed per connection and you end up with slow download speeds.
 
 ---
 

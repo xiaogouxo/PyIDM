@@ -14,7 +14,7 @@ import time
 import certifi
 import pycurl
 
-from .config import Status, APP_NAME
+from .config import Status, APP_NAME, proxy
 from .utils import get_seg_size
 
 
@@ -127,6 +127,7 @@ class Worker:
         # print(self.headers)
 
     def set_options(self):
+        # todo: change agent name
         agent = f"{APP_NAME} Download Manager"
         self.c.setopt(pycurl.USERAGENT, agent)
 
@@ -135,6 +136,9 @@ class Worker:
         range_ = self.resume_range or self.seg.range
         if range_:
             self.c.setopt(pycurl.RANGE, range_)  # download segment only not the whole file
+
+        # set proxy, must be string empty '' means no proxy
+        self.c.setopt(pycurl.PROXY, proxy)
 
         # re-directions
         self.c.setopt(pycurl.FOLLOWLOCATION, 1)

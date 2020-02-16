@@ -200,12 +200,14 @@ class MainWindow:
                           [sg.Text('Select Theme:'),
                            sg.Combo(values=config.all_themes, default_value=config.current_theme, size=(15, 1),
                                     enable_events=True, key='themes'), sg.Text(f' Total: {len(config.all_themes)} Themes')],
-                          [sg.Checkbox('Speed Limit:', key= 'speed_limit_switch', change_submits=True,
+                          [sg.Checkbox('Speed Limit:', default=True if config.speed_limit else False,
+                                       key='speed_limit_switch', change_submits=True,
                                        tooltip='examples: 50 k, 10kb, 2m, 3mb, 20, 10MB '),
-                           sg.Input('', size=(10, 1), key='speed_limit', disabled=True, enable_events=True),
+                           sg.Input(default_text=config.speed_limit if config.speed_limit else '', size=(10, 1), key='speed_limit',
+                                    disabled=False if config.speed_limit else True, enable_events=True),
                            sg.T('0', size=(30, 1), key='current_speed_limit')],
-                          [sg.Checkbox('Monitor copied urls in clipboard', default=config.monitor_clipboard, key='monitor',
-                                       enable_events=True)],
+                          [sg.Checkbox('Monitor copied urls in clipboard', default=config.monitor_clipboard,
+                                       key='monitor', enable_events=True)],
                           [sg.Checkbox("Show download window", key='show_download_window',
                                        default=config.show_download_window, enable_events=True)],
                           [sg.Text('Max concurrent downloads:'),
@@ -214,9 +216,10 @@ class MainWindow:
                           [sg.Text('Max connections per download:'),
                            sg.Combo(values=[x for x in range(1, 101)], size=(5, 1), enable_events=True,
                                     key='max_connections', default_value=config.max_connections)],
-                          [sg.T('Proxy: '), sg.I(size=(30, 1), tooltip='proxy server ip:port, ex: 157.245.224.29:3128',
+                          [sg.T('Proxy: '), sg.I(default_text=config.proxy, size=(30, 1),
+                                                 tooltip='proxy server ip:port, ex: 157.245.224.29:3128',
                                                  key='proxy', enable_events=True)],
-                          [sg.Text('Segment size:'), sg.Input(default_text=config.DEFAULT_SEGMENT_SIZE//1024, size=(6, 1),
+                          [sg.Text('Segment size:'), sg.Input(default_text=config.segment_size//1024, size=(6, 1),
                                                                 enable_events=True, key='segment_size'),
                            sg.Text('KBytes   *affects new downloads only')],
                           [sg.T('')],
@@ -558,15 +561,14 @@ class MainWindow:
                     config.max_connections = mc
 
             elif event == 'monitor':
-                global monitor_clipboard
-                monitor_clipboard = values['monitor']
-                config.clipboard_q.put(('monitor', monitor_clipboard))
+                config.monitor_clipboard = values['monitor']
 
             elif event == 'show_download_window':
                 config.show_download_window = values['show_download_window']
 
             elif event == 'proxy':
-                config.proxy = values['proxy']
+                if isinstance(values['proxy'], str):
+                    config.proxy = values['proxy']
                 print('config.proxy = ', config.proxy)
 
             elif event == 'segment_size':
@@ -640,7 +642,6 @@ class MainWindow:
                 else:
                     self.window['update_note']('')
 
-
     # region headers
     def refresh_headers(self, url):
         if self.d.url != '':
@@ -653,21 +654,18 @@ class MainWindow:
 
         # update headers only if no other curl thread created with different url
         if url == self.d.url:
-            # self.headers = curl_headers
-            # self.d.eff_url = curl_headers.get('eff_url')
 
-            # self.status_code = self.d.status_code  # curl_headers.get('status_code', '')
-            self.set_status(self.d.status_code_description)  #(f"{self.status_code} - {translate_server_code(self.status_code)}")
-
-            # update file info
-            # self.update_info()
+            self.set_status(self.d.status_code_description)
 
             # enable download button
             if self.d.status_code not in self.bad_headers and self.d.type != 'text/html':
                 self.enable()
 
-            # check if the link is html maybe it contains stream video
-            if self.d.type == 'text/html':
+            # todo: let youtube-dl check every link and if it failed just pass
+            # check if the link might contains stream videos
+            test = any([x in self.d.type for x in ['text/html', 'audio', 'video']])
+            if test:
+                # check for stream videos by youtube-dl
                 Thread(target=self.youtube_func, daemon=True).start()
 
             self.change_cursor('default')
@@ -789,6 +787,21 @@ class MainWindow:
             self.pending.append(d)
             return
 
+        # todo: more testing required, ffmpeg gives no progress, can't terminate
+        # check if protocol is not supported, will use native youtube-dl downloader, will be handled in brain module
+        if d.protocol in config.non_supported_protocols:
+            msg = f"protocol: {d.protocol} is not supported! \n Try native youtube-dl downloader? \n" \
+                  f"Warning: this is experimental, in some cases there might be no progress \n" \
+                  f" update while downloading,  only when finished downloading."
+            window = sg.Window('Experimental', [[sg.T(msg)], [sg.Ok(), sg.Cancel()]])
+            event, values = window()
+            if event != 'Ok':
+                log('Cancelled by user')
+                return
+
+            window.close()
+
+
         # start downloading
         if config.show_download_window and not silent:
             # create download window
@@ -817,8 +830,6 @@ class MainWindow:
         return None
 
     def download_btn(self):
-        print(self.d.protocol)
-        return
 
         if self.disabled:
             sg.popup_ok('Nothing to download', 'it might be a web page or invalid url link',
@@ -1443,7 +1454,7 @@ class MainWindow:
         self.window['Setting'].set_cursor(cursor_name)
 
     def main_frameOnClose(self):
-        config.terminate = True
+        # config.terminate = True
 
         log('main frame closing')
         self.window.Close()
@@ -1456,7 +1467,7 @@ class MainWindow:
         except:
             pass
 
-        config.clipboard_q.put(('status', Status.cancelled))
+        # config.clipboard_q.put(('status', Status.cancelled))
 
     def check_scheduled(self):
         t = time.localtime()
@@ -1696,8 +1707,8 @@ class DownloadWindow:
     def run(self):
         self.event, self.values = self.window.Read(timeout=self.timeout)
         if self.event in ('cancel', None):
-            # self.d.q.brain.put(('status', Status.cancelled))
-            self.d.status = Status.cancelled
+            if self.d.status != Status.error:
+                self.d.status = Status.cancelled
             self.close()
 
         elif self.event == 'hide':
