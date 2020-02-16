@@ -1,4 +1,11 @@
-2020.2.12
+2020.2.16:
+- Add support for proxy.
+- estimate fragmented video size.
+- fixed all setting parameters can be stored and reloaded properly.
+- Prevent application freeze momentarily during check for update.
+- Fix youtube-dl update
+
+2020.2.12:
 - Add support for fragmented video streams
 - Simultaneous download of video and audio streams
 - some bug fixes
