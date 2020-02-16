@@ -398,7 +398,7 @@ def youtube_dl_downloader(d=None, extra_options=None):
             d.size = total_bytes
 
         elif file_name == d.audio_file:
-            d.audio_size == total_bytes
+            d.audio_size = total_bytes
 
         # monitor cancel flag
         if d.status == config.Status.cancelled:
