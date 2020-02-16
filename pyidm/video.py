@@ -322,7 +322,7 @@ def check_ffmpeg():
             # print(file)
             if file == 'ffmpeg.exe':
                 found = True
-                ffmpeg_actual_path = os.path.join(folder, file)
+                config.ffmpeg_actual_path = os.path.join(folder, file)
                 break
         if found:  # break outer loop
             break
@@ -333,10 +333,10 @@ def check_ffmpeg():
         error, output = run_command(cmd, verbose=False)
         if not error:
             found = True
-            ffmpeg_actual_path = os.path.realpath(output)
+            config.ffmpeg_actual_path = os.path.realpath(output)
 
     if found:
-        log('ffmpeg checked ok! - at: ', ffmpeg_actual_path)
+        log('ffmpeg checked ok! - at: ', config.ffmpeg_actual_path)
         return True
     else:
         log(f'can not find ffmpeg!!, install it, or add executable location to PATH, or copy executable to ',
@@ -412,14 +412,8 @@ def youtube_dl_downloader(d=None, extra_options=None):
 
     options['progress_hooks'] = [progress_hook]
     options['quiet'] = False
-    options['verbose'] = False
+    options['verbose'] = True
     options['hls-prefer-native'] = True
-
-    # # audio file
-    # if d.type == 'dash':
-    #     options['format'] = d.format_id + ',' + d.audio_format_id
-    #     options['outtmpl'] = d.folder + '/%(id)s.%(ext)s'
-    # else:
     options['format'] = d.format_id
     options['outtmpl'] = d.temp_file
 
@@ -462,4 +456,13 @@ def youtube_dl_downloader(d=None, extra_options=None):
             delete_file(audio)
 
     return True
+
+
+def hls_downloader(d):
+    cmd = f'"ffmpeg" -y -i "{d.eff_url}" -c copy -f mp4 "file:{d.temp_file}"'
+    error, output = run_command(cmd)
+    if error:
+        return False
+    else:
+        return True
 
