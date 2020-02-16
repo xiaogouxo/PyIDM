@@ -181,7 +181,13 @@ ChangeLog.txt is available in source code
 <br><br>
 
 ---
+# How to contribute to this project:
+1- by testing the application and opening [new issue](https://github.com/pyIDM/pyIDM/issues/new) for bug reporting, feature request, or suggestions. <br>
+2- fork this repo and pull request
 
+<br><br>
+
+---
 
 
 # Feedback:
