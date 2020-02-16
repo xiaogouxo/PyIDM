@@ -44,7 +44,7 @@ from .gui import MainWindow
 
 def clipboard_listener():
     old_data = ''
-    monitor = True
+    # monitor = True
 
     while True:
 
@@ -54,16 +54,21 @@ def clipboard_listener():
             clipboard_write('yes')  # it will be read by singleApp() as an exit signal
             config.main_window_q.put(('visibility', 'show'))  # restore main window if minimized
 
-        if monitor and new_data != old_data:
+        if config.monitor_clipboard and new_data != old_data:
             if new_data.startswith('http') and ' ' not in new_data:
                 config.main_window_q.put(('url', new_data))
 
             old_data = new_data
 
-        if config.clipboard_q.qsize() > 0:
-            k, v = config.clipboard_q.get()
-            if k == 'status' and v == config.Status.cancelled: break
-            elif k == 'monitor': monitor = v
+        # if config.clipboard_q.qsize() > 0:
+        #     k, v = config.clipboard_q.get()
+        #     if k == 'status' and v == config.Status.cancelled: break
+            # elif k == 'monitor':
+            #     monitor = v
+
+        # monitor global termination flag
+        if config.terminate:
+            break
 
         time.sleep(0.2)
 
@@ -106,6 +111,9 @@ def main():
     # start gui main loop
     main_window = MainWindow(config.d_list)
     main_window.run()
+
+    # set global termination flag
+    config.terminate = True
 
     # Save setting to disk
     setting.save_setting()
