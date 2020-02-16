@@ -124,11 +124,14 @@ class MainWindow:
                 self.window.BringToFront()
                 sg.popup_ok('application is already running', title=config.APP_NAME)
 
-            elif k == 'download':  # can receive download requests
+            elif k == 'download':  # receive download requests
                 self.start_download(*v)
 
-            elif k == 'popup':  # can receive download requests
+            elif k == 'popup':
                 sg.popup(v['msg'], title=v['title'])
+
+            elif k == 'show_update_gui':  # show update gui
+                self.show_update_gui()
 
     # region gui design
     def create_window(self):
@@ -380,10 +383,10 @@ class MainWindow:
                 self.main_frameOnClose()
                 break
 
-            elif event == 'update_note':
-                # if clicked on update notification text
-                if self.new_version_available:
-                    self.update_app()
+            # elif event == 'update_note':
+            #     # if clicked on update notification text
+            #     if self.new_version_available:
+            #         self.update_app()
 
             elif event == 'url':
                 self.url_text_change()
@@ -584,8 +587,9 @@ class MainWindow:
             elif event == 'update_youtube_dl':
                 self.update_ytdl()
 
-            elif event == 'update_pyIDM':
-                self.update_app()
+            elif event in ['update_pyIDM', 'update_note']:
+                Thread(target=self.update_app, daemon=True).start()
+                # self.update_app()
 
             # log
             elif event == 'Clear Log':
@@ -1513,6 +1517,7 @@ class MainWindow:
     # endregion
 
     # region update
+    # todo: check update section, i think it is not working correctly
     def check_for_update(self):
         # todo: use a separate thread, application becomes unresponsive during "update.get_changelog()"
         self.change_cursor('busy')
@@ -1543,27 +1548,31 @@ class MainWindow:
 
         self.change_cursor('default')
 
+    # todo: use separate thread for update, the app. freezes :(
     def update_app(self):
         """show changelog with latest version and ask user for update"""
         self.check_for_update()
-
         if self.new_version_available:
-            layout = [
-                [sg.T('New version available:')],
-                [sg.Multiline(self.new_version_description, size=(50, 10))],
-                [sg.B('Update'), sg.Cancel()]
-            ]
-            window = sg.Window('Update Application', layout, finalize=True, keep_on_top=True)
-            event, _ = window()
-            if event == 'Update':
-                update.update()
-
-            window.close()
+            config.main_window_q.put(('show_update_gui', ''))
+            # self.show_update_gui()
         else:
             if self.new_version_description:
                 popup(f"App. is up-to-date, server version= {config.APP_LATEST_VERSION}")
             else:
                 popup("couldn't check for update")
+
+    def show_update_gui(self):
+        layout = [
+            [sg.T('New version available:')],
+            [sg.Multiline(self.new_version_description, size=(50, 10))],
+            [sg.B('Update'), sg.Cancel()]
+        ]
+        window = sg.Window('Update Application', layout, finalize=True, keep_on_top=True)
+        event, _ = window()
+        if event == 'Update':
+            update.update()
+
+        window.close()
 
 
     def animate_update_note(self):

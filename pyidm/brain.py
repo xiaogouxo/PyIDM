@@ -9,7 +9,8 @@
 import os
 import time
 from threading import Thread
-from .video import merge_video_audio, youtube_dl_downloader, unzip_ffmpeg  # unzip_ffmpeg required here for ffmpeg callback
+from .video import merge_video_audio, youtube_dl_downloader, unzip_ffmpeg, \
+    hls_downloader  # unzip_ffmpeg required here for ffmpeg callback
 from . import config
 from .config import Status, active_downloads, APP_NAME
 from .utils import (log, size_format, popup, notify, delete_folder, delete_file, rename_file, load_json, save_json)
@@ -46,7 +47,7 @@ def brain(d=None):
         log('unsupported protocol detected use native youtube-dl downloader')
         # popup('using native youtube-dl downloader, please check progress on log tab')
         try:
-            done = youtube_dl_downloader(d)
+            done = hls_downloader(d)  # youtube_dl_downloader(d)
             if done:
                 d.status = Status.completed
             else:

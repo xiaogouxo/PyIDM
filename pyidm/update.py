@@ -68,7 +68,7 @@ def get_changelog():
         contents = buffer.getvalue().decode()
 
         # extract version number from contents
-        latest_version = contents.split(maxsplit=1)[0][:-1]
+        latest_version = contents.splitlines()[0].replace(':', '').strip()
 
         return latest_version, contents
     else:
@@ -111,7 +111,7 @@ def update_youtube_dl():
     current_directory = config.current_directory
     if 'lib' not in os.listdir(current_directory):
         # log('running command: python -m pip install youtube_dl --upgrade')
-        cmd = f"{sys.executable} -m pip install youtube_dl --upgrade"
+        cmd = f'"{sys.executable}" -m pip install youtube_dl --upgrade'
         success, output = run_command(cmd)
         if success:
             log('successfully updated youtube_dl')
