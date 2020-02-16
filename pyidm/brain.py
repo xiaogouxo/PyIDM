@@ -9,7 +9,7 @@
 import os
 import time
 from threading import Thread
-from .video import merge_video_audio, unzip_ffmpeg  # unzip_ffmpeg required here for ffmpeg callback
+from .video import merge_video_audio, youtube_dl_downloader, unzip_ffmpeg  # unzip_ffmpeg required here for ffmpeg callback
 from . import config
 from .config import Status, active_downloads, APP_NAME
 from .utils import (log, size_format, popup, notify, delete_folder, delete_file, rename_file, load_json, save_json)
@@ -38,6 +38,23 @@ def brain(d=None):
     active_downloads.add(d.id)
 
     q.log(f'start downloading file: {d.name}, size: {size_format(d.size)}')
+
+    # todo: more testing required, move part of this code to gui.start_download() asking user to proceed
+    # use youtube-dl native downloader to download unsupported protocols
+    # problem now is when youtube-dl use ffmpeg to download streams we get no progress at all
+    if d.protocol in config.non_supported_protocols:
+        log('unsupported protocol detected use native youtube-dl downloader')
+        # popup('using native youtube-dl downloader, please check progress on log tab')
+        try:
+            done = youtube_dl_downloader(d)
+            if done:
+                d.status = Status.completed
+            else:
+                d.status = Status.error
+        except:
+            if d.status != Status.cancelled:  # if not cancelled by user
+                d.status = Status.error
+        return
 
     # run file manager in a separate thread
     Thread(target=file_manager, daemon=True, args=(d,)).start()
@@ -86,7 +103,6 @@ def brain(d=None):
 def thread_manager(d):
     q = d.q
 
-    # todo: replace all d.max_connections by global variable config.max_connections
     # create worker/connection list
     workers = [Worker(tag=i, d=d) for i in range(config.max_connections)]
 
@@ -191,8 +207,12 @@ def file_manager(d):
     while True:
         time.sleep(1)
 
+        job_list = [seg for seg in d.segments if not seg.completed]
+        # print(job_list)
+
         for seg in job_list:
             # process segments in order
+            # print(seg.name, seg.downloaded, seg.completed)
 
             if seg.completed:  # skip completed segment
                 continue
@@ -223,6 +243,9 @@ def file_manager(d):
             if d.type == 'dash':
                 # merge audio and video
                 output_file = d.target_file.replace(' ', '_')  # remove spaces from target file
+
+                # set status to merge
+                d.status = Status.merging_audio
                 error, output = merge_video_audio(d.temp_file, d.audio_file, output_file)
 
                 if not error:
