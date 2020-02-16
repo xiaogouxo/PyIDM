@@ -102,7 +102,9 @@ class Segment:
         return self.size
 
 
+# todo: remove target folder from segments, and remove audio folders
 class DownloadItem:
+
     # animation ['►►   ', '  ►►'] › ► ⤮ ⇴ ↹ ↯  ↮  ₡ ['⯈', '▼', '⯇', '▲']
     # ['⏵⏵', '  ⏵⏵'] ['›', '››', '›››', '››››', '›››››']
     animation_icons = {config.Status.downloading: ['❯', '❯❯', '❯❯❯', '❯❯❯❯'], config.Status.pending: ['⏳'],
@@ -481,7 +483,7 @@ class DownloadItem:
 
         if self.type == 'dash':
             delete_file(self.audio_file)
-            delete_folder(self.temp_audio_folder)
+            # delete_folder(self.temp_audio_folder)
 
     def get_size(self):
         """fetch headers for all segments and get size, use with care it is a time / resource consumer task"""

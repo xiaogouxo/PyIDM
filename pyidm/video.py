@@ -279,11 +279,13 @@ def download_ffmpeg():
         url = 'https://github.com/pyIDM/pyIDM/releases/download/extra/ffmpeg_32bit.zip'
 
     log('downloading: ', url)
-    # create a download object
-    d = DownloadItem(url=url, folder=config.ffmpeg_installation_folder)
+
+    # create a download object, will store ffmpeg in setting folder
+    print('config.sett_folder = ', config.sett_folder)
+    d = DownloadItem(url=url, folder=config.sett_folder)
     d.update(url)
-    d.name = 'ffmpeg.zip'  # not necessary, will use it just in case, name didn't supplied with headers.
-    # d.max_connections = 4
+    d.name = 'ffmpeg.zip'  # must rename it for unzip to find it
+    print('d.folder = ', d.folder)
 
     # post download
     d.callback = 'unzip_ffmpeg'
@@ -296,31 +298,31 @@ def unzip_ffmpeg():
     log('unzip_ffmpeg:', 'unzipping')
 
     try:
-        file_name = os.path.join(config.ffmpeg_installation_folder, 'ffmpeg.zip')
+        file_name = os.path.join(config.sett_folder, 'ffmpeg.zip')
         with zipfile.ZipFile(file_name, 'r') as zip_ref:  # extract zip file
-            zip_ref.extractall(config.ffmpeg_installation_folder)
+            zip_ref.extractall(config.sett_folder)
 
         log('ffmpeg update:', 'delete zip file')
-        os.unlink(file_name)
-        log('ffmpeg update:', 'ffmpeg .. is ready at: ', config.ffmpeg_installation_folder)
+        delete_file(file_name)
+        log('ffmpeg update:', 'ffmpeg .. is ready at: ', config.sett_folder)
     except Exception as e:
         log('unzip_ffmpeg: error ', e)
 
 
 def check_ffmpeg():
-    """check for ffmpeg availability, first: config.ffmpeg_installation_folder, second: current folder,
+    """check for ffmpeg availability, first: config.sett_folder, second: current folder,
     and finally: system wide"""
 
     log('check ffmpeg availability?')
     found = False
 
     # search in default installation folder then current directory
-    for folder in [config.ffmpeg_installation_folder, config.current_directory]:
+    for folder in [config.sett_folder, config.current_directory]:
         for file in os.listdir(folder):
             # print(file)
-            if file == 'ffmpeg.exe' and os.path.isfile(os.path.join(folder, file)):
+            if file == 'ffmpeg.exe':
                 found = True
-                config.ffmpeg_actual_path = os.path.join(config.ffmpeg_installation_folder, file)
+                ffmpeg_actual_path = os.path.join(folder, file)
                 break
         if found:  # break outer loop
             break
@@ -331,15 +333,14 @@ def check_ffmpeg():
         error, output = run_command(cmd, verbose=False)
         if not error:
             found = True
-            config.ffmpeg_actual_path = os.path.realpath(output)
+            ffmpeg_actual_path = os.path.realpath(output)
 
     if found:
-        log('ffmpeg checked ok!')
-        log('config.ffmpeg_actual_path = ', config.ffmpeg_actual_path)
+        log('ffmpeg checked ok! - at: ', ffmpeg_actual_path)
         return True
     else:
         log(f'can not find ffmpeg!!, install it, or add executable location to PATH, or copy executable to ',
-            config.ffmpeg_installation_folder)
+            config.sett_folder, 'or', config.current_directory)
 
 
 def merge_video_audio(video, audio, output):
@@ -380,7 +381,6 @@ def youtube_dl_downloader(d=None, extra_options=None):
     """download with youtube_dl"""
     options = {}
     downloaded = {}
-    file_names = set()
 
     def progress_hook(progress_dict):
         print(progress_dict)
@@ -404,7 +404,6 @@ def youtube_dl_downloader(d=None, extra_options=None):
         if d.status == config.Status.cancelled:
             log('youtube-dl cancelled download')
             raise KeyboardInterrupt
-
 
     options.update(**get_ytdl_options())
 

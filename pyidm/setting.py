@@ -41,15 +41,15 @@ def get_sett_folder():
     return _sett_folder
 
 
-sett_folder = get_sett_folder()
+config.sett_folder = get_sett_folder()
 
 
 def load_d_list():
     """create and return a list of 'DownloadItem objects' based on data extracted from 'downloads.cfg' file"""
     d_list = []
     try:
-        log('Load previous download items from', sett_folder)
-        file = os.path.join(sett_folder, 'downloads.cfg')
+        log('Load previous download items from', config.sett_folder)
+        file = os.path.join(config.sett_folder, 'downloads.cfg')
 
         with open(file, 'r') as f:
             # expecting a list of dictionaries
@@ -86,7 +86,7 @@ def save_d_list(d_list):
         for d in d_list:
             data.append(d.get_persistent_properties())
 
-        file = os.path.join(sett_folder, 'downloads.cfg')
+        file = os.path.join(config.sett_folder, 'downloads.cfg')
 
         with open(file, 'w') as f:
             try:
@@ -101,8 +101,8 @@ def save_d_list(d_list):
 def load_setting():
     setting = {}
     try:
-        log('Load Application setting from', sett_folder)
-        file = os.path.join(sett_folder, 'setting.cfg')
+        log('Load Application setting from', config.sett_folder)
+        file = os.path.join(config.sett_folder, 'setting.cfg')
         with open(file, 'r') as f:
             setting = json.load(f)
 
@@ -131,11 +131,6 @@ def load_setting():
         config.segment_size = setting.get('segment_size', config.DEFAULT_SEGMENT_SIZE)
         config.check_for_update_on_startup = setting.get('check_for_update_on_startup', True)
 
-        # todo: to be removed
-        # ffmpeg folder, will be loaded if it has been set by user otherwise will use setting folder as a fallback
-        config.ffmpeg_installation_folder = setting.get('ffmpeg_installation_folder', sett_folder)
-
-
 
 def save_setting():
     setting = dict()
@@ -150,11 +145,8 @@ def save_setting():
     setting['segment_size'] = config.segment_size
     setting['check_for_update_on_startup'] = config.check_for_update_on_startup
 
-    # todo: check if necessary
-    setting['ffmpeg_installation_folder'] = config.ffmpeg_installation_folder
-
     try:
-        file = os.path.join(sett_folder, 'setting.cfg')
+        file = os.path.join(config.sett_folder, 'setting.cfg')
         with open(file, 'w') as f:
             json.dump(setting, f)
             log('setting saved')
