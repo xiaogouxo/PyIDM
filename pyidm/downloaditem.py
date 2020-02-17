@@ -172,7 +172,7 @@ class DownloadItem:
         self.audio_fragments = None
 
         # protocol
-        self.protocol = None
+        self.protocol = ''
 
         self.format_id = None
         self.audio_format_id = None

@@ -36,8 +36,8 @@ def brain(d=None):
     else:
         d.status = Status.downloading
 
-    # add item index to active download set
-    active_downloads.add(d.id)
+    # # add item index to active download set
+    # active_downloads.add(d.id)
 
     q.log(f'start downloading file: {d.name}, size: {size_format(d.size)}')
 
@@ -105,13 +105,13 @@ def brain(d=None):
     # reset queue and delete un-necessary data
     d.q.reset()
 
-    # remove item id from active downloads
-    try:
-        # print(d.id, active_downloads)
-        active_downloads.remove(d.id)
-        log(f'brain {d.num}: removed item from active downloads')
-    except:
-        pass
+    # # remove item id from active downloads
+    # try:
+    #     # print(d.id, active_downloads)
+    #     active_downloads.remove(d.id)
+    #     log(f'brain {d.num}: removed item from active downloads')
+    # except:
+    #     pass
 
     # todo: should find a better way to handle callback.
     # callback, a method or func "name" to call if download completed, it is stored as a string to be able to save it

@@ -339,6 +339,9 @@ class MainWindow:
                 # update selected item number
                 self.window.Element('selected_row_num').Update('---')
 
+            # active downloads
+            config.active_downloads = set(d.id for d in self.d_list if d.status == config.Status.downloading)
+
             # update status bar
             self.window.Element('status_bar').Update(
                 f'Active downloads: {len(config.active_downloads)}, pending: {len(self.pending)}')
