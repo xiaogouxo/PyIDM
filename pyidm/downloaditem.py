@@ -177,6 +177,13 @@ class DownloadItem:
         self.format_id = None
         self.audio_format_id = None
 
+        # some downloads will have their progress and total size calculated and we can't store these values in self.size
+        # since it will affect self.segments, workaround: use self.last_known_size, and self.last_known_progress so it
+        # will be showed when loading self.d_list from disk, other solution is to load progress info
+        # from setting.load_d_list()
+        self.last_known_size = 0
+        self.last_known_progress = 0
+
     def get_persistent_properties(self):
         """return a dict of important parameters to be saved in file"""
         a = dict(id=self.id, _name=self._name, folder=self.folder, url=self.url, eff_url=self.eff_url,
@@ -185,6 +192,7 @@ class DownloadItem:
                  remaining_parts=self.remaining_parts, audio_url=self.audio_url, audio_size=self.audio_size,
                  type=self.type, fragments=self.fragments, fragment_base_url=self.fragment_base_url,
                  audio_fragments=self.audio_fragments, audio_fragment_base_url=self.audio_fragment_base_url,
+                 last_known_size=self.last_known_size, last_known_progress=self.last_known_progress
                  )
         return a
 
@@ -208,11 +216,10 @@ class DownloadItem:
 
             else:
                 if self.resumable and self.size:
-                    # get list of ranges i.e. ['0-100', 101-2000' ... ] # should be '0-0' if size zero/unknown
+                    # get list of ranges i.e. ['0-100', 101-2000' ... ]
                     range_list = size_splitter(self.size, self.segment_size)
                 else:
-                    range_list = [None]
-                    # f'0-{self.size - 1 if self.size > 0 else 0}']
+                    range_list = [None]  # add None in a list to make one segment with range=None
 
                 self._segments = [
                     Segment(name=os.path.join(self.temp_folder, str(i)), num=i, range=x, size=get_seg_size(x),
@@ -250,12 +257,12 @@ class DownloadItem:
     def save_progress_info(self):
         """save segments info to disk"""
         seg_list = [{'name': seg.name, 'downloaded':seg.downloaded, 'completed':seg.completed, 'size':seg.size} for seg in self.segments]
-        file = os.path.join(self.temp_folder, 'info.txt')
+        file = os.path.join(self.temp_folder, 'progress_info.txt')
         save_json(file, seg_list)
 
     def load_progress_info(self):
         """load saved progress info from disk"""
-        file = os.path.join(self.temp_folder, 'info.txt')
+        file = os.path.join(self.temp_folder, 'progress_info.txt')
         if os.path.isfile(file):
             seg_list = load_json(file)
             for seg, item in zip(self.segments, seg_list):
@@ -278,6 +285,10 @@ class DownloadItem:
                 avg_seg_size = sum(sizes)//len(sizes)
                 size = avg_seg_size * len(self._segments)  # estimated
 
+        if not size:
+            return self.last_known_size
+
+        self.last_known_size = size  # to be loaded when restarting application
         return size
 
     @property
@@ -325,11 +336,17 @@ class DownloadItem:
         else:
             p = round(self.downloaded * 100 / self.total_size, 1)
 
-        return p if p <= 100 else 100
+        p = p if p <= 100 else 100
+
+        if not p:
+            return self.last_known_progress
+
+        self.last_known_progress = p  # to be loaded when restarting application
+        return p
 
     @property
     def time_left(self):
-        if self.status == config.Status.downloading and self.size:
+        if self.status == config.Status.downloading and self.total_size:
             return (self.total_size - self.downloaded) / self.speed if self.speed else -1
         else:
             return '---'
