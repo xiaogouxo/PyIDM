@@ -85,7 +85,7 @@ clipboard_q = Queue()  # todo: delete this queue
 # youtube-dl protocols
 # protocol: (http, https, rtsp, rtmp, rtmpe, mms, f4m, ism, http_dash_segments, m3u8, or m3u8_native)
 # below is the list where we'll use native youtube-dl downloader
-non_supported_protocols = ['m3u8', 'm3u8_native']
+non_supported_protocols = []  # ['m3u8', 'm3u8_native']
 
 # -------------------------------------------------------------------------------------
 
