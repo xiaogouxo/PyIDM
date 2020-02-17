@@ -37,7 +37,7 @@ sg.SetOptions(icon=config.APP_ICON, font='Helvetica 11', auto_size_buttons=True,
 class MainWindow:
     def __init__(self, d_list):
         """This is the main application user interface window"""
-        
+
         # current download_item
         self.d = DownloadItem()
 
@@ -141,7 +141,7 @@ class MainWindow:
                 [sg.ProgressBar(max_value=100, size=(20, 5), key='m_bar')]]
 
         # column for stream menu
-        col2 = [[sg.Combo(values= self.stream_menu, size=(34, 1), key='stream_menu', enable_events=True)],
+        col2 = [[sg.Combo(values=self.stream_menu, size=(34, 1), key='stream_menu', enable_events=True)],
                 [sg.ProgressBar(max_value=100, size=(20, 5), key='s_bar')]]
 
         main_layout = [
@@ -158,16 +158,15 @@ class MainWindow:
 
             # youtube playlist ⚡
             [sg.Frame('Playlist / videos:', key='youtube_frame', pad=(5, 5), layout=[
-                [sg.Column(col1, size=(300, 40),  element_justification='center'),
-                 sg.Button('⚡',  pad=(0, 0), tooltip='download this playlist', key='pl_download'),
+                [sg.Column(col1, size=(300, 40), element_justification='center'),
+                 sg.Button('⚡', pad=(0, 0), tooltip='download this playlist', key='pl_download'),
                  sg.Column(col2, size=(300, 40), element_justification='center')]]
                       )
              ],
 
-
             # file info
             [sg.Text('File name:'), sg.Input('', size=(65, 1), key='name', enable_events=True)],
-            [sg.T('-'*300, key='file_properties')],
+            [sg.T('-' * 300, key='file_properties')],
             [sg.Text('Save To:  '), sg.Input(config.download_folder, size=(55, 1), key='folder', enable_events=True),
              sg.FolderBrowse(key='browse')],
 
@@ -199,14 +198,16 @@ class MainWindow:
                             ]
 
         # setting tab
-        setting_layout = [[sg.T('User Setting:'), sg.T(' ', size=(50,1)), sg.Button(' about ', key='about')],
+        setting_layout = [[sg.T('User Setting:'), sg.T(' ', size=(50, 1)), sg.Button(' about ', key='about')],
                           [sg.Text('Select Theme:'),
                            sg.Combo(values=config.all_themes, default_value=config.current_theme, size=(15, 1),
-                                    enable_events=True, key='themes'), sg.Text(f' Total: {len(config.all_themes)} Themes')],
+                                    enable_events=True, key='themes'),
+                           sg.Text(f' Total: {len(config.all_themes)} Themes')],
                           [sg.Checkbox('Speed Limit:', default=True if config.speed_limit else False,
                                        key='speed_limit_switch', change_submits=True,
                                        tooltip='examples: 50 k, 10kb, 2m, 3mb, 20, 10MB '),
-                           sg.Input(default_text=config.speed_limit if config.speed_limit else '', size=(10, 1), key='speed_limit',
+                           sg.Input(default_text=config.speed_limit if config.speed_limit else '', size=(10, 1),
+                                    key='speed_limit',
                                     disabled=False if config.speed_limit else True, enable_events=True),
                            sg.T('0', size=(30, 1), key='current_speed_limit')],
                           [sg.Checkbox('Monitor copied urls in clipboard', default=config.monitor_clipboard,
@@ -222,15 +223,17 @@ class MainWindow:
                           [sg.T('Proxy: '), sg.I(default_text=config.proxy, size=(30, 1),
                                                  tooltip='proxy server ip:port, ex: 157.245.224.29:3128',
                                                  key='proxy', enable_events=True)],
-                          [sg.Text('Segment size:'), sg.Input(default_text=config.segment_size//1024, size=(6, 1),
-                                                                enable_events=True, key='segment_size'),
+                          [sg.Text('Segment size:'), sg.Input(default_text=config.segment_size // 1024, size=(6, 1),
+                                                              enable_events=True, key='segment_size'),
                            sg.Text('KBytes   *affects new downloads only')],
                           [sg.T('')],
                           [sg.Checkbox('Check for update on startup', default=config.check_for_update_on_startup,
                                        key='check_for_update_on_startup', change_submits=True)],
-                          [sg.T('    '), sg.T('Youtube-dl version = 00.00.00', size=(50,1), key='youtube_dl_update_note'),
+                          [sg.T('    '),
+                           sg.T('Youtube-dl version = 00.00.00', size=(50, 1), key='youtube_dl_update_note'),
                            sg.Button('update youtube-dl', key='update_youtube_dl')],
-                          [sg.T('    '), sg.T(f'pyIDM version = {config.APP_VERSION}', size=(50, 1), key='pyIDM_version_note'),
+                          [sg.T('    '),
+                           sg.T(f'pyIDM version = {config.APP_VERSION}', size=(50, 1), key='pyIDM_version_note'),
                            sg.Button('update pyIDM', key='update_pyIDM')],
                           [sg.T('')],
 
@@ -253,7 +256,7 @@ class MainWindow:
         ]
 
         # window
-        window = sg.Window(title=config.APP_TITLE, layout=layout, size=(700, 450),  margins=(2, 2))
+        window = sg.Window(title=config.APP_TITLE, layout=layout, size=(700, 450), margins=(2, 2))
         return window
 
     def start_window(self):
@@ -293,7 +296,7 @@ class MainWindow:
             if id_:
                 # mouse pointer over item
                 self.window['table'].Widget.selection_set(id_)
-                self.select_row(int(id_)-1)  # get count start from zero
+                self.select_row(int(id_) - 1)  # get count start from zero
                 self.window['table']._RightClickMenuCallback(event)
         except:
             pass
@@ -350,8 +353,10 @@ class MainWindow:
             speed_limit = size_format(config.speed_limit * 1024) if config.speed_limit > 0 else "_no limit_"
             self.window['current_speed_limit'](f'current speed limit: {speed_limit}')
 
-            self.window['youtube_dl_update_note'](f'Youtube-dl version = {config.ytdl_VERSION}, Latest version = {config.ytdl_LATEST_VERSION}')
-            self.window['pyIDM_version_note'](f'pyIDM version = {config.APP_VERSION}, Latest version = {config.APP_LATEST_VERSION}')
+            self.window['youtube_dl_update_note'](
+                f'Youtube-dl version = {config.ytdl_VERSION}, Latest version = {config.ytdl_LATEST_VERSION}')
+            self.window['pyIDM_version_note'](
+                f'pyIDM version = {config.APP_VERSION}, Latest version = {config.APP_LATEST_VERSION}')
 
         except Exception as e:
             # print('MainWindow.update_gui() error:', e)
@@ -442,7 +447,6 @@ class MainWindow:
                     if info:
                         msg = ''
                         for i in range(len(info)):
-
                             msg += f'{self.d_headers[i]}: {info[i]} \n'
                         msg += f'webpage url: {self.selected_d.url} \n\n'
                         msg += f'playlist url: {self.selected_d.playlist_url} \n'
@@ -527,7 +531,7 @@ class MainWindow:
                     self.window['speed_limit'](disabled=False)
                 else:
                     config.speed_limit = 0
-                    self.window['speed_limit']('', disabled=True) # clear and disable
+                    self.window['speed_limit']('', disabled=True)  # clear and disable
 
             elif event == 'speed_limit':
                 sl = values['speed_limit'].replace(' ', '')  # if values['speed_limit'] else 0
@@ -549,7 +553,7 @@ class MainWindow:
 
                     if letters in ('k', 'kb', None):
                         sl = digits
-                    elif letters in('m', 'mb'):
+                    elif letters in ('m', 'mb'):
                         sl = digits * 1024
                 else:
                     sl = 0
@@ -730,8 +734,7 @@ class MainWindow:
             else:
                 delete_file(d.target_file)
 
-
-# ------------------------------------------------------------------
+        # ------------------------------------------------------------------
         # search current list for previous item with same name, folder
         found_index = self.file_in_d_list(d.target_file)
         if found_index is not None:  # might be zero, file already exist in d_list
@@ -778,7 +781,7 @@ class MainWindow:
                 return
 
 
-# ------------------------------------------------------------------
+        # ------------------------------------------------------------------
 
         else:  # new file
             print('new file')
@@ -807,7 +810,6 @@ class MainWindow:
                 return
 
             window.close()
-
 
         # start downloading
         if config.show_download_window and not silent:
@@ -900,7 +902,7 @@ class MainWindow:
 
         elif d.status == Status.downloading:
             d.status = Status.cancelled
-            config.active_downloads.remove(d.id)
+            # config.active_downloads.remove(d.id)
 
     def delete_btn(self):
         if self.selected_row_num is None:
@@ -1295,27 +1297,33 @@ class MainWindow:
         audio_streams = {k: v for k, v in sorted(audio_streams.items(), key=lambda item: item[1].quality, reverse=True)}
 
         raw_streams = {**mp4_videos, **other_videos, **audio_streams}
-        master_stream_menu = ['● Video streams:                     '] + list(mp4_videos.keys()) + list(other_videos.keys()) + \
-                      ['', '● Audio streams:                 '] + list(audio_streams.keys())
+        master_stream_menu = ['● Video streams:                     '] + list(mp4_videos.keys()) + list(
+            other_videos.keys()) + \
+                             ['', '● Audio streams:                 '] + list(audio_streams.keys())
         master_stream_combo_selection = ''
 
         video_checkboxes = []
         stream_combos = []
 
-        general_options_layout = [sg.Checkbox('Select All', enable_events=True, key='Select All'), sg.T('', size=(15,1)),
+        general_options_layout = [sg.Checkbox('Select All', enable_events=True, key='Select All'),
+                                  sg.T('', size=(15, 1)),
                                   sg.T('Choose quality for all videos:'),
-                                  sg.Combo(values=master_stream_menu, default_value=master_stream_menu[0], size=(28,1), key='master_stream_combo', enable_events=True)]
+                                  sg.Combo(values=master_stream_menu, default_value=master_stream_menu[0], size=(28, 1),
+                                           key='master_stream_combo', enable_events=True)]
 
         video_layout = []
 
         for num, video in enumerate(self.playlist):
-            video_checkbox = sg.Checkbox(truncate(video.title, 40), size=(40, 1), tooltip=video.title, key=f'video {num}')
+            video_checkbox = sg.Checkbox(truncate(video.title, 40), size=(40, 1), tooltip=video.title,
+                                         key=f'video {num}')
             video_checkboxes.append(video_checkbox)
 
-            stream_combo = sg.Combo(values=video.raw_stream_menu, default_value=video.raw_stream_menu[1], font='any 8', size=(26, 1), key=f'stream {num}', enable_events=True)
+            stream_combo = sg.Combo(values=video.raw_stream_menu, default_value=video.raw_stream_menu[1], font='any 8',
+                                    size=(26, 1), key=f'stream {num}', enable_events=True)
             stream_combos.append(stream_combo)
 
-            row = [video_checkbox, stream_combo, sg.T(size_format(video.size), size=(10, 1), font='any 8', key=f'size_text {num}')]
+            row = [video_checkbox, stream_combo,
+                   sg.T(size_format(video.size), size=(10, 1), font='any 8', key=f'size_text {num}')]
             video_layout.append(row)
 
         video_layout = [sg.Column(video_layout, scrollable=True, vertical_scroll_only=True, size=(650, 250), key='col')]
@@ -1326,7 +1334,7 @@ class MainWindow:
         layout.append([sg.Frame(title='select videos to download:', layout=[video_layout])])
         layout.append([sg.Col([[sg.OK(), sg.Cancel()]], justification='right')])
 
-        w= sg.Window(title='Playlist download window', layout=layout, finalize=True, margins=(2,2))
+        w = sg.Window(title='Playlist download window', layout=layout, finalize=True, margins=(2, 2))
 
         chosen_videos = []
 
@@ -1397,9 +1405,9 @@ class MainWindow:
         if not check_ffmpeg():
             if config.operating_system == 'Windows':
                 response = sg.popup_yes_no(
-                               '"ffmpeg" is missing',
-                               'Download it for you?',
-                               title='ffmpeg is missing')
+                    '"ffmpeg" is missing',
+                    'Download it for you?',
+                    title='ffmpeg is missing')
                 if response == 'Yes':
                     download_ffmpeg()
             else:
@@ -1481,7 +1489,7 @@ class MainWindow:
         t = time.localtime()
         c_t = (t.tm_hour, t.tm_min)
         for d in self.d_list:
-            if d.sched and d.sched[0] <= c_t[0] and d.sched[1] <=c_t[1]:
+            if d.sched and d.sched[0] <= c_t[0] and d.sched[1] <= c_t[1]:
                 self.start_download(d)  # send for download
                 d.sched = None  # cancel schedule time
 
@@ -1518,6 +1526,7 @@ class MainWindow:
 
         window.close()
         return response
+
     # endregion
 
     # region update
@@ -1577,7 +1586,6 @@ class MainWindow:
             update.update()
 
         window.close()
-
 
     def animate_update_note(self):
         # display word by word
@@ -1644,13 +1652,23 @@ class DownloadWindow:
         self.values = None
         self.timeout = 10
         self.timer = 0
-
-        # todo: an 'indeterminate' progress bar should be used for (zero size - one segment) downloads
-        # something to animate progress_bar if d.total_size = 0
-        # we should use (mode = 'indeterminate') for tkinter, check with pysimplegui first
-        self.progress_bar_i = 0
+        self._progress_mode = 'determinate'
 
         self.create_window()
+
+    @property
+    def progress_mode(self):
+        return self._progress_mode
+
+    @progress_mode.setter
+    def progress_mode(self, mode):
+        """change progressbar mode (determinate / undeterminate)"""
+        if self._progress_mode != mode:
+            try:
+                self.window['progress_bar'].Widget.config(mode=mode)
+                self._progress_mode = mode
+            except:
+                pass
 
     def create_window(self):
         main_layout = [
@@ -1670,9 +1688,6 @@ class DownloadWindow:
 
         self.window = sg.Window(title=self.d.name, layout=layout, finalize=True, margins=(2, 2), size=(460, 240))
         self.window['progress_bar'].expand()
-
-        # if not self.d.total_size:
-        #     self.window['progress_bar'].Widget.mode = 'indeterminate'
 
     def update_gui(self):
         # trim name and folder length
@@ -1701,15 +1716,16 @@ class DownloadWindow:
                     except:
                         pass
 
-
         try:
             self.window.Element('out').Update(value=out)
 
-            # if self.d.total_size:
-            self.window.Element('progress_bar').UpdateBar(self.d.progress)
-            # else:  # size is zero, will make random animation
-            #     self.progress_bar_i = self.progress_bar_i + 1 if self.progress_bar_i < 100 else 0
-            #     self.window.Element('progress_bar').UpdateBar(self.progress_bar_i)
+            # progress bar mode depend on available size
+            if self.d.total_size:
+                self.progress_mode = 'determinate'
+                self.window['progress_bar'].update_bar(self.d.progress)
+            else:  # size is zero, will make random animation
+                self.progress_mode = 'indeterminate'
+                self.window['progress_bar'].Widget['value'] += 5
 
             if self.d.status in (Status.completed, Status.cancelled):
                 self.event = None
@@ -1728,7 +1744,7 @@ class DownloadWindow:
             self.close()
 
         # update gui
-        if time.time() - self.timer >= 1:
+        if time.time() - self.timer >= 0.3:
             self.timer = time.time()
             self.update_gui()
 
