@@ -243,6 +243,10 @@ class DownloadItem:
 
         return self._segments
 
+    @segments.setter
+    def segments(self, value):
+        self._segments = value
+
     @property
     def total_size(self):
         if self.type == 'dash':

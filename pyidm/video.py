@@ -16,7 +16,7 @@ from urllib.parse import urljoin
 from . import config
 from .downloaditem import DownloadItem
 from .utils import log, validate_file_name, get_headers, size_format, run_command, size_splitter, get_seg_size, \
-    delete_file
+    delete_file, download
 
 # youtube-dl
 ytdl = None  # youtube-dl will be imported in a separate thread to save loading time
@@ -217,7 +217,8 @@ class Stream:
         self.fragments = stream_info.get('fragments', None)
 
         # get missing size
-        if self.fragments:
+        if self.fragments or 'm3u8' in self.protocol:
+            # ignore fragmented streams, since the size coming from headers is for first fragment not whole file
             self.size = 0
         if not isinstance(self.size, int):
             self.size = self.get_size()
@@ -225,7 +226,6 @@ class Stream:
         # print(self.name, self.size, isinstance(self.size, int))
 
     def get_size(self):
-        # ignore fragmented streams, since the size coming from the server belongs to first fragment not whole file
         headers = get_headers(self.url)
         size = int(headers.get('content-length', 0))
         print('stream.get_size()>', self.name)
@@ -465,4 +465,33 @@ def hls_downloader(d):
         return False
     else:
         return True
+
+
+def process_hls(url):
+    """handle m3u8 list and build a url list of file segments"""
+    # url_list
+    url_list = []
+
+    # download the manifest from m3u8 file descriptor located at url
+    buffer = download(url)  # get BytesIO object
+
+    if buffer:
+        # convert to string
+        contents = buffer.getvalue().decode()
+        for line in contents.splitlines():
+            line.strip()
+            if line.endswith('.ts'):
+                url_list.append(line)
+
+        # get absolute path from url_list relative path
+        url_list = [urljoin(url, seg_url) for seg_url in url_list]
+
+    return url_list
+
+
+
+
+
+
+
 

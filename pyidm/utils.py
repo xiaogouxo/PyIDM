@@ -75,7 +75,7 @@ def get_headers(url, verbose=False):
         return 0
 
     # region curl options
-    agent = f"{config.APP_NAME} Download Manager"
+    agent = config.USER_AGENT  # f"{config.APP_NAME} Download Manager"
     c = pycurl.Curl()
     c.setopt(pycurl.URL, url)
 
@@ -91,6 +91,7 @@ def get_headers(url, verbose=False):
     c.setopt(pycurl.AUTOREFERER, 1)
     c.setopt(pycurl.WRITEFUNCTION, write_callback)
     c.setopt(pycurl.HEADERFUNCTION, header_callback)
+    # c.setopt(pycurl.REFERER, 'http://vmf.edge-apps.net/res/player/universal/StrobeMediaPlayback_test.swf')
     # endregion
 
     try:

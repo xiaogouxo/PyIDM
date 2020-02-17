@@ -9,12 +9,13 @@
 import os
 import time
 from threading import Thread
-from .video import merge_video_audio, youtube_dl_downloader, unzip_ffmpeg, \
-    hls_downloader  # unzip_ffmpeg required here for ffmpeg callback
+from .video import (merge_video_audio, youtube_dl_downloader, unzip_ffmpeg,
+                    hls_downloader, process_hls)  # unzip_ffmpeg required here for ffmpeg callback
 from . import config
 from .config import Status, active_downloads, APP_NAME
 from .utils import (log, size_format, popup, notify, delete_folder, delete_file, rename_file, load_json, save_json)
 from .worker import Worker
+from .downloaditem import Segment
 
 
 def brain(d=None):
@@ -41,21 +42,43 @@ def brain(d=None):
     q.log(f'start downloading file: {d.name}, size: {size_format(d.size)}')
 
     # todo: more testing required, move part of this code to gui.start_download() asking user to proceed
-    # use youtube-dl native downloader to download unsupported protocols
-    # problem now is when youtube-dl use ffmpeg to download streams we get no progress at all
-    if d.protocol in config.non_supported_protocols:
-        log('unsupported protocol detected use native youtube-dl downloader')
-        # popup('using native youtube-dl downloader, please check progress on log tab')
-        try:
-            done = hls_downloader(d)  # youtube_dl_downloader(d)
-            if done:
-                d.status = Status.completed
-            else:
-                d.status = Status.error
-        except:
-            if d.status != Status.cancelled:  # if not cancelled by user
-                d.status = Status.error
-        return
+    # # use youtube-dl native downloader to download unsupported protocols
+    # # problem now is when youtube-dl use ffmpeg to download streams we get no progress at all
+    # if d.protocol in config.non_supported_protocols:
+    #     log('unsupported protocol detected use native youtube-dl downloader')
+    #     # popup('using native youtube-dl downloader, please check progress on log tab')
+    #     try:
+    #         done = hls_downloader(d)  # youtube_dl_downloader(d)
+    #         if done:
+    #             d.status = Status.completed
+    #         else:
+    #             d.status = Status.error
+    #     except:
+    #         if d.status != Status.cancelled:  # if not cancelled by user
+    #             d.status = Status.error
+    #     return
+
+    # experimental m3u8 protocols
+    if 'm3u8' in d.protocol:
+        video_url_list = process_hls(d.eff_url)
+
+        if not video_url_list:
+            d.status = Status.error
+            return
+
+        # build segments
+        d.segments = [Segment(name=os.path.join(d.temp_folder, str(i)), num=i, range=None, size=0,
+                              url=seg_url, targetfile=d.target_file, tempfile=d.temp_file)
+                      for i, seg_url in enumerate(video_url_list)]
+
+        if d.type == 'dash':
+            audio_url_list = process_hls(d.audio_url)
+
+            # build segments
+            audio_segments = [Segment(name=os.path.join(d.temp_folder, str(i) + '_audio'), num=i, range=None, size=0,
+                                      url=seg_url, targetfile=d.audio_file, tempfile=d.audio_file)
+                              for i, seg_url in enumerate(audio_url_list)]
+            d.segments += audio_segments
 
     # run file manager in a separate thread
     Thread(target=file_manager, daemon=True, args=(d,)).start()
@@ -189,7 +212,6 @@ def thread_manager(d):
 
 
 def file_manager(d):
-
     completed = []  # contains names of all completed segments
 
     # job_list
@@ -282,4 +304,3 @@ def file_manager(d):
 
     # Report quitting
     log(f'file_manager {d.num}: quitting')
-

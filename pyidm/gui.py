@@ -137,7 +137,7 @@ class MainWindow:
     def create_window(self):
         # main tab
         # column for playlist menu
-        col1 = [[sg.Combo(values= self.pl_menu, size=(34, 1), key='pl_menu', enable_events=True)],
+        col1 = [[sg.Combo(values=self.pl_menu, size=(34, 1), key='pl_menu', enable_events=True)],
                 [sg.ProgressBar(max_value=100, size=(20, 5), key='m_bar')]]
 
         # column for stream menu
@@ -157,7 +157,7 @@ class MainWindow:
             [sg.T('', font='any 1')],
 
             # youtube playlist ⚡
-            [sg.Frame('Youtube Playlist / videos:', key='youtube_frame', pad=(5, 5), layout=[
+            [sg.Frame('Playlist / videos:', key='youtube_frame', pad=(5, 5), layout=[
                 [sg.Column(col1, size=(300, 40),  element_justification='center'),
                  sg.Button('⚡',  pad=(0, 0), tooltip='download this playlist', key='pl_download'),
                  sg.Column(col2, size=(300, 40), element_justification='center')]]
@@ -1116,6 +1116,7 @@ class MainWindow:
             print(get_ytdl_options())
             with video.ytdl.YoutubeDL(get_ytdl_options()) as ydl:
                 result = ydl.extract_info(self.d.url, download=False, process=False)
+                print(result)
 
                 # set playlist / video title
                 self.pl_title = result.get('title', '')
