@@ -205,7 +205,7 @@ class Stream:
         self.container = stream_info.get('container', None)
 
         # protocol
-        self.protocol = stream_info.get('protocol', None)
+        self.protocol = stream_info.get('protocol', '')
 
         # calculate some values
         self.rawbitrate = stream_info.get('abr', 0) * 1024

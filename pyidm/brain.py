@@ -41,6 +41,9 @@ def brain(d=None):
 
     q.log(f'start downloading file: {d.name}, size: {size_format(d.size)}')
 
+    # load previous saved progress info
+    d.load_progress_info()
+
     # todo: more testing required, move part of this code to gui.start_download() asking user to proceed
     # # use youtube-dl native downloader to download unsupported protocols
     # # problem now is when youtube-dl use ffmpeg to download streams we get no progress at all
@@ -105,14 +108,6 @@ def brain(d=None):
     # reset queue and delete un-necessary data
     d.q.reset()
 
-    # # remove item id from active downloads
-    # try:
-    #     # print(d.id, active_downloads)
-    #     active_downloads.remove(d.id)
-    #     log(f'brain {d.num}: removed item from active downloads')
-    # except:
-    #     pass
-
     # todo: should find a better way to handle callback.
     # callback, a method or func "name" to call if download completed, it is stored as a string to be able to save it
     # on disk with other downloaditem parameters
@@ -135,16 +130,16 @@ def thread_manager(d):
     busy_workers = []
     live_threads = []  # hold reference to live threads
 
-    # load downloaded list from disk if exists
-    file = os.path.join(d.temp_folder, 'downloaded.txt')
-    downloaded = []
-    if os.path.isfile(file):
-        downloaded = load_json(file)
-
-    if downloaded:
-        for seg in d.segments:
-            if seg.name in downloaded:
-                seg.downloaded = True
+    # # load downloaded list from disk if exists
+    # file = os.path.join(d.temp_folder, 'downloaded.txt')
+    # downloaded = []
+    # if os.path.isfile(file):
+    #     downloaded = load_json(file)
+    #
+    # if downloaded:
+    #     for seg in d.segments:
+    #         if seg.name in downloaded:
+    #             seg.downloaded = True
 
     # job_list
     job_list = [seg for seg in d.segments if not seg.downloaded]
@@ -204,28 +199,14 @@ def thread_manager(d):
     # update downloaded list
     downloaded = [seg.name for seg in d.segments if seg.downloaded]
 
-    # save downloaded list to disk
-    if os.path.isdir(d.temp_folder):
-        save_json(file=os.path.join(d.temp_folder, 'downloaded.txt'), data=downloaded)
+    # # save downloaded list to disk
+    # if os.path.isdir(d.temp_folder):
+    #     save_json(file=os.path.join(d.temp_folder, 'downloaded.txt'), data=downloaded)
 
     log(f'thread_manager {d.num}: quitting')
 
 
 def file_manager(d):
-    completed = []  # contains names of all completed segments
-
-    # job_list
-    job_list = d.segments
-
-    # load completed segments
-    comp_file = os.path.join(d.temp_folder, 'completed.txt')
-    if os.path.isfile(comp_file):
-        completed = load_json(file=comp_file)
-
-    if completed:
-        for seg in job_list:
-            if seg.name in completed:
-                seg.completed = True
 
     while True:
         time.sleep(1)
@@ -250,13 +231,12 @@ def file_manager(d):
                         trgt_file.write(src_file.read())
 
                 seg.completed = True
-                completed.append(seg.name)
+                d.q.log('completed seg:', seg.name)
+                # completed.append(seg.name)
                 delete_file(seg.name)
 
-                # save completed list on disk
-                save_json(file=os.path.join(d.temp_folder, 'completed.txt'), data=completed)
-
-                # print('merged: ', seg.name)
+                # save progress info
+                d.save_progress_info()
             except Exception as e:
                 log('failed to merge segment', seg.name, ' - ', e)
 

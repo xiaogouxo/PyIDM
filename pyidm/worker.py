@@ -14,7 +14,7 @@ import time
 import certifi
 import pycurl
 
-from .config import Status, APP_NAME, proxy
+from .config import Status, APP_NAME, proxy, USER_AGENT
 from .utils import get_seg_size
 
 
@@ -100,7 +100,7 @@ class Worker:
             self.mode = 'ab'  # open file for append
 
             # report
-            self.q.log('Thread', self.tag, ': File', self.seg.num, 'resuming, new range:', self.resume_range,
+            self.q.log('worker', self.tag, ': File', self.seg.num, 'resuming, new range:', self.resume_range,
                        'current file size:', self.current_filesize)
 
     def verify(self):
@@ -120,7 +120,7 @@ class Worker:
         self.q.jobs.put(self.seg)
 
     def report_completed(self):
-        self.q.log('worker', self.tag, 'completed', self.seg.name)
+        # self.q.log('worker', self.tag, 'completed', self.seg.name)
         self.seg.downloaded = True
 
         self.q.log('downloaded: ', self.seg.name)
@@ -128,7 +128,7 @@ class Worker:
 
     def set_options(self):
         # todo: change agent name
-        agent = f"{APP_NAME} Download Manager"
+        agent = USER_AGENT  # f"{APP_NAME} Download Manager"
         self.c.setopt(pycurl.USERAGENT, agent)
 
         self.c.setopt(pycurl.URL, self.seg.url)

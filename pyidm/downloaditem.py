@@ -17,7 +17,7 @@ from queue import Queue
 from threading import Thread, Lock
 from urllib.parse import urljoin
 from .utils import validate_file_name, get_headers, translate_server_code, size_splitter, get_seg_size, log, \
-    delete_file, delete_folder
+    delete_file, delete_folder, save_json, load_json
 from . import config
 
 # lock used with downloaded property
@@ -247,6 +247,23 @@ class DownloadItem:
     def segments(self, value):
         self._segments = value
 
+    def save_progress_info(self):
+        """save segments info to disk"""
+        seg_list = [{'name': seg.name, 'downloaded':seg.downloaded, 'completed':seg.completed, 'size':seg.size} for seg in self.segments]
+        file = os.path.join(self.temp_folder, 'info.txt')
+        save_json(file, seg_list)
+
+    def load_progress_info(self):
+        """load saved progress info from disk"""
+        file = os.path.join(self.temp_folder, 'info.txt')
+        if os.path.isfile(file):
+            seg_list = load_json(file)
+            for seg, item in zip(self.segments, seg_list):
+                if seg.name in item['name']:
+                    seg.size = item['size']
+                    seg.downloaded = item['downloaded']
+                    seg.completed = item['completed']
+
     @property
     def total_size(self):
         if self.type == 'dash':
@@ -300,17 +317,15 @@ class DownloadItem:
     @property
     def progress(self):
         if self.status == config.Status.completed:
-            return 100
+            p = 100
         elif self.total_size == 0:
             # to handle fragmented files
-            finished = len(self.segments) - self.remaining_parts
+            finished = len([seg for seg in self.segments if seg.completed])  if self.segments else 0 # len(self.segments) - self.remaining_parts
             p = round(finished * 100 / len(self.segments), 1)
-            return p
         else:
             p = round(self.downloaded * 100 / self.total_size, 1)
-            if p > 100:
-                p = 100
-            return p
+
+        return p if p <= 100 else 100
 
     @property
     def time_left(self):
