@@ -1,3 +1,8 @@
+2020.2.18:
+- Add support for hls/m3u8 video streams.
+- use indeterminate progress bar for unknown download sizes
+- Some bug fixes and performance tweaks
+
 2020.2.16:
 - Add support for proxy.
 - estimate fragmented video size.
