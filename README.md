@@ -14,6 +14,7 @@ Developed in Python, based on "pyCuRL/libcurl", "youtube_dl", and "PySimpleGUI"
 * Scan and resume uncompleted downloads.
 * Support for Youtube, and a lot of stream websites "using youtube-dl to fetch data".
 * support for fragmented video streams.
+* support for hls/m3u8 video streams.
 * Auto check for application updates.
 * Scheduling downloads
 * Re-using existing connection to remote server.
