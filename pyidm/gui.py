@@ -442,15 +442,21 @@ class MainWindow:
 
             elif event == 'properties':
                 try:
-                    info = self.window['table'].get()[self.selected_row_num]
+                    d = self.selected_d
 
-                    if info:
-                        msg = ''
-                        for i in range(len(info)):
-                            msg += f'{self.d_headers[i]}: {info[i]} \n'
-                        msg += f'webpage url: {self.selected_d.url} \n\n'
-                        msg += f'playlist url: {self.selected_d.playlist_url} \n'
-                        sg.popup_scrolled(msg, title='File properties')
+                    if d:
+                        text = f'Name: {d.name} \n' \
+                               f'Folder: {d.folder} \n' \
+                               f'Progress: {d.progress}% \n' \
+                               f'Downloaded: {size_format(d.downloaded)} \n' \
+                               f'Total size: {size_format(d.total_size)} \n' \
+                               f'Status: {d.status} \n' \
+                               f'Resumable: {d.resumable} \n' \
+                               f'Type: {d.type} \n' \
+                               f'Protocol: {d.protocol} \n' \
+                               f'Webpage url: {d.url}'
+
+                        sg.popup_scrolled(text, title='File properties')
                 except Exception as e:
                     log('gui> properties>', e)
 
@@ -884,7 +890,7 @@ class MainWindow:
 
         # print_object(self.selected_d)
 
-        self.start_download(self.selected_d)
+        self.start_download(self.selected_d, silent=True)
 
     def cancel_btn(self):
         if self.selected_row_num is None:
