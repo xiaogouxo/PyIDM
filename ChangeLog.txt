@@ -1,6 +1,7 @@
 2020.2.19:
-- Add support to more sites "all links will be checked for possible video streams"
+- Add support to more streaming websites "all links will be checked for possible video streams"
 - fix application crash because of proxy improperly set.
+- fix some bugs.
 
 2020.2.18:
 - Add support for hls/m3u8 video streams.
