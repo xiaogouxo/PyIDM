@@ -480,24 +480,6 @@ class DownloadItem:
             self.resumable = resumable
         print('done', url)
 
-    def reset(self):
-        self.name = ''
-        self.size = 0
-        self.type = ''
-        self.resumable = False
-        self.folder = None
-        self.protocol = ''
-
-        # reset audio field
-        self.audio_url = None
-        self.audio_size = 0
-
-        # reset queues
-        self.q.reset()
-
-        # reset segments
-        self.reset_segments()
-
     def __repr__(self):
         """used with functions like print, it will return all properties in this object"""
         output = ''
@@ -513,13 +495,3 @@ class DownloadItem:
         if self.type == 'dash':
             delete_file(self.audio_file)
 
-    # def get_size(self):
-    #     """fetch headers for all segments and get size, use with care it is a time / resource consumer task"""
-    #     main_segments = [seg for seg in self.segments if seg.tempfile == self.temp_file]
-    #     audio_segments = [seg for seg in self.segments if seg.tempfile == self.audio_file]
-    #
-    #     for seg in main_segments:
-    #         self.size += seg.get_size()
-    #
-    #     for seg in audio_segments:
-    #         self.audio_size += seg.get_size()

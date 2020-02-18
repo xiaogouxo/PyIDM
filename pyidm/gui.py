@@ -441,6 +441,7 @@ class MainWindow:
                 clipboard_write(self.selected_d.eff_url)
 
             elif event == 'properties':
+                # right click properties
                 try:
                     d = self.selected_d
 
@@ -1451,7 +1452,8 @@ class MainWindow:
 
     def reset(self):
         # reset some values
-        self.d.reset()
+        # self.d.reset()
+        self.d = DownloadItem()
         self.set_status('')
         self.playlist = []
         self.video = None
