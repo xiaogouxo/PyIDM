@@ -1097,7 +1097,7 @@ class MainWindow:
 
         # reset video controls
         self.reset_video_controls()
-        self.disable()
+        # self.disable()
         self.change_cursor('busy')
 
         # main progress bar
