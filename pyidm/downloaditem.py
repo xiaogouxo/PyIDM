@@ -189,7 +189,8 @@ class DownloadItem:
                  remaining_parts=self.remaining_parts, audio_url=self.audio_url, audio_size=self.audio_size,
                  type=self.type, fragments=self.fragments, fragment_base_url=self.fragment_base_url,
                  audio_fragments=self.audio_fragments, audio_fragment_base_url=self.audio_fragment_base_url,
-                 last_known_size=self.last_known_size, last_known_progress=self.last_known_progress
+                 last_known_size=self.last_known_size, last_known_progress=self.last_known_progress,
+                 protocol=self.protocol
                  )
         return a
 
