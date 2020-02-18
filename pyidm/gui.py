@@ -578,7 +578,7 @@ class MainWindow:
 
             elif event == 'proxy':
                 if isinstance(values['proxy'], str):
-                    config.proxy = values['proxy']
+                    config.proxy = values.get('proxy', '')
                 print('config.proxy = ', config.proxy)
 
             elif event == 'segment_size':
@@ -672,10 +672,7 @@ class MainWindow:
             if self.d.status_code not in self.bad_headers and self.d.type != 'text/html':
                 self.enable()
 
-            # check if the link contains stream videos
-            # test = any([x in self.d.type for x in ['text/html', 'audio', 'video', 'dash']])
-            # if test:
-            # check for stream videos by youtube-dl
+            # check if the link contains stream videos by youtube-dl
             Thread(target=self.youtube_func, daemon=True).start()
 
             self.change_cursor('default')
@@ -778,7 +775,6 @@ class MainWindow:
             else:
                 log('Download cancelled by user')
                 return
-
 
         # ------------------------------------------------------------------
 
@@ -888,7 +884,7 @@ class MainWindow:
 
         # print_object(self.selected_d)
 
-        self.start_download(self.selected_d, silent=True)
+        self.start_download(self.selected_d)
 
     def cancel_btn(self):
         if self.selected_row_num is None:

@@ -127,7 +127,7 @@ def load_setting():
         config.show_download_window = setting.get('show_download_window', True)
         config.max_concurrent_downloads = setting.get('max_concurrent_downloads', config.DEFAULT_CONCURRENT_CONNECTIONS)
         config.max_connections = setting.get('max_connections', config.DEFAULT_CONNECTIONS)
-        config.proxy = setting.get('proxy', None)
+        config.proxy = setting.get('proxy', '')
         config.segment_size = setting.get('segment_size', config.DEFAULT_SEGMENT_SIZE)
         config.check_for_update_on_startup = setting.get('check_for_update_on_startup', True)
 
