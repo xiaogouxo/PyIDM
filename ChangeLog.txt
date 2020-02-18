@@ -1,3 +1,7 @@
+2020.2.19:
+- Add support to more sites "all links will be checked for possible video streams"
+- fix application crash because of proxy improperly set.
+
 2020.2.18:
 - Add support for hls/m3u8 video streams.
 - use indeterminate progress bar for unknown download sizes
