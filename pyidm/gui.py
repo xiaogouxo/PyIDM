@@ -331,7 +331,7 @@ class MainWindow:
             self.window['file_properties'](file_properties)
 
             # download list / table
-            table_values = [[self.format_cell_data(key, getattr(item, key, '')) for key in self.d_headers] for item in
+            table_values = [[self.format_cell_data(key, getattr(d, key, '')) for key in self.d_headers] for d in
                             self.d_list]
             self.window.Element('table').Update(values=table_values[:])
 
@@ -672,12 +672,11 @@ class MainWindow:
             if self.d.status_code not in self.bad_headers and self.d.type != 'text/html':
                 self.enable()
 
-            # todo: let youtube-dl check every link and if it failed just pass
-            # check if the link might contains stream videos
-            test = any([x in self.d.type for x in ['text/html', 'audio', 'video']])
-            if test:
-                # check for stream videos by youtube-dl
-                Thread(target=self.youtube_func, daemon=True).start()
+            # check if the link contains stream videos
+            # test = any([x in self.d.type for x in ['text/html', 'audio', 'video', 'dash']])
+            # if test:
+            # check for stream videos by youtube-dl
+            Thread(target=self.youtube_func, daemon=True).start()
 
             self.change_cursor('default')
 
@@ -1094,7 +1093,7 @@ class MainWindow:
 
         msg = f'looking for video streams ... Please wait'
         log(msg)
-        self.set_status(msg)
+        # self.set_status(msg)
 
         # reset video controls
         self.reset_video_controls()
@@ -1104,7 +1103,7 @@ class MainWindow:
         # main progress bar
         self.m_bar = 10
 
-        # assign playlist items
+        # reset playlist
         self.playlist = []
 
         # quit if main window terminated
@@ -1118,10 +1117,10 @@ class MainWindow:
                     time.sleep(0.1)  # wait until module gets imported
 
             # youtube-dl process
-            print(get_ytdl_options())
+            log(get_ytdl_options())
             with video.ytdl.YoutubeDL(get_ytdl_options()) as ydl:
                 result = ydl.extract_info(self.d.url, download=False, process=False)
-                print(result)
+                # print(result)
 
                 # set playlist / video title
                 self.pl_title = result.get('title', '')
@@ -1202,8 +1201,8 @@ class MainWindow:
         except Exception as e:
             handle_exceptions(e)
             self.reset_video_controls()
-            self.disable()
-            self.reset()
+            # self.disable()
+            # self.reset()
 
         finally:
             self.change_cursor('default')
@@ -1530,9 +1529,7 @@ class MainWindow:
     # endregion
 
     # region update
-    # todo: check update section, i think it is not working correctly
     def check_for_update(self):
-        # todo: use a separate thread, application becomes unresponsive during "update.get_changelog()"
         self.change_cursor('busy')
 
         # check for update

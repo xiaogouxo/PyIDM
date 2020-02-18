@@ -331,7 +331,7 @@ class DownloadItem:
             p = 100
         elif self.total_size == 0:
             # to handle fragmented files
-            finished = len([seg for seg in self.segments if seg.completed])  if self.segments else 0 # len(self.segments) - self.remaining_parts
+            finished = len([seg for seg in self.segments if seg.completed]) if self.segments else 0
             p = round(finished * 100 / len(self.segments), 1)
         else:
             p = round(self.downloaded * 100 / self.total_size, 1)
@@ -494,6 +494,7 @@ class DownloadItem:
         self.type = ''
         self.resumable = False
         self.folder = None
+        self.protocol = ''
 
         # reset audio field
         self.audio_url = None

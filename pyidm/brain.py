@@ -130,17 +130,6 @@ def thread_manager(d):
     busy_workers = []
     live_threads = []  # hold reference to live threads
 
-    # # load downloaded list from disk if exists
-    # file = os.path.join(d.temp_folder, 'downloaded.txt')
-    # downloaded = []
-    # if os.path.isfile(file):
-    #     downloaded = load_json(file)
-    #
-    # if downloaded:
-    #     for seg in d.segments:
-    #         if seg.name in downloaded:
-    #             seg.downloaded = True
-
     # job_list
     job_list = [seg for seg in d.segments if not seg.downloaded]
 
@@ -195,13 +184,6 @@ def thread_manager(d):
         if not busy_workers and not job_list and not q.jobs.qsize():
             print('--------------thread manager done----------------------')
             break
-
-    # update downloaded list
-    downloaded = [seg.name for seg in d.segments if seg.downloaded]
-
-    # # save downloaded list to disk
-    # if os.path.isdir(d.temp_folder):
-    #     save_json(file=os.path.join(d.temp_folder, 'downloaded.txt'), data=downloaded)
 
     log(f'thread_manager {d.num}: quitting')
 
