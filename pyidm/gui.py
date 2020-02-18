@@ -1123,11 +1123,10 @@ class MainWindow:
             log(get_ytdl_options())
             with video.ytdl.YoutubeDL(get_ytdl_options()) as ydl:
                 result = ydl.extract_info(self.d.url, download=False, process=False)
-                # print(result)
+                print(result)
 
                 # set playlist / video title
                 self.pl_title = result.get('title', '')
-                self.d.name = result.get('title', 'video')
 
                 # main progress bar
                 self.m_bar = 30
