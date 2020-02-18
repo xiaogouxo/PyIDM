@@ -24,7 +24,6 @@ from . import config
 lock = Lock()
 
 
-# todo: cleanup required for this class
 # define a class to hold all the required queues
 class Communication:
     """it serve as communication between threads"""
@@ -80,10 +79,9 @@ class Communication:
 
 
 class Segment:
-    def __init__(self, name=None, num=None, range=None, size=None, url=None, targetfile=None, tempfile=None):
+    def __init__(self, name=None, num=None, range=None, size=None, url=None, tempfile=None):
         self.num = num
         self.name = name
-        self.targetfile = targetfile
         self.tempfile = tempfile
         self.size = size
         self.range = range
@@ -102,7 +100,6 @@ class Segment:
         return self.size
 
 
-# todo: remove target folder from segments, and remove audio folders
 class DownloadItem:
 
     # animation ['►►   ', '  ►►'] › ► ⤮ ⇴ ↹ ↯  ↮  ₡ ['⯈', '▼', '⯇', '▲']
@@ -210,8 +207,7 @@ class DownloadItem:
                 # print(self.fragments)
                 # example 'fragments': [{'path': 'range/0-640'}, {'path': 'range/2197-63702', 'duration': 9.985},]
                 self._segments = [Segment(name=os.path.join(self.temp_folder, str(i)), num=i, range=None, size=0,
-                                          url=urljoin(self.fragment_base_url, x['path']), targetfile=self.target_file,
-                                          tempfile=self.temp_file)
+                                          url=urljoin(self.fragment_base_url, x['path']), tempfile=self.temp_file)
                                   for i, x in enumerate(self.fragments)]
 
             else:
@@ -223,7 +219,7 @@ class DownloadItem:
 
                 self._segments = [
                     Segment(name=os.path.join(self.temp_folder, str(i)), num=i, range=x, size=get_seg_size(x),
-                            url=self.eff_url, targetfile=self.target_file, tempfile=self.temp_file)
+                            url=self.eff_url, tempfile=self.temp_file)
                     for i, x in enumerate(range_list)]
 
             # get an audio stream to be merged with dash video
@@ -233,16 +229,15 @@ class DownloadItem:
                     # example 'fragments': [{'path': 'range/0-640'}, {'path': 'range/2197-63702', 'duration': 9.985},]
                     audio_segments = [
                         Segment(name=os.path.join(self.temp_folder, str(i) + '_audio'), num=i, range=None, size=0,
-                                url=urljoin(self.audio_fragment_base_url, x['path']), targetfile=self.audio_file,
-                                tempfile=self.audio_file)
+                                url=urljoin(self.audio_fragment_base_url, x['path']), tempfile=self.audio_file)
                         for i, x in enumerate(self.audio_fragments)]
 
                 else:
                     range_list = size_splitter(self.audio_size, self.segment_size)
 
                     audio_segments = [
-                        Segment(name=os.path.join(self.temp_folder, str(i) + '_audio'), num=i, range=x, size=get_seg_size(x),
-                                url=self.audio_url, targetfile=self.audio_file, tempfile=self.audio_file)
+                        Segment(name=os.path.join(self.temp_folder, str(i) + '_audio'), num=i, range=x,
+                                size=get_seg_size(x), url=self.audio_url, tempfile=self.audio_file)
                         for i, x in enumerate(range_list)]
 
                 # append to main list
@@ -394,10 +389,6 @@ class DownloadItem:
         return f'{self.temp_file}_parts_'
 
     @property
-    def temp_audio_folder(self):
-        return f'{self.audio_file}_parts_'
-
-    @property
     def i(self):
         # This is where we put the animation letter
         if self.sched:
@@ -520,15 +511,14 @@ class DownloadItem:
 
         if self.type == 'dash':
             delete_file(self.audio_file)
-            # delete_folder(self.temp_audio_folder)
 
-    def get_size(self):
-        """fetch headers for all segments and get size, use with care it is a time / resource consumer task"""
-        main_segments = [seg for seg in self.segments if seg.targetfile == self.target_file]
-        audio_segments = [seg for seg in self.segments if seg.targetfile == self.audio_file]
-
-        for seg in main_segments:
-            self.size += seg.get_size()
-
-        for seg in audio_segments:
-            self.audio_size += seg.get_size()
+    # def get_size(self):
+    #     """fetch headers for all segments and get size, use with care it is a time / resource consumer task"""
+    #     main_segments = [seg for seg in self.segments if seg.tempfile == self.temp_file]
+    #     audio_segments = [seg for seg in self.segments if seg.tempfile == self.audio_file]
+    #
+    #     for seg in main_segments:
+    #         self.size += seg.get_size()
+    #
+    #     for seg in audio_segments:
+    #         self.audio_size += seg.get_size()

@@ -104,10 +104,6 @@ def brain(d=None):
             log(f'brain {d.num}: download error')
             break
 
-    # todo: check if reset queues is required here since it is done from DownloadItem.reset()
-    # reset queue and delete un-necessary data
-    d.q.reset()
-
     # todo: should find a better way to handle callback.
     # callback, a method or func "name" to call if download completed, it is stored as a string to be able to save it
     # on disk with other downloaditem parameters
@@ -239,10 +235,7 @@ def file_manager(d):
                     rename_file(output_file, d.target_file)
 
                     # delete temp files
-                    delete_file(d.temp_file)
-                    delete_file(d.audio_file)
-                    delete_folder(d.temp_folder)
-                    delete_folder(d.temp_audio_folder)
+                    d.delete_tempfiles()
 
                 else:  # error merging
                     msg = f'failed to merge audio for file: {d.target_file}'

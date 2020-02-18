@@ -79,7 +79,6 @@ d_list = []
 
 # queues
 main_window_q = Queue()  # queue for Main application window
-clipboard_q = Queue()  # todo: delete this queue
 
 # todo: more testing required, make non_supported_protocols = [] to disable this feature
 # youtube-dl protocols
