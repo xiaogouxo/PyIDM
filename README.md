@@ -86,7 +86,7 @@ python -m pip install --user --upgrade certifi PySimpleGUI pyperclip plyer youtu
 
 ![downloads_tab](https://user-images.githubusercontent.com/37757246/71418538-a0daa680-2673-11ea-82a8-e10e0ca673bd.PNG)
 ![playlist_window](https://user-images.githubusercontent.com/58998813/71775076-22d7a300-2f83-11ea-8011-b45f2f2605f4.png)
-![setting_tab](https://user-images.githubusercontent.com/37757246/71418549-a2a46a00-2673-11ea-848a-ca5ca82e743b.PNG)
+![setting_tab](https://user-images.githubusercontent.com/58998813/74783222-e4d1dc80-52ad-11ea-80b9-26741fe97a17.png)
 ![d_window](https://user-images.githubusercontent.com/37757246/71418539-a0daa680-2673-11ea-8073-0c217fff7e9a.png)
 ![black](https://user-images.githubusercontent.com/37757246/71418541-a1733d00-2673-11ea-85c3-cd6f6b2d66c1.PNG)
 
