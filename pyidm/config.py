@@ -57,6 +57,8 @@ segment_size = DEFAULT_SEGMENT_SIZE
 check_for_update_on_startup = True
 proxy = ''  # must be string example: 127.0.0.1:8080
 
+log = ''  # log text
+
 # -------------------------------------------------------------------------------------
 
 # folders

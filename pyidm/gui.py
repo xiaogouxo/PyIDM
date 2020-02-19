@@ -103,9 +103,10 @@ class MainWindow:
             k, v = config.main_window_q.get()
             if k == 'log':
                 try:
-                    if len(self.window['log'].get()) > 3000:
-                        self.window['log'](self.window['log'].get()[:2000])
-                    self.window['log'](v, append=True)
+                    if len(config.log) > 10000:
+                        config.log = config.log[1000:]  # remove oldest 1000 characters
+                    config.log += v
+                    self.window['log'](config.log)
                 except:
                     pass
 
@@ -244,7 +245,7 @@ class MainWindow:
 
         log_layout = [[sg.T('Details events:')], [sg.Multiline(default_text='', size=(70, 17), key='log',
                                                                autoscroll=True)],
-                      [sg.Button('Clear Log')]]
+                      [sg.Button('Save Log'), sg.Button('Clear Log')]]
 
         # update_layout = [[sg.T('hello')]]
 
@@ -609,8 +610,12 @@ class MainWindow:
             elif event == 'Clear Log':
                 try:
                     self.window['log']('')
+                    config.log = ''
                 except:
                     pass
+
+            elif event == 'Save Log':
+                save_log()
 
             # about window
             elif event == 'about':
@@ -1123,7 +1128,7 @@ class MainWindow:
             log(get_ytdl_options())
             with video.ytdl.YoutubeDL(get_ytdl_options()) as ydl:
                 result = ydl.extract_info(self.d.url, download=False, process=False)
-                print(result)
+                # print(result)
 
                 # set playlist / video title
                 self.pl_title = result.get('title', '')

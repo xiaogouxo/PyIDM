@@ -543,10 +543,22 @@ def save_json(file=None, data=None):
         log('save_json() > error: ', e)
 
 
+def save_log():
+    """Save log text to disk"""
+    file = os.path.join(config.current_directory, 'log.txt')
+    try:
+        with open(file, 'w') as f:
+            f.write(config.log)
+            popup(f'log saved at: {config.current_directory}', title='Log file saving')
+    except Exception as e:
+        log('failed to save log file: ', e)
+
+
+
 __all__ = [
     'notify', 'handle_exceptions', 'get_headers', 'download', 'size_format', 'time_format', 'log',
     'validate_file_name', 'size_splitter', 'delete_folder', 'get_seg_size',
     'run_command', 'print_object', 'update_object', 'truncate', 'sort_dictionary', 'popup', 'compare_versions',
     'translate_server_code', 'validate_url', 'open_file', 'clipboard_read', 'clipboard_write', 'delete_file',
-    'rename_file', 'load_json', 'save_json',
+    'rename_file', 'load_json', 'save_json', 'save_log',
 ]
