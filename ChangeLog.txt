@@ -1,3 +1,7 @@
+2020.2.20:
+- fixed HLS streams doesn't work properly.
+- Add button to save log text to disk.
+
 2020.2.19:
 - Add support to more streaming websites "all links will be checked for possible video streams"
 - fix application crash because of proxy improperly set.
