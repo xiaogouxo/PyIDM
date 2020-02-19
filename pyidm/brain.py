@@ -71,7 +71,7 @@ def brain(d=None):
 
         # build segments
         d.segments = [Segment(name=os.path.join(d.temp_folder, str(i)), num=i, range=None, size=0,
-                              url=seg_url, targetfile=d.target_file, tempfile=d.temp_file)
+                              url=seg_url, tempfile=d.temp_file)
                       for i, seg_url in enumerate(video_url_list)]
 
         if d.type == 'dash':
@@ -79,7 +79,7 @@ def brain(d=None):
 
             # build segments
             audio_segments = [Segment(name=os.path.join(d.temp_folder, str(i) + '_audio'), num=i, range=None, size=0,
-                                      url=seg_url, targetfile=d.audio_file, tempfile=d.audio_file)
+                                      url=seg_url, tempfile=d.audio_file)
                               for i, seg_url in enumerate(audio_url_list)]
             d.segments += audio_segments
 
