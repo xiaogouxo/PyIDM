@@ -203,6 +203,13 @@ class MainWindow:
                             ]
 
         # setting tab
+        seg_size = config.segment_size // 1024  # kb
+        if seg_size >= 1024:
+            seg_size = seg_size // 1024
+            seg_size_unit = 'MB'
+        else:
+            seg_size_unit = 'KB'
+
         setting_layout = [[sg.T('User Setting:'), sg.T(' ', size=(50, 1)), sg.Button(' about ', key='about')],
                           [sg.Text('Select Theme:'),
                            sg.Combo(values=config.all_themes, default_value=config.current_theme, size=(15, 1),
@@ -228,9 +235,12 @@ class MainWindow:
                           [sg.T('Proxy: '), sg.I(default_text=config.proxy, size=(30, 1),
                                                  tooltip='proxy server ip:port, ex: 157.245.224.29:3128',
                                                  key='proxy', enable_events=True)],
-                          [sg.Text('Segment size:'), sg.Input(default_text=config.segment_size // 1024, size=(6, 1),
+                          [sg.Text('Segment size:'), sg.Input(default_text=seg_size, size=(6, 1),
                                                               enable_events=True, key='segment_size'),
-                           sg.Text('KBytes   *affects new downloads only')],
+                           sg.Combo(values=['KB', 'MB'], default_value=seg_size_unit, size=(4, 1), key='seg_size_unit',
+                                    change_submits=True),
+                           sg.Text(f'current value: {size_format(config.segment_size)}', size=(30, 1),
+                                   key='seg_current_value')],
                           [sg.T('')],
                           [sg.Checkbox('Check for update on startup', default=config.check_for_update_on_startup,
                                        key='check_for_update_on_startup', change_submits=True)],
@@ -593,10 +603,18 @@ class MainWindow:
                     config.proxy = values.get('proxy', '')
                 print('config.proxy = ', config.proxy)
 
-            elif event == 'segment_size':
+            elif event in ('segment_size', 'seg_size_unit'):
                 try:
-                    config.segment_size = int(values['segment_size']) * 1024  # convert from kb to bytes
-                    self.d.segment_size = config.segment_size
+                    seg_size_unit = values['seg_size_unit']
+                    if seg_size_unit == 'KB':
+                        seg_size = int(values['segment_size']) * 1024  # convert from kb to bytes
+                    else:
+                        seg_size = int(values['segment_size']) * 1024 * 1024  # convert from mb to bytes
+
+                    config.segment_size = seg_size
+                    self.window['seg_current_value'](f'current value: {size_format(config.segment_size)}')
+                    self.d.segment_size = seg_size
+
                 except:
                     pass
 

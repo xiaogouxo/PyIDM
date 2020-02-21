@@ -24,7 +24,7 @@ APP_ICON = b'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABHNCSVQICAgIfAhkiAA
 DEFAULT_DOWNLOAD_FOLDER = os.path.join(os.path.expanduser("~"), 'Downloads')
 DEFAULT_THEME = 'reds'
 DEFAULT_CONNECTIONS = 10
-DEFAULT_SEGMENT_SIZE = 524288  # 1048576
+DEFAULT_SEGMENT_SIZE = 524288  # 1048576  in bytes
 DEFAULT_CONCURRENT_CONNECTIONS = 3
 APP_URL = 'https://github.com/pyIDM/pyIDM'
 LATEST_RELEASE_URL = 'https://github.com/pyIDM/pyIDM/releases/latest'
@@ -53,7 +53,7 @@ monitor_clipboard = True
 show_download_window = True
 max_concurrent_downloads = DEFAULT_CONCURRENT_CONNECTIONS
 max_connections = DEFAULT_CONNECTIONS
-segment_size = DEFAULT_SEGMENT_SIZE
+segment_size = DEFAULT_SEGMENT_SIZE  # in bytes
 check_for_update_on_startup = True
 proxy = ''  # must be string example: 127.0.0.1:8080
 
