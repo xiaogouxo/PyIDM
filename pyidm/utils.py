@@ -381,9 +381,9 @@ def sort_dictionary(dictionary, descending=True):
     return {k: v for k, v in sorted(dictionary.items(), key=lambda item: item[0], reverse=descending)}
 
 
-def popup(msg, title=''):
+def popup(msg, title='', type_=''):
     """Send message to main window to spawn a popup"""
-    param = dict(title=title, msg=msg)
+    param = dict(title=title, msg=msg, type_=type_)
     config.main_window_q.put(('popup', param))
 
 

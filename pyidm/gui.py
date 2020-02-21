@@ -129,7 +129,11 @@ class MainWindow:
                 self.start_download(*v)
 
             elif k == 'popup':
-                sg.popup(v['msg'], title=v['title'])
+                type_ = v['type_']
+                if type_ == 'popup_no_buttons':
+                    sg.popup_no_buttons(v['msg'], title=v['title'])
+                else:
+                    sg.popup(v['msg'], title=v['title'])
 
             elif k == 'show_update_gui':  # show update gui
                 self.show_update_gui()
@@ -395,7 +399,7 @@ class MainWindow:
             elif event == 'update_note':
                 # if clicked on update notification text
                 if self.new_version_available:
-                    self.update_app()
+                    self.update_app(remote=False)
 
             elif event == 'url':
                 self.url_text_change()
@@ -604,7 +608,6 @@ class MainWindow:
 
             elif event in ['update_pyIDM']:
                 Thread(target=self.update_app, daemon=True).start()
-                # self.update_app()
 
             # log
             elif event == 'Clear Log':
@@ -1568,15 +1571,24 @@ class MainWindow:
         self.change_cursor('default')
 
     # todo: use separate thread for update, the app. freezes :(
-    def update_app(self):
-        """show changelog with latest version and ask user for update"""
-        self.check_for_update()
+    def update_app(self, remote=True):
+        """show changelog with latest version and ask user for update
+        :param remote: bool, check remote server for update"""
+        if remote:
+            self.check_for_update()
+
         if self.new_version_available:
             config.main_window_q.put(('show_update_gui', ''))
             # self.show_update_gui()
         else:
+            popup(f"      App. is up-to-date \n\n"
+                  f"Current version: {config.APP_VERSION} \n"
+                  f"Server version:  {config.APP_LATEST_VERSION} \n",
+                  title='App update',
+                  type_='popup_no_buttons'
+                  )
             if self.new_version_description:
-                popup(f"App. is up-to-date, server version= {config.APP_LATEST_VERSION}")
+                pass
             else:
                 popup("couldn't check for update")
 
