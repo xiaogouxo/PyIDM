@@ -5,23 +5,27 @@ with multi-connections, high speed engine,
 it downloads general files and videos from youtube and tons of other streaming websites . <br>
 Developed in Python, based on "pyCuRL/libcurl", "youtube_dl", and "PySimpleGUI"
 
-![main window](https://user-images.githubusercontent.com/58998813/71563996-a2580480-2aa1-11ea-8818-6476b500d200.png)
+![main window](https://user-images.githubusercontent.com/58998813/74883072-da304980-5378-11ea-81c5-a4a7a22fbb5f.gif)
 
 ---
 **Features**:
-* High download speeds "based on libcurl"
+* High download speeds "based on libcurl"   -  [See Speed test of: aria2 vs pyIDM](https://user-images.githubusercontent.com/58998813/74993622-361bd080-5454-11ea-8bda-173bfcf16349.gif).
 * Multi-connection downloading "Multithreading"
 * Scan and resume uncompleted downloads.
 * Support for Youtube, and a lot of stream websites "using youtube-dl to fetch data".
 * support for fragmented video streams.
 * support for hls/m3u8 video streams.
+* watch videos while downloading*   "some videos will have no audio until finish downloading"
 * Auto check for application updates.
 * Scheduling downloads
 * Re-using existing connection to remote server.
 * Clipboard Monitor.
 * Refresh expired urls.
 * Simple GUI interface with 140 themes available.
+* http proxy support.
 * user can control a lot of options:
+    - select theme.
+    - set proxy.
     - selecting Segment size.
     - Speed limit.
     - Max. Concurrent downloads.
@@ -31,7 +35,12 @@ Developed in Python, based on "pyCuRL/libcurl", "youtube_dl", and "PySimpleGUI"
 ---
 # How to install pyIDM?
 You have 3 options to run pyIDM on your operating system:
-1. **pip**:<br>
+
+1. **Windows portable version**:<br>
+Latest Windows portable version available [here](https://github.com/pyIDM/pyIDM/releases/latest). <br>
+unzip, and run from pyidm.exe, no installation required.
+
+2. **pip**:<br>
     `pip install pyIDM`
     
     then you can run application from Terminal by:<br>
@@ -40,9 +49,6 @@ You have 3 options to run pyIDM on your operating system:
     or just<br>
     `pyidm`        an exexutable "i.e. pyidm.exe on windows" will be located at "python/scripts", if it doesn't work append "python/scripts" folder to PATH. 
 
-2. **Windows portable version**:<br>
-Latest Windows portable version available [here](https://github.com/pyIDM/pyIDM/releases/latest). <br>
-unzip, and run from pyidm.exe, no installation required.
 
 3. **run from github source code**:<br>
 pyIDM is a python app. so, it can run on any platform that can run python, 
@@ -88,11 +94,7 @@ python -m pip install --user --upgrade certifi PySimpleGUI pyperclip plyer youtu
 ![playlist_window](https://user-images.githubusercontent.com/58998813/71775076-22d7a300-2f83-11ea-8011-b45f2f2605f4.png)
 ![setting_tab](https://user-images.githubusercontent.com/58998813/74783222-e4d1dc80-52ad-11ea-80b9-26741fe97a17.png)
 ![d_window](https://user-images.githubusercontent.com/37757246/71418539-a0daa680-2673-11ea-8073-0c217fff7e9a.png)
-![black](https://user-images.githubusercontent.com/37757246/71418541-a1733d00-2673-11ea-85c3-cd6f6b2d66c1.PNG)
 
-example multi-downloading with speed limit of 20 KB/sec as a test
-
-![concurrent windows](https://user-images.githubusercontent.com/37757246/71418548-a2a46a00-2673-11ea-8101-c95d29b6a0e4.png)
 
 [view all screenshots with different themes](https://github.com/pyIDM/pyIDM/issues/13)
 
@@ -139,42 +141,13 @@ a standalone frozen version prepared by py2exe or cx_freeze is available on: [la
 for all available build versions you can check https://github.com/pyIDM/pyIDM/releases
 
 
----
-
-### How does pyIDM work??
-- once you copy any url in clipboard the application start processing this url automatically "you can disable this in user setting"
-- pycurl get url headers and follow redirections to get the effective download url.
-- headers get processed and data get extracted and create a download_item object 
-containing attributes like name, size, url, etc... for the target file
-- update gui accordingly.
-- if user click start download button, the download_item object added to download queue.
-- depending on user setting objects in download queue get prcessed concurrently
-- each download object will be passed to a brain function
-- brain function will prepare a segment list or parts list " file will be downloaded in chunks concurrently" for 
-example a 100MB file will be splitted into 100 parts with part size of 1MB each, each part will be downloaded 
-separately in a dedicated thread, Number of threads, and part size can be changed in user setting.
-- brain will start a thread manager to make a worker thread for each file segment / part.
-- brain will start file manager to collect segments and write it to a temp file, in same time write completed 
-segments names in a file for resume later function.
-- Thread manager will report operation completed to brain once finished downloading all file segments
-- brain will order both thread manager and file manager to quit and report completed download to main window, then quit
-- and so on for all downloads
-- example if you have a 3 concurrent downloads with 10 concurrent connections for each download you will have 30 running threads 
-concurrently.
-- communications between threads based heavily on queues which shows best fit for this job.
-- some websites doesn't support range requests, so downloads will not be resumable nor multi-connection will be available.
-- 
-- for youtube video url, a youtube_dl module starts in a separate threads to get playlist videos and available streams for each video
-- video streams are three types (normal videos, video only, audio only) if user decided to download a video only stream, the application
-will choose an audio stream with the same format, then download both streams as explained above (by brain function) then once completed
-the audio will be merged into video file using FFMPEG external application "subprocess".  
 
 ---
 
 <br><br>
 
 # Versions change log:
-ChangeLog.txt is available in source code
+ChangeLog.txt is included in source code.
 
 
 
