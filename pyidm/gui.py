@@ -1724,8 +1724,8 @@ class DownloadWindow:
         try:
             self.window.Element('out').Update(value=out)
 
-            # progress bar mode depend on available size
-            if self.d.total_size:
+            # progress bar mode depend on available downloaditem progress property
+            if self.d.progress:
                 self.progress_mode = 'determinate'
                 self.window['progress_bar'].update_bar(self.d.progress)
             else:  # size is zero, will make random animation
