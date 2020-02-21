@@ -5,7 +5,7 @@ with multi-connections, high speed engine,
 it downloads general files and videos from youtube and tons of other streaming websites . <br>
 Developed in Python, based on "pyCuRL/libcurl", "youtube_dl", and "PySimpleGUI"
 
-![main window](https://user-images.githubusercontent.com/58998813/74883072-da304980-5378-11ea-81c5-a4a7a22fbb5f.gif)
+![main window](https://user-images.githubusercontent.com/58998813/74996093-4edbb480-545b-11ea-9b3c-a5b12740d21f.gif)
 
 ---
 **Features**:
