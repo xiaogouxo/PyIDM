@@ -124,6 +124,10 @@ class Worker:
         self.seg.downloaded = True
 
         self.q.log('downloaded: ', self.seg.name)
+
+        # in case couldn't fetch segment size from headers we put the downloaded length as segment size
+        if not self.seg.size:
+            self.seg.size = self.downloaded
         # print(self.headers)
 
     def set_options(self):
