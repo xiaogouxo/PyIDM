@@ -392,10 +392,10 @@ class MainWindow:
                 self.main_frameOnClose()
                 break
 
-            # elif event == 'update_note':
-            #     # if clicked on update notification text
-            #     if self.new_version_available:
-            #         self.update_app()
+            elif event == 'update_note':
+                # if clicked on update notification text
+                if self.new_version_available:
+                    self.update_app()
 
             elif event == 'url':
                 self.url_text_change()
@@ -602,7 +602,7 @@ class MainWindow:
             elif event == 'update_youtube_dl':
                 self.update_ytdl()
 
-            elif event in ['update_pyIDM', 'update_note']:
+            elif event in ['update_pyIDM']:
                 Thread(target=self.update_app, daemon=True).start()
                 # self.update_app()
 
@@ -891,6 +891,7 @@ class MainWindow:
         return v
 
     def resume_btn(self):
+        # todo: fix resume parameters
         if self.selected_row_num is None:
             return
 
