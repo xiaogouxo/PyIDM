@@ -473,6 +473,7 @@ def process_hls(url):
     url_list = []
 
     # download the manifest from m3u8 file descriptor located at url
+    print('process hls> process url:', url)
     buffer = download(url)  # get BytesIO object
 
     if buffer:
@@ -480,12 +481,13 @@ def process_hls(url):
         contents = buffer.getvalue().decode()
         for line in contents.splitlines():
             line.strip()
-            if line.endswith('.ts'):
+            if not line.startswith('#'):
                 url_list.append(line)
 
         # get absolute path from url_list relative path
         url_list = [urljoin(url, seg_url) for seg_url in url_list]
 
+    # print('process hls> url list:', url_list)
     return url_list
 
 
