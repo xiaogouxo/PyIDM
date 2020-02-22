@@ -83,6 +83,9 @@ def brain(d=None):
                               for i, seg_url in enumerate(audio_url_list)]
             d.segments += audio_segments
 
+        # load previous segment information - resume download -
+        d.load_progress_info()
+
     # run file manager in a separate thread
     Thread(target=file_manager, daemon=True, args=(d,)).start()
 
@@ -128,6 +131,7 @@ def thread_manager(d):
 
     # job_list
     job_list = [seg for seg in d.segments if not seg.downloaded]
+    # print('thread manager job list:', job_list)
 
     # reverse job_list to process segments in proper order use pop()
     job_list.reverse()
@@ -137,12 +141,14 @@ def thread_manager(d):
 
         # getting jobs which might be returned from workers as failed
         for _ in range(q.jobs.qsize()):
-            job_list.append(q.jobs.get())
+            job = q.jobs.get()
+            job_list.append(job)
+            # print('thread managaer jobs q:', job)
 
-        # todo: test speed limit
         # speed limit
-        if busy_workers:
-            worker_sl = config.speed_limit * 1024 // len(busy_workers)
+        allowable_connections = min(config.max_connections, d.remaining_parts)
+        if allowable_connections:
+            worker_sl = config.speed_limit * 1024 // allowable_connections
         else:
             worker_sl = 0
 
@@ -173,12 +179,12 @@ def thread_manager(d):
         # change status
         if d.status != Status.downloading:
             # stop_all_workers()
-            print('--------------thread manager cancelled-----------------')
+            # print('--------------thread manager cancelled-----------------')
             break
 
         # done downloading
         if not busy_workers and not job_list and not q.jobs.qsize():
-            print('--------------thread manager done----------------------')
+            # print('--------------thread manager done----------------------')
             break
 
     log(f'thread_manager {d.num}: quitting')
@@ -210,6 +216,7 @@ def file_manager(d):
 
                 seg.completed = True
                 d.q.log('completed seg:', seg.name)
+                print('completed seg:', seg.name)
                 # completed.append(seg.name)
                 delete_file(seg.name)
 
