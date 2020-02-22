@@ -1,3 +1,12 @@
+2020.2.21:
+- Fixed resume issues.
+- Fixed speed limit.
+- Fixed hls stream resume.
+- Fixed update func. called when click on empty area under App. name.
+- Fixed progress bar and segment size for fragmented / live streams.
+- better handling for m3u8 files.
+- include user agent for download function
+
 2020.2.20:
 - fixed HLS streams doesn't work properly.
 - Add button to save log text to disk.
