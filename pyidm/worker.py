@@ -38,6 +38,17 @@ class Worker:
         self.speed_limit = 0
         self.headers = {}
 
+    def debug(self, *args, debug_level='standard'):
+        # todo: make a debug levels i.e: standard, detailed, evrything
+        args = [repr(arg) for arg in args]
+        msg = '>> ' + ' '.join(args)
+
+        try:
+            print(msg)
+            self.q.log(msg)
+        except Exception as e:
+            print(e)
+
     @property
     def current_filesize(self):
         return self.start_size + self.downloaded
@@ -49,21 +60,20 @@ class Worker:
         self.seg = seg
         self.speed_limit = speed_limit
 
-        self.q.log('start worker', self.tag, 'seg', self.seg.num, 'range:', self.seg.range, 'SL=', self.speed_limit)
-
         # get start file size if this segment file partially downloaded before
-        if os.path.exists(self.seg.name) and self.seg.size and self.seg.range:
+        if os.path.exists(self.seg.name):
             with open(self.seg.name, 'rb') as f:
                 self.start_size = len(f.read())
 
-            # try to get missing segment size, if this is a fresh file, segment size will be updated from
-            # self.header_callback() method
-            if not self.seg.size:
-                self.seg.get_size()
+        # try to get missing segment size, if this is a fresh file, segment size will be updated from
+        # self.header_callback() method
+        if not self.seg.size:
+            self.seg.get_size()
 
-            self.check_previous_download()
+        self.debug('start seg:', self.seg.num, 'range:', self.seg.range, 'size:', self.seg.size, 'SL=',
+                   self.speed_limit)
 
-        # print(self.seg.url)
+        self.check_previous_download()
 
     def reset(self):
         # reset curl
@@ -78,14 +88,26 @@ class Worker:
 
     def check_previous_download(self):
 
-        if self.current_filesize == self.seg.size:  # segment is completed before
+        # in this case we will overwrite the previous download, reset startsize and remove value from d.downloaded
+        if not self.seg.size:
+            self.mode = 'wb'
+            self.d.downloaded -= self.start_size
+            self.debug(self.seg.num, 'overwrite the previous download, start size =', self.start_size)
+            self.start_size = 0
+
+        # no previous file existed - start fresh file
+        elif not self.current_filesize:
+            self.mode = 'wb'
+
+        elif self.current_filesize == self.seg.size:  # segment is completed before
             # self.report_completed()
-            self.q.log('worker', self.tag, ': File', self.seg.num, 'already completed before')
+            self.debug('worker', self.tag, ': File', self.seg.num, 'already completed before')
             self.seg.downloaded = True
 
         # in case the server sent extra bytes from last session by mistake, truncate file
         elif self.current_filesize > self.seg.size:
-            self.q.log(f"found seg {self.seg.num} over-sized {self.current_filesize}")
+            self.debug(f"found seg {self.seg.num} over-sized {self.current_filesize}, "
+                       f"will be truncated to: {self.seg.size}")
 
             # truncate file
             with open(self.seg.name, 'rb+') as f:
@@ -93,15 +115,23 @@ class Worker:
             # self.report_completed()
             self.seg.downloaded = True
 
-        else:  # should resume
+        # should resume with new range
+        elif self.current_filesize < self.seg.size and self.seg.range:
             # set new range and file open mode
             a, b = [int(x) for x in self.seg.range.split('-')]
             self.resume_range = f'{a + self.current_filesize}-{b}'
             self.mode = 'ab'  # open file for append
 
             # report
-            self.q.log('worker', self.tag, ': File', self.seg.num, 'resuming, new range:', self.resume_range,
+            self.debug('Seg', self.seg.num, 'resuming, new range:', self.resume_range,
                        'current file size:', self.current_filesize)
+
+        elif not self.seg.range:
+            self.mode = 'wb'
+            self.d.downloaded -= self.start_size
+            self.debug(self.seg.num, 'overwrite the previous download, start size =', self.start_size)
+            self.start_size = 0
+
 
     def verify(self):
         """check if segment completed"""
@@ -112,7 +142,7 @@ class Worker:
             return False
 
     def report_not_completed(self):
-        self.q.log('worker', self.tag, 'did not complete', self.seg.name, 'downloaded',
+        self.debug('worker', self.tag, 'did not complete', self.seg.name, 'downloaded',
                    self.current_filesize, 'target size:', self.seg.size, 'remaining:',
                    self.seg.size - self.current_filesize)
 
@@ -120,10 +150,10 @@ class Worker:
         self.q.jobs.put(self.seg)
 
     def report_completed(self):
-        # self.q.log('worker', self.tag, 'completed', self.seg.name)
+        # self.debug('worker', self.tag, 'completed', self.seg.name)
         self.seg.downloaded = True
 
-        self.q.log('downloaded: ', self.seg.name)
+        self.debug('downloaded: ', self.seg.name)
 
         # in case couldn't fetch segment size from headers we put the downloaded length as segment size
         if not self.seg.size:
@@ -210,6 +240,8 @@ class Worker:
 
         self.set_options()
 
+        # self.debug(self.seg)
+
         # make sure target directory exist
         target_directory = os.path.dirname(self.seg.name)
         if not os.path.isdir(target_directory):
@@ -230,7 +262,7 @@ class Worker:
 
             response_code = self.c.getinfo(pycurl.RESPONSE_CODE)
             if response_code in range(400, 512):
-                self.q.log('server refuse connection', response_code, 'cancel download and try to refresh link')
+                self.debug('server refuse connection', response_code, 'cancel download and try to refresh link')
                 self.q.brain.put(('server', ['error', response_code]))
 
         except Exception as e:
@@ -239,7 +271,7 @@ class Worker:
             else:
                 error = repr(e)
 
-            self.q.log('worker', self.tag, ': quitting ...', error)
+            self.debug('worker', self.tag, ': quitting ...', error)
             self.report_not_completed()
 
     def write(self, data):
