@@ -81,23 +81,26 @@ class Communication:
 class Segment:
     def __init__(self, name=None, num=None, range=None, size=None, url=None, tempfile=None):
         self.num = num
-        self.name = name
-        self.tempfile = tempfile
         self.size = size
         self.range = range
-        self.url = url
         self.downloaded = False
         self.completed = False  # done downloading and merging into tempfile
+        self.name = name
+        self.tempfile = tempfile
         self.headers = {}
+        self.url = url
 
     def get_size(self):
         self.headers = get_headers(self.url)
         try:
             self.size = int(self.headers.get('content-length', 0))
-            print(self.num, 'done getting size')
+            print('Segment num:', self.num, 'getting size:', self.size)
         except:
             pass
         return self.size
+
+    def __repr__(self):
+        return repr(self.__dict__)
 
 
 class DownloadItem:
@@ -152,9 +155,10 @@ class DownloadItem:
         self.sched = None  # should be time in (hours, minutes) tuple for scheduling download
 
         # speed
-        self.speed_timer = 0
+        self._speed = 0
+        self.prev_downloaded_value = 0
         self.speed_buffer = deque()  # store some speed readings for calculating average speed afterwards
-        self.download_buffer = 0
+        self.speed_timer = 0
         self.speed_refresh_rate = 1  # calculate speed every n time
 
         # segments
@@ -290,13 +294,29 @@ class DownloadItem:
     @property
     def speed(self):
         """return an average of some speed values will give a stable speed reading"""
-        if self.status != config.Status.downloading or not self.speed_buffer:
-            return 0
+        if self.status != config.Status.downloading: # or not self.speed_buffer:
+            self._speed = 0
         else:
-            avg_speed = sum(self.speed_buffer) / len(self.speed_buffer)
-            if len(self.speed_buffer) > 10:
-                self.speed_buffer.popleft()
-            return avg_speed
+            if not self.prev_downloaded_value:
+                self.prev_downloaded_value = self.downloaded
+
+            time_passed = time.time() - self.speed_timer
+            if time_passed >= self.speed_refresh_rate:
+                self.speed_timer= time.time()
+                delta = self.downloaded - self.prev_downloaded_value
+                self.prev_downloaded_value = self.downloaded
+                _speed = delta / time_passed
+
+                # to get a stable speed reading will use an average of multiple speed readings
+                self.speed_buffer.append(_speed)
+                avg_speed = sum(self.speed_buffer) / len(self.speed_buffer)
+                if len(self.speed_buffer) > 10:
+                    self.speed_buffer.popleft()
+
+                if avg_speed:
+                    self._speed = avg_speed
+
+        return self._speed
 
     @property
     def downloaded(self):
@@ -309,17 +329,7 @@ class DownloadItem:
             return
 
         with lock:
-            self.download_buffer += value - self._downloaded  # add only the difference
             self._downloaded = value
-
-            # todo: should move below to speed property
-            # speed related triggers
-            if time.time() - self.speed_timer > self.speed_refresh_rate:
-                _speed = self.download_buffer / self.speed_refresh_rate
-                self.speed_buffer.append(_speed)
-
-                self.download_buffer = 0  # reset buffer
-                self.speed_timer = time.time()  # reset timer
 
     @property
     def progress(self):

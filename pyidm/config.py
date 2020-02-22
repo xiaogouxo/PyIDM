@@ -48,7 +48,7 @@ terminate = False
 # setting parameters
 current_theme = DEFAULT_THEME
 all_themes = []
-speed_limit = 0  # in kbytes, zero == no limit
+speed_limit = 0  # in kbytes, zero == no limit  todo: make it in bytes instead of kb
 monitor_clipboard = True
 show_download_window = True
 max_concurrent_downloads = DEFAULT_CONCURRENT_CONNECTIONS
