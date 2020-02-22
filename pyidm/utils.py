@@ -114,6 +114,40 @@ def download(url, file_name=None):
     :param file_name: if specified it will save file to disk, otherwise it will buffer to memory
     it will return True / buffer or False"""
 
+    def set_options():
+        c.setopt(pycurl.USERAGENT, config.USER_AGENT)
+
+        c.setopt(pycurl.URL, url)
+
+        # set proxy, must be string empty '' means no proxy
+        c.setopt(pycurl.PROXY, config.proxy)
+
+        # re-directions
+        c.setopt(pycurl.FOLLOWLOCATION, 1)
+        c.setopt(pycurl.MAXREDIRS, 10)
+
+        c.setopt(pycurl.NOSIGNAL, 1)  # option required for multithreading safety
+        c.setopt(pycurl.NOPROGRESS, 0)  # will use a progress function
+        c.setopt(pycurl.CAINFO, certifi.where())  # for https sites and ssl cert handling
+
+        # time out
+        c.setopt(pycurl.CONNECTTIMEOUT, 30)  # limits the connection phase, it has no impact once it has connected.
+
+        # abort if download speed slower than 1 byte/sec during 60 seconds
+        c.setopt(pycurl.LOW_SPEED_LIMIT, 1)
+        c.setopt(pycurl.LOW_SPEED_TIME, 60)
+
+        # verbose
+        c.setopt(pycurl.VERBOSE, 0)
+
+        # it tells curl not to include headers with the body
+        c.setopt(pycurl.HEADEROPT, 0)
+
+        # call back functions
+        # c.setopt(pycurl.HEADERFUNCTION, header_callback)
+        # c.setopt(pycurl.WRITEFUNCTION, write)
+        # c.setopt(pycurl.XFERINFOFUNCTION, progress)
+
     file = None
     buffer = None
 
@@ -124,14 +158,9 @@ def download(url, file_name=None):
         log('download(): server sent an html webpage or invalid url:', url)
         return False
 
-    # pycurl options
+    # pycurl
     c = pycurl.Curl()
-    c.setopt(c.URL, url)
-    c.setopt(pycurl.FOLLOWLOCATION, 1) # re-directions
-    c.setopt(pycurl.MAXREDIRS, 10)
-    c.setopt(pycurl.NOSIGNAL, 1)  # option required for multi-threading safety
-    c.setopt(pycurl.NOPROGRESS, 0)  # will use a progress function
-    c.setopt(pycurl.CAINFO, certifi.where())  # for https sites and ssl cert handling
+    set_options()
 
     if file_name:
         file = open(file_name, 'wb')

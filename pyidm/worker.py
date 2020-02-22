@@ -161,7 +161,6 @@ class Worker:
         # print(self.headers)
 
     def set_options(self):
-        # todo: change agent name
         agent = USER_AGENT  # f"{APP_NAME} Download Manager"
         self.c.setopt(pycurl.USERAGENT, agent)
 
