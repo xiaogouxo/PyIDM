@@ -1,3 +1,8 @@
+2020.2.22:
+- Add support for encrypted HLS streams.
+- Critical bug fix for download playlist.
+- add status for download window.
+
 2020.2.21:
 - Fixed resume issues.
 - Fixed speed limit.
