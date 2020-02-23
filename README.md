@@ -1,4 +1,9 @@
-[![Downloads](https://pepy.tech/badge/pyidm)](https://pepy.tech/project/pyidm)
+![PyPI - Format](https://img.shields.io/pypi/format/pyidm?color=grey&label=PyPI) [![Downloads](https://pepy.tech/badge/pyidm)](https://pepy.tech/project/pyidm)
+
+![GitHub All Releases](https://img.shields.io/github/downloads/pyidm/pyidm/total?color=blue&label=GitHub%20Releases)
+
+![GitHub issues](https://img.shields.io/github/issues-raw/pyidm/pyidm?color=blue) - ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/pyidm/pyidm?color=blue)
+
 
 pyIDM is a python open source (Internet Download Manager) 
 with multi-connections, high speed engine, 
@@ -12,9 +17,9 @@ Developed in Python, based on "pyCuRL/libcurl", "youtube_dl", and "PySimpleGUI"
 * High download speeds "based on libcurl"   -  [See Speed test of: aria2 vs pyIDM](https://user-images.githubusercontent.com/58998813/74993622-361bd080-5454-11ea-8bda-173bfcf16349.gif).
 * Multi-connection downloading "Multithreading"
 * Scan and resume uncompleted downloads.
-* Support for Youtube, and a lot of stream websites "using youtube-dl to fetch data".
+* Support for Youtube, and a lot of stream websites "using youtube-dl to fetch info and libcurl to download data".
 * support for fragmented video streams.
-* support for hls/m3u8 video streams.
+* support for encrypted/nonencrypted HLS media streams.
 * watch videos while downloading*   "some videos will have no audio until finish downloading"
 * Auto check for application updates.
 * Scheduling downloads
