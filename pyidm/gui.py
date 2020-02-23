@@ -1740,11 +1740,12 @@ class DownloadWindow:
         out = (f"File: {name}\n"
                f"Folder: {folder}\n"
                f"Downloaded:    {size_format(self.d.downloaded)} out of"
-               f" {size_format(self.d.total_size)} ----  {self.d.progress}%\n"
-               f"speed: {size_format(self.d.speed, '/s')}\n"
+               f" {size_format(self.d.total_size)}\n"
+               f"speed: {size_format(self.d.speed, '/s')}  --- "
                f"Time remaining: {time_format(self.d.time_left)}\n"
-               f"Live Connections: {self.d.live_connections} - Remaining parts: {self.d.remaining_parts} x "
-               f"({size_format(self.d.segment_size)})")
+               f"Live Connections: {self.d.live_connections} - Remaining parts: {self.d.remaining_parts}  ...  "
+               f"{self.d.progress}%\n\n"
+               f"Status: {self.d.status}  {self.d.i} {'Please wait...' if self.d.status==Status.merging_audio else ''}")
 
         # update log
         if self.d.q:
@@ -1787,7 +1788,7 @@ class DownloadWindow:
             self.close()
 
         # update gui
-        if time.time() - self.timer >= 0.3:
+        if time.time() - self.timer >= 0.5:
             self.timer = time.time()
             self.update_gui()
 
