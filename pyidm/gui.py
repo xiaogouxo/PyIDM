@@ -103,7 +103,7 @@ class MainWindow:
             k, v = config.main_window_q.get()
             if k == 'log':
                 try:
-                    if len(config.log) > 10000:
+                    if len(config.log) > 1000_000:
                         config.log = config.log[1000:]  # remove oldest 1000 characters
                     config.log += v
                     self.window['log'](config.log)
@@ -257,7 +257,7 @@ class MainWindow:
         setting_layout = [[sg.Column(setting_layout, scrollable=True, vertical_scroll_only=True, size=(650, 370),
                                      key='col')]]
 
-        log_layout = [[sg.T('Details events:')], [sg.Multiline(default_text='', size=(70, 17), key='log',
+        log_layout = [[sg.T('Details events:')], [sg.Multiline(default_text='', size=(70, 17), key='log', font='any 8',
                                                                autoscroll=True)],
                       [sg.Button('Save Log'), sg.Button('Clear Log')]]
 

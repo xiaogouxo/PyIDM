@@ -9,8 +9,7 @@
 import os
 import time
 from threading import Thread
-from .video import (merge_video_audio, youtube_dl_downloader, unzip_ffmpeg,
-                    hls_downloader, process_hls)  # unzip_ffmpeg required here for ffmpeg callback
+from .video import merge_video_audio, youtube_dl_downloader, unzip_ffmpeg, pre_process_hls, post_process_hls  # unzip_ffmpeg required here for ffmpeg callback
 from . import config
 from .config import Status, active_downloads, APP_NAME
 from .utils import (log, size_format, popup, notify, delete_folder, delete_file, rename_file, load_json, save_json)
@@ -62,32 +61,40 @@ def brain(d=None):
     #     return
 
     # experimental m3u8 protocols
-    if 'm3u8' in d.protocol:
-        video_url_list = process_hls(d.eff_url)
-
-        if not video_url_list:
+    if 'm3u8' in d.protocol:  # todo: use better way to identify HLS streams
+        keep_segments = True  # don't delete segments after completed
+        success = pre_process_hls(d)
+        if not success:
             d.status = Status.error
             return
+    else:
+        keep_segments = False
 
-        # build segments
-        d.segments = [Segment(name=os.path.join(d.temp_folder, str(i)), num=i, range=None, size=0,
-                              url=seg_url, tempfile=d.temp_file)
-                      for i, seg_url in enumerate(video_url_list)]
+        # video_url_list = pre_process_hls(d.eff_url)
 
-        if d.type == 'dash':
-            audio_url_list = process_hls(d.audio_url)
-
-            # build segments
-            audio_segments = [Segment(name=os.path.join(d.temp_folder, str(i) + '_audio'), num=i, range=None, size=0,
-                                      url=seg_url, tempfile=d.audio_file)
-                              for i, seg_url in enumerate(audio_url_list)]
-            d.segments += audio_segments
-
-        # load previous segment information - resume download -
-        d.load_progress_info()
+        # if not video_url_list:
+        #     d.status = Status.error
+        #     return
+        # #
+        # # build segments
+        # d.segments = [Segment(name=os.path.join(d.temp_folder, str(i) + '.ts'), num=i, range=None, size=0,
+        #                       url=seg_url, tempfile=d.temp_file)
+        #               for i, seg_url in enumerate(video_url_list)]
+        #
+        # if d.type == 'dash':
+        #     audio_url_list = pre_process_hls(d.audio_url)
+        #
+        #     # build segments
+        #     audio_segments = [Segment(name=os.path.join(d.temp_folder, str(i) + '_audio.ts'), num=i, range=None, size=0,
+        #                               url=seg_url, tempfile=d.audio_file)
+        #                       for i, seg_url in enumerate(audio_url_list)]
+        #     d.segments += audio_segments
+        #
+        # # load previous segment information - resume download -
+        # d.load_progress_info()
 
     # run file manager in a separate thread
-    Thread(target=file_manager, daemon=True, args=(d,)).start()
+    Thread(target=file_manager, daemon=True, args=(d, keep_segments)).start()
 
     # run thread manager in a separate thread
     Thread(target=thread_manager, daemon=True, args=(d,)).start()
@@ -190,7 +197,7 @@ def thread_manager(d):
     log(f'thread_manager {d.num}: quitting')
 
 
-def file_manager(d):
+def file_manager(d, keep_segments=False):
 
     while True:
         time.sleep(1)
@@ -217,8 +224,9 @@ def file_manager(d):
                 seg.completed = True
                 d.q.log('completed seg:', seg.name)
                 print('completed seg:', seg.name)
-                # completed.append(seg.name)
-                delete_file(seg.name)
+
+                if not keep_segments:
+                    delete_file(seg.name)
 
                 # save progress info
                 d.save_progress_info()
@@ -227,6 +235,18 @@ def file_manager(d):
 
         # check if all segments already merged
         if all([seg.completed for seg in job_list]):
+
+            # handle HLS streams
+            if 'm3u8' in d.protocol:
+                # Set status to merging
+                d.status = Status.merging_audio  # todo: should be renamed to merging instead of merging_audio
+
+                success = post_process_hls(d)
+                if not success:
+                    log('file_manager()>  post_process_hls() failed, file:', d.target_file)
+                    d.status = Status.error
+                    break
+
             # handle dash video
             if d.type == 'dash':
                 # merge audio and video

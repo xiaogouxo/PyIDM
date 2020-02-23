@@ -14,7 +14,7 @@ import time
 from urllib.parse import urljoin
 
 from . import config
-from .downloaditem import DownloadItem
+from .downloaditem import DownloadItem, Segment
 from .utils import log, validate_file_name, get_headers, size_format, run_command, size_splitter, get_seg_size, \
     delete_file, download
 
@@ -34,9 +34,12 @@ class Logger(object):
     def warning(self, msg):
         log('warning: %s' % msg)
 
+    def __repr__(self):
+        return "youtube-dl Logger"
+
 
 def get_ytdl_options():
-    ydl_opts = {'quiet': True, 'prefer_insecure': True, 'no_warnings': True, 'logger': Logger(), }
+    ydl_opts = {'quiet': True, 'prefer_insecure': True, 'no_warnings': False, 'logger': Logger(), }
     if config.proxy:
         ydl_opts['proxy'] = config.proxy
     return ydl_opts
@@ -467,28 +470,148 @@ def hls_downloader(d):
         return True
 
 
-def process_hls(url):
+def pre_process_hls(d):
     """handle m3u8 list and build a url list of file segments"""
-    # url_list
-    url_list = []
+    def get_url_list(url):
+        # url_list
+        url_list = []
 
-    # download the manifest from m3u8 file descriptor located at url
-    print('process hls> process url:', url)
-    buffer = download(url)  # get BytesIO object
+        # download the manifest from m3u8 file descriptor located at url
+        print('process hls> process url:', url)
+        buffer = download(url)  # get BytesIO object
 
-    if buffer:
-        # convert to string
-        contents = buffer.getvalue().decode()
-        for line in contents.splitlines():
-            line.strip()
-            if not line.startswith('#'):
-                url_list.append(line)
+        if buffer:
+            # convert to string
+            buffer = buffer.getvalue().decode()
+            for line in buffer.splitlines():
+                line.strip()
+                if line and not line.startswith('#'):
+                    url_list.append(line)
 
-        # get absolute path from url_list relative path
-        url_list = [urljoin(url, seg_url) for seg_url in url_list]
+            # get absolute path from url_list relative path
+            url_list = [urljoin(url, seg_url) for seg_url in url_list]
 
-    # print('process hls> url list:', url_list)
-    return url_list
+        # print('process hls> url list:', url_list)
+        return buffer, url_list
+
+    # todo: need to validate the buffer if it really a valid m3u8 file, not just any junk
+    # if video_m3u8 is not valid m3u8 file return False
+
+    # first lets handle video stream
+    video_m3u8, video_url_list = get_url_list(d.eff_url)
+
+    # save m3u8 file to disk
+    # create temp_folder if doesn't exist
+    if not os.path.isdir(d.temp_folder):
+        os.makedirs(d.temp_folder)
+
+    with open(os.path.join(d.temp_folder, 'remote_video.m3u8'), 'w') as f:
+        f.write(video_m3u8)
+
+    # build video segments
+    d.segments = [Segment(name=os.path.join(d.temp_folder, str(i) + '.ts'), num=i, range=None, size=0,
+                          url=seg_url, tempfile=d.temp_file)
+                  for i, seg_url in enumerate(video_url_list)]
+
+    # handle audio stream in case of dash videos
+    if d.type == 'dash':
+        audio_m3u8, audio_url_list = get_url_list(d.audio_url)
+
+        # save m3u8 file to disk
+        with open(os.path.join(d.temp_folder, 'remote_audio.m3u8'), 'w') as f:
+            f.write(audio_m3u8)
+
+        # build audio segments
+        audio_segments = [Segment(name=os.path.join(d.temp_folder, str(i) + '_audio.ts'), num=i, range=None, size=0,
+                                  url=seg_url, tempfile=d.audio_file)
+                          for i, seg_url in enumerate(audio_url_list)]
+
+        # add to video segments
+        d.segments += audio_segments
+
+    # load previous segment information from disk - resume download -
+    d.load_progress_info()
+
+    return True
+
+
+def post_process_hls(d):
+    """ffmpeg will process m3u8 files"""
+
+    def create_local_m3u8(remote_file, local_file, local_names):
+
+        with open(remote_file, 'r') as f:
+            lines = f.readlines()
+
+        names = [f'{name}\n' for name in local_names]
+        names.reverse()
+
+        # print(len([a for a in lines if not a.startswith('#')]))
+
+        for i, line in enumerate(lines):
+            if line and not line.startswith('#'):
+                try:
+                    lines[i] = names.pop()
+                    print(lines[i])
+                except:
+                    pass
+
+        with open(local_file, 'w') as f:
+            f.writelines(lines)
+            # print(lines)
+
+    # create local m3u8 version - video
+    remote_video_m3u8_file = os.path.join(d.temp_folder, 'remote_video.m3u8')
+    local_video_m3u8_file = os.path.join(d.temp_folder, 'local_video.m3u8')
+
+    try:
+        names = [seg.name for seg in d.segments if seg.tempfile == d.temp_file]
+        # print('names = ', names)
+        create_local_m3u8(remote_video_m3u8_file, local_video_m3u8_file, names)
+    except Exception as e:
+        log('post_process_hls()> error', e)
+        return False
+
+    if d.type == 'dash':
+        # create local m3u8 version - audio
+        remote_audio_m3u8_file = os.path.join(d.temp_folder, 'remote_audio.m3u8')
+        local_audio_m3u8_file = os.path.join(d.temp_folder, 'local_audio.m3u8')
+
+        try:
+            create_local_m3u8(remote_audio_m3u8_file, local_audio_m3u8_file,
+                              [seg.name for seg in d.segments if seg.tempfile == d.audio_file])
+        except Exception as e:
+            log('post_process_hls()> error', e)
+            return False
+
+    # now processing with ffmpeg
+    cmd = f'"{config.ffmpeg_actual_path}" -y -protocol_whitelist "file,http,https,tcp,tls,crypto"  -i ' \
+          f'"{local_video_m3u8_file}" -c copy -f mp4 "file:{d.temp_file}"'
+
+    error, output = run_command(cmd)
+    if error:
+        log('post_process_hls()> ffmpeg failed:', output)
+        return False
+
+    if d.type == 'dash':
+        cmd = f'"{config.ffmpeg_actual_path}" -y -protocol_whitelist "file,http,https,tcp,tls,crypto"  -i ' \
+              f'"{local_audio_m3u8_file}" -c copy -f mp4 "file:{d.audio_file}"'
+
+        error, output = run_command(cmd)
+        if error:
+            log('post_process_hls()> ffmpeg failed:', output)
+            return False
+
+    return True
+
+
+
+
+
+
+
+
+
 
 
 
