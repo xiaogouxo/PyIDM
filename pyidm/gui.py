@@ -1342,6 +1342,9 @@ class MainWindow:
         video_layout = []
 
         for num, video in enumerate(self.playlist):
+            # set selected stream
+            video.selected_stream = video.stream_list[0]
+
             video_checkbox = sg.Checkbox(truncate(video.title, 40), size=(40, 1), tooltip=video.title,
                                          key=f'video {num}')
             video_checkboxes.append(video_checkbox)
@@ -1351,7 +1354,7 @@ class MainWindow:
             stream_combos.append(stream_combo)
 
             row = [video_checkbox, stream_combo,
-                   sg.T(size_format(video.size), size=(10, 1), font='any 8', key=f'size_text {num}')]
+                   sg.T(size_format(video.total_size), size=(10, 1), font='any 8', key=f'size_text {num}')]
             video_layout.append(row)
 
         video_layout = [sg.Column(video_layout, scrollable=True, vertical_scroll_only=True, size=(650, 250), key='col')]
@@ -1362,36 +1365,36 @@ class MainWindow:
         layout.append([sg.Frame(title='select videos to download:', layout=[video_layout])])
         layout.append([sg.Col([[sg.OK(), sg.Cancel()]], justification='right')])
 
-        w = sg.Window(title='Playlist download window', layout=layout, finalize=True, margins=(2, 2))
+        window = sg.Window(title='Playlist download window', layout=layout, finalize=True, margins=(2, 2))
 
         chosen_videos = []
 
         while True:
-            e, v = w()
-            if e in (None, 'Cancel'):
-                w.close()
+            event, values = window()
+            if event in (None, 'Cancel'):
+                window.close()
                 return
-            # print(e, v)
 
-            if e == 'OK':
+            if event == 'OK':
                 chosen_videos.clear()
                 for num, video in enumerate(self.playlist):
-                    selected_text = v[f'stream {num}']
-                    video.selected_stream = raw_streams[selected_text]
+                    selected_text = values[f'stream {num}']
+                    video.selected_stream = video.raw_streams[selected_text]
 
-                    if v[f'video {num}'] is True:
-                        chosen_videos.append(self.playlist[num])
+                    if values[f'video {num}'] is True:
+                        chosen_videos.append(video)
+                        # print('video.selected_stream:', video.selected_stream)
 
-                w.close()
+                window.close()
                 break
 
-            elif e == 'Select All':
-                checked = w['Select All'].get()
+            elif event == 'Select All':
+                checked = window['Select All'].get()
                 for checkbox in video_checkboxes:
                     checkbox(checked)
 
-            elif e == 'master_stream_combo':
-                selected_text = v['master_stream_combo']
+            elif event == 'master_stream_combo':
+                selected_text = values['master_stream_combo']
                 if selected_text in raw_streams:
                     # update all videos stream menus from master stream menu
                     for num, stream_combo in enumerate(stream_combos):
@@ -1400,32 +1403,31 @@ class MainWindow:
                         if selected_text in video.raw_streams:
                             stream_combo(selected_text)
                             video.selected_stream = video.raw_streams[selected_text]
-                            w[f'size_text {num}'](size_format(video.size))
+                            window[f'size_text {num}'](size_format(video.size))
 
-            elif e.startswith('stream'):
-                num = int(e.split()[-1])
+            elif event.startswith('stream'):
+                num = int(event.split()[-1])
 
                 video = self.playlist[num]
-                selected_text = w[e].get()
+                selected_text = window[event].get()
                 # print(f'"{selected_text}", {video.raw_streams}')
                 if selected_text in video.raw_streams:
                     video.selected_stream = video.raw_streams[selected_text]
 
                 else:
-                    w[e](video.selected_stream.raw_name)
+                    window[event](video.selected_stream.raw_name)
 
-                w[f'size_text {num}'](size_format(video.size))
+                window[f'size_text {num}'](size_format(video.size))
+                # log('download playlist fn>', 'stream', repr(video.selected_stream))
 
         self.select_tab('Downloads')
 
         for video in chosen_videos:
             # resume_support = True if video.size else False
 
-            log('download playlist fn>', 'stream', repr(video.selected_stream))
-            log(f'download playlist fn> media size= {video.size}, name= {video.name}')
+            log(f'download playlist fn> {repr(video.selected_stream)}, title: {video.name}')
 
             video.folder = config.download_folder
-            # video.max_connections = config.max_connections
 
             self.start_download(video, silent=True)
 

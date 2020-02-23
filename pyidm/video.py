@@ -85,10 +85,6 @@ class Video(DownloadItem):
     def setup(self):
         self._process_streams()
 
-        # # get streams size if missing
-        # for s in self.stream_list:
-        #     s.get_size()
-
     def _process_streams(self):
         """ Create Stream object lists"""
         all_streams = [Stream(x) for x in self.vid_info['formats']]
