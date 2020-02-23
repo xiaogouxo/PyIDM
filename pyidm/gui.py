@@ -357,12 +357,9 @@ class MainWindow:
                 # update selected item number
                 self.window.Element('selected_row_num').Update('---')
 
-            # active downloads
-            config.active_downloads = set(d.id for d in self.d_list if d.status == config.Status.downloading)
-
             # update status bar
             self.window.Element('status_bar').Update(
-                f'Active downloads: {len(config.active_downloads)}, pending: {len(self.pending)}')
+                f'Active downloads: {len(self.active_downloads)}, pending: {len(self.pending)}')
 
             # setting
             speed_limit = size_format(config.speed_limit * 1024) if config.speed_limit > 0 else "_no limit_"
@@ -656,8 +653,8 @@ class MainWindow:
                 self.check_scheduled()
 
                 # process pending jobs
-                if self.pending and len(config.active_downloads) < config.max_concurrent_downloads:
-                    self.start_download(self.pending.popleft())
+                if self.pending and len(self.active_downloads) < config.max_concurrent_downloads:
+                    self.start_download(self.pending.popleft(), silent=True)
 
             # run download windows if existed
             keys = list(self.download_windows.keys())
@@ -713,6 +710,14 @@ class MainWindow:
     # endregion
 
     # region download
+    @property
+    def active_downloads(self):
+        # update active downloads
+        _active_downloads = set(d.id for d in self.d_list if d.status == config.Status.downloading)
+        config.active_downloads = _active_downloads
+
+        return _active_downloads
+
     def start_download(self, d, silent=False):
         """Receive a DownloadItem and pass it to brain
         :param bool silent: True or False, show a warninig dialogues
@@ -807,6 +812,7 @@ class MainWindow:
 
             else:
                 log('Download cancelled by user')
+                d.status = Status.cancelled
                 return
 
         # ------------------------------------------------------------------
@@ -820,7 +826,7 @@ class MainWindow:
             self.d_list.append(d)
 
         # if max concurrent downloads exceeded, this download job will be added to pending queue
-        if len(config.active_downloads) >= config.max_concurrent_downloads:
+        if len(self.active_downloads) >= config.max_concurrent_downloads:
             d.status = Status.pending
             self.pending.append(d)
             return
@@ -931,7 +937,6 @@ class MainWindow:
 
         elif d.status == Status.downloading:
             d.status = Status.cancelled
-            # config.active_downloads.remove(d.id)
 
     def delete_btn(self):
         if self.selected_row_num is None:
@@ -939,7 +944,7 @@ class MainWindow:
 
         # todo: should be able to delete items anytime by making download item id unique and number changeable
         # abort if there is items in progress or paused
-        if config.active_downloads:
+        if self.active_downloads:
             msg = "Can't delete items while downloading.\nStop or cancel all downloads first!"
             sg.Popup(msg)
             return
@@ -974,7 +979,7 @@ class MainWindow:
 
     def delete_all_downloads(self):
         # abort if there is items in progress or paused
-        if config.active_downloads:
+        if self.active_downloads:
             msg = "Can't delete items while downloading.\nStop or cancel all downloads first!"
             sg.Popup(msg)
             return
@@ -1508,7 +1513,7 @@ class MainWindow:
 
         # Terminate all downloads before quitting if any is a live
         try:
-            for i in config.active_downloads:
+            for i in self.active_downloads:
                 d = self.d_list[i]
                 d.status = Status.cancelled
         except:
