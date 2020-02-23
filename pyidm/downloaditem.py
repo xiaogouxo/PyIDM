@@ -140,7 +140,7 @@ class DownloadItem:
         self.status_code_description = ''
 
         # animation
-        self.animation_index = self.id % 2  # to give it a different start point than neighbour items
+        self.animation_index = 0  # self.id % 2  # to give it a different start point than neighbour items
 
         # audio
         self.audio_url = None
@@ -184,6 +184,8 @@ class DownloadItem:
         # from setting.load_d_list()
         self.last_known_size = 0
         self.last_known_progress = 0
+
+        self.animation_timer = 0
 
     def get_persistent_properties(self):
         """return a dict of important parameters to be saved in file"""
@@ -406,9 +408,15 @@ class DownloadItem:
             selected_image = self.sched_string
         else:
             icon_list = self.animation_icons.get(self.status, [''])
-            if self.animation_index >= len(icon_list):  self.animation_index = 0
+
+            if time.time() - self.animation_timer > 0.5:
+                self.animation_timer = time.time()
+                self.animation_index += 1
+
+            if self.animation_index >= len(icon_list):
+                self.animation_index = 0
+
             selected_image = icon_list[self.animation_index]
-            self.animation_index += 1
 
         return selected_image
 
