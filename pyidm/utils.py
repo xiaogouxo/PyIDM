@@ -41,8 +41,45 @@ def handle_exceptions(error):
         log(error)
 
 
+def set_curl_options(c):
+    """take pycurl object as an argument and set basic options"""
+    c.setopt(pycurl.USERAGENT, config.USER_AGENT)
+
+    # set proxy, must be string empty '' means no proxy
+    c.setopt(pycurl.PROXY, config.proxy)
+
+    # re-directions
+    c.setopt(pycurl.FOLLOWLOCATION, 1)
+    c.setopt(pycurl.MAXREDIRS, 10)
+
+    c.setopt(pycurl.NOSIGNAL, 1)  # option required for multithreading safety
+    c.setopt(pycurl.NOPROGRESS, 1)
+    c.setopt(pycurl.CAINFO, certifi.where())  # for https sites and ssl cert handling
+
+    # time out
+    c.setopt(pycurl.CONNECTTIMEOUT, 30)  # limits the connection phase, it has no impact once it has connected.
+
+    # abort if download speed slower than 1 byte/sec during 60 seconds
+    c.setopt(pycurl.LOW_SPEED_LIMIT, 1)
+    c.setopt(pycurl.LOW_SPEED_TIME, 60)
+
+    # verbose
+    c.setopt(pycurl.VERBOSE, 0)
+
+    # it tells curl not to include headers with the body
+    c.setopt(pycurl.HEADEROPT, 0)
+
+    c.setopt(pycurl.PROXY, config.proxy)  # set proxy, must be string empty '' means no proxy
+
+    c.setopt(pycurl.TIMEOUT, 300)
+    c.setopt(pycurl.AUTOREFERER, 1)
+
+
 def get_headers(url, verbose=False):
     """return dictionary of headers"""
+
+    # log('get_headers()> getting headers for:', url)
+
     curl_headers = {}
 
     def header_callback(header_line):
@@ -75,30 +112,22 @@ def get_headers(url, verbose=False):
         return 0
 
     # region curl options
-    agent = config.USER_AGENT  # f"{config.APP_NAME} Download Manager"
     c = pycurl.Curl()
+
+    # set general curl options
+    set_curl_options(c)
+
+    # set special curl options
     c.setopt(pycurl.URL, url)
-
-    c.setopt(pycurl.PROXY, config.proxy)  # set proxy, must be string empty '' means no proxy
-
-    c.setopt(pycurl.FOLLOWLOCATION, 1)
-    c.setopt(pycurl.MAXREDIRS, 10)
-    c.setopt(pycurl.CONNECTTIMEOUT, 30)
-    c.setopt(pycurl.TIMEOUT, 300)
-    c.setopt(pycurl.NOSIGNAL, 1)
-    c.setopt(pycurl.CAINFO, certifi.where())  # for https sites and ssl cert handling
-    c.setopt(pycurl.USERAGENT, agent)
-    c.setopt(pycurl.AUTOREFERER, 1)
     c.setopt(pycurl.WRITEFUNCTION, write_callback)
     c.setopt(pycurl.HEADERFUNCTION, header_callback)
-    # c.setopt(pycurl.REFERER, 'http://vmf.edge-apps.net/res/player/universal/StrobeMediaPlayback_test.swf')
     # endregion
 
     try:
         c.perform()
     except Exception as e:
         if 'Failed writing body' not in str(e):
-            handle_exceptions(e)
+            log('get_headers()>', e)
 
     # add status code and effective url to headers
     curl_headers['status_code'] = c.getinfo(pycurl.RESPONSE_CODE)
@@ -114,39 +143,14 @@ def download(url, file_name=None):
     :param file_name: if specified it will save file to disk, otherwise it will buffer to memory
     it will return True / buffer or False"""
 
+    log('download()> downloading', url, '\n')
+
     def set_options():
-        c.setopt(pycurl.USERAGENT, config.USER_AGENT)
+        # set general curl options
+        set_curl_options(c)
 
+        # set special curl options
         c.setopt(pycurl.URL, url)
-
-        # set proxy, must be string empty '' means no proxy
-        c.setopt(pycurl.PROXY, config.proxy)
-
-        # re-directions
-        c.setopt(pycurl.FOLLOWLOCATION, 1)
-        c.setopt(pycurl.MAXREDIRS, 10)
-
-        c.setopt(pycurl.NOSIGNAL, 1)  # option required for multithreading safety
-        c.setopt(pycurl.NOPROGRESS, 0)  # will use a progress function
-        c.setopt(pycurl.CAINFO, certifi.where())  # for https sites and ssl cert handling
-
-        # time out
-        c.setopt(pycurl.CONNECTTIMEOUT, 30)  # limits the connection phase, it has no impact once it has connected.
-
-        # abort if download speed slower than 1 byte/sec during 60 seconds
-        c.setopt(pycurl.LOW_SPEED_LIMIT, 1)
-        c.setopt(pycurl.LOW_SPEED_TIME, 60)
-
-        # verbose
-        c.setopt(pycurl.VERBOSE, 0)
-
-        # it tells curl not to include headers with the body
-        c.setopt(pycurl.HEADEROPT, 0)
-
-        # call back functions
-        # c.setopt(pycurl.HEADERFUNCTION, header_callback)
-        # c.setopt(pycurl.WRITEFUNCTION, write)
-        # c.setopt(pycurl.XFERINFOFUNCTION, progress)
 
     file = None
     buffer = None
@@ -155,8 +159,8 @@ def download(url, file_name=None):
     headers = get_headers(url)
     content_type = headers.get('content-type', '')
     if content_type == '' or 'html' in content_type:
-        log('download(): server sent an html webpage or invalid url:', url)
-        return False
+        log('download(): server sent an html webpage or invalid url')
+        # return False
 
     # pycurl
     c = pycurl.Curl()
@@ -171,16 +175,18 @@ def download(url, file_name=None):
 
     try:
         c.perform()
-        log('download(): done downloading', )
+
     except Exception as e:
-        log(e)
+        log('download():', e)
         return False
     finally:
         c.close()
         if file:
             file.close()
 
-    return buffer or True
+    log('download(): done downloading')
+
+    return buffer
 
 
 def size_format(size, tail=''):
