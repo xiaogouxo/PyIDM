@@ -69,8 +69,8 @@ class MainWindow:
         self.disabled = True  # for download button
 
         # download list
-        self.d_headers = ['i', 'num', 'name', 'progress', 'speed', 'time_left', 'total_size', 'downloaded', 'status',
-                          'resumable', 'folder', 'max_connections', 'live_connections', 'remaining_parts']
+        self.d_headers = ['i', 'num', 'name', 'progress', 'speed', 'time_left', 'downloaded', 'total_size', 'status',]
+                          # 'resumable', 'folder', 'max_connections', 'live_connections', 'remaining_parts']
         self.d_list = d_list  # list of DownloadItem() objects
         self.selected_row_num = None
         self._selected_d = None
@@ -185,17 +185,15 @@ class MainWindow:
         table_right_click_menu = ['Table', ['!Options for selected file:', '---', 'Open File', 'Open File Location',
                                             '▶ Watch while downloading', 'copy webpage url', 'copy download url',
                                             '⏳ Schedule download', '⏳ Cancel schedule!', 'properties']]
-        # ['i', 'num', 'name', 'progress', 'speed', 'time_left', 'size', 'downloaded', 'status',
-        #                           'resumable', 'folder', 'max_connections', 'live_connections', 'remaining_parts']
-        spacing = [' ' * 4, ' ' * 3, ' ' * 30, ' ' * 3, ' ' * 3, ' ' * 3, ' ' * 6, ' ' * 8, ' ' * 10, ' ' * 12,
-                   ' ' * 30, ' ', ' ', ' ']  # setup initial column width
+        headings = ['i', 'num', 'name', 'progress', 'speed', 'left', 'done', 'size', 'status']
+        spacing = [' ' * 4, ' ' * 3, ' ' * 30, ' ' * 3, ' ' * 6, ' ' * 7, ' ' * 6, ' ' * 6, ' ' * 10]
 
         downloads_layout = [[sg.Button('Resume'), sg.Button('Cancel'), sg.Button('Refresh'),
                              sg.Button('Folder'), sg.Button('D.Window'),
                              sg.T(' ' * 5), sg.T('Item:'),
                              sg.T('---', key='selected_row_num', text_color='white', background_color='red')],
-                            [sg.Table(values=[spacing], headings=self.d_headers, size=(70, 13), justification='left',
-                                      vertical_scroll_only=False, key='table', enable_events=True, font='any 10',
+                            [sg.Table(values=[spacing], headings=headings, size=(70, 13), justification='left',
+                                      vertical_scroll_only=False, key='table', enable_events=True, font='any 9',
                                       right_click_menu=table_right_click_menu)],
                             [sg.Button('Resume All'), sg.Button('Stop All'), sg.B('Schedule All'),
                              sg.Button('Delete', button_color=('white', 'red')),
@@ -257,7 +255,7 @@ class MainWindow:
         setting_layout = [[sg.Column(setting_layout, scrollable=True, vertical_scroll_only=True, size=(650, 370),
                                      key='col')]]
 
-        log_layout = [[sg.T('Details events:')], [sg.Multiline(default_text='', size=(70, 17), key='log', font='any 8',
+        log_layout = [[sg.T('Details events:')], [sg.Multiline(default_text='', size=(70, 21), key='log', font='any 8',
                                                                autoscroll=True)],
                       [sg.Button('Save Log'), sg.Button('Clear Log')]]
 
@@ -1233,10 +1231,8 @@ class MainWindow:
             self.m_bar = 100
 
         except Exception as e:
-            handle_exceptions(e)
+            # handle_exceptions(e)  # will disable this line since youtube-dl logger do the same job
             self.reset_video_controls()
-            # self.disable()
-            # self.reset()
 
         finally:
             self.change_cursor('default')
@@ -1771,9 +1767,8 @@ class DownloadWindow:
                 self.progress_mode = 'indeterminate'
                 self.window['progress_bar'].Widget['value'] += 5
 
-            if self.d.status in (Status.completed, Status.cancelled):
-                self.event = None
-                self.window.Close()
+            if self.d.status in (Status.completed, Status.cancelled, Status.error):
+                self.close()
         except:
             pass
 
