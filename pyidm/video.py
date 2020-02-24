@@ -468,12 +468,14 @@ def hls_downloader(d):
 
 def pre_process_hls(d):
     """handle m3u8 list and build a url list of file segments"""
+
+    log('pre_process_hls()> start processing', d.name)
+
     def get_url_list(url):
         # url_list
         url_list = []
 
         # download the manifest from m3u8 file descriptor located at url
-        print('process hls> process url:', url)
         buffer = download(url)  # get BytesIO object
 
         if buffer:
@@ -490,17 +492,20 @@ def pre_process_hls(d):
         # print('process hls> url list:', url_list)
         return buffer, url_list
 
-    # todo: need to validate the buffer if it really a valid m3u8 file, not just any junk
-    # if video_m3u8 is not valid m3u8 file return False
-
     # first lets handle video stream
     video_m3u8, video_url_list = get_url_list(d.eff_url)
 
-    # save m3u8 file to disk
+    # validate video m3u8 file
+    if '#EXT' not in repr(video_m3u8):
+        log('pre_process_hls()> received invalid m3u8 file from server')
+        log('buffer:', video_m3u8)
+        return False
+
     # create temp_folder if doesn't exist
     if not os.path.isdir(d.temp_folder):
         os.makedirs(d.temp_folder)
 
+    # save m3u8 file to disk
     with open(os.path.join(d.temp_folder, 'remote_video.m3u8'), 'w') as f:
         f.write(video_m3u8)
 
@@ -512,6 +517,11 @@ def pre_process_hls(d):
     # handle audio stream in case of dash videos
     if d.type == 'dash':
         audio_m3u8, audio_url_list = get_url_list(d.audio_url)
+
+        # validate audio m3u8 file
+        if '#EXT' not in repr(audio_m3u8):
+            log('pre_process_hls()> received invalid m3u8 file from server')
+            return False
 
         # save m3u8 file to disk
         with open(os.path.join(d.temp_folder, 'remote_audio.m3u8'), 'w') as f:
@@ -528,11 +538,15 @@ def pre_process_hls(d):
     # load previous segment information from disk - resume download -
     d.load_progress_info()
 
+    log('pre_process_hls()> done processing', d.name)
+
     return True
 
 
 def post_process_hls(d):
     """ffmpeg will process m3u8 files"""
+
+    log('post_process_hls()> start processing', d.name)
 
     def create_local_m3u8(remote_file, local_file, local_names):
 
@@ -597,6 +611,8 @@ def post_process_hls(d):
         if error:
             log('post_process_hls()> ffmpeg failed:', output)
             return False
+
+    log('post_process_hls()> done processing', d.name)
 
     return True
 
