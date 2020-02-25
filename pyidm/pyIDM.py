@@ -88,6 +88,10 @@ def singleApp():
 
 
 def main():
+    # copy stdout, stderr to our gui
+    sys.stdout.write = echo_stdout(sys.stdout.write)
+    sys.stderr.write = echo_stdout(sys.stderr.write)
+
     log('starting application')
 
     # quit if there is previous instance of this script already running
