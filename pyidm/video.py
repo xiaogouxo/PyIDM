@@ -348,10 +348,10 @@ def merge_video_audio(video, audio, output):
     ffmpeg = config.ffmpeg_actual_path  # 'ffmpeg'  # os.path.join(current_directory, 'ffmpeg', 'ffmpeg')
 
     # very fast audio just copied, format must match [mp4, m4a] and [webm, webm]
-    cmd1 = f'"{ffmpeg}" -i "{video}" -i "{audio}" -c copy "{output}"'
+    cmd1 = f'"{ffmpeg}" -y -i "{video}" -i "{audio}" -c copy "{output}"'
 
     # slow, mix different formats
-    cmd2 = f'"{ffmpeg}" -i "{video}" -i "{audio}" "{output}"'
+    cmd2 = f'"{ffmpeg}" -y -i "{video}" -i "{audio}" "{output}"'
 
     # run command with shell=False if failed will use shell=True option
     error, output = run_command(cmd1, verbose=True, shell=False)
@@ -454,6 +454,7 @@ def youtube_dl_downloader(d=None, extra_options=None):
             delete_file(video)
             delete_file(audio)
 
+    log('youtube_dl_downloader()> done downloading', d.name)
     return True
 
 
