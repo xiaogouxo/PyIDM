@@ -234,7 +234,10 @@ def time_format(t, tail=''):
         return t
 
 
-def log(*args):
+def log(*args, log_level=1):
+    if log_level > config.log_level:
+        return
+
     s = ''
     for arg in args:
         s += str(arg)
@@ -247,10 +250,16 @@ def log(*args):
     except Exception as e:
         print(e)
 
-    try:
-        config.main_window_q.put(('log', '\n' + s))
-    except Exception as e:
-        print(e)
+
+def echo_stdout(func):
+    """Copy stdout / stderr and send it to gui"""
+    def copier(text):
+        try:
+            config.main_window_q.put(('log', text))
+            return func(text)
+        except:
+            return func(text)
+    return copier
 
 
 def validate_file_name(f_name):
@@ -341,32 +350,48 @@ def get_seg_size(seg):
 
 
 def run_command(cmd, verbose=True, shell=False, hide_window=False):
+    """run command in as a subprocess"""
+
     if verbose:
         log('running command:', cmd)
 
     error, output = True, f'error running command {cmd}'
+
     try:
-        if shell:
-            r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+
+        # split command if shell parameter set to False
+        if not shell:
+            cmd = shlex.split(cmd)
+
+        # startupinfo to hide terminal window on windows
+        if hide_window and config.operating_system == 'Windows':
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags = subprocess.STARTF_USESHOWWINDOW
+            startupinfo.wShowWindow = subprocess.SW_HIDE
         else:
-            cmd = shlex.split(cmd)  # , posix=False)
-            # print('shlex cmd: ', cmd)
+            startupinfo = None
 
-            if hide_window and config.operating_system == 'Windows':
-                info = subprocess.STARTUPINFO()
-                info.dwFlags = subprocess.STARTF_USESHOWWINDOW
-                info.wShowWindow = subprocess.SW_HIDE
-                r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, startupinfo=info)
-            else:
-                r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        # start subprocess using Popen instead of subprocess.run() to get a real-time output
+        # since run() gets the output only when finished
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding='utf-8',
+                                   errors='replace', shell=shell, startupinfo=startupinfo)
 
-        error = r.returncode != 0  # True or False
-        output = r.stdout.decode('utf-8')
-        if verbose:
-            log('output: ', output.strip())
+        output = ''
+
+        for line in process.stdout:
+            line = line.strip()
+            output += line
+            if verbose:
+                print(line)
+
+        # wait for subprocess to finish, process.wait() is not recommended
+        process.communicate()
+
+        # get return code
+        error = process.returncode != 0  # True or False
 
     except Exception as e:
-        log('error running command: ', cmd, e)
+        log('error running command: ', e, ' - cmd:', cmd)
         pass
 
     return error, output
@@ -583,7 +608,7 @@ def save_log():
     file = os.path.join(config.current_directory, 'log.txt')
     try:
         with open(file, 'w') as f:
-            f.write(config.log)
+            f.write(config.log_text)
             popup(f'log saved at: {config.current_directory}', title='Log file saving')
     except Exception as e:
         log('failed to save log file: ', e)
@@ -595,5 +620,5 @@ __all__ = [
     'validate_file_name', 'size_splitter', 'delete_folder', 'get_seg_size',
     'run_command', 'print_object', 'update_object', 'truncate', 'sort_dictionary', 'popup', 'compare_versions',
     'translate_server_code', 'validate_url', 'open_file', 'clipboard_read', 'clipboard_write', 'delete_file',
-    'rename_file', 'load_json', 'save_json', 'save_log',
+    'rename_file', 'load_json', 'save_json', 'save_log', 'echo_stdout'
 ]
