@@ -17,7 +17,7 @@ from .worker import Worker
 from .downloaditem import Segment
 
 
-def brain(d=None):
+def brain(d=None, downloader=None):
     """main brain for a single download, it controls thread manger, file manager, and get data from workers
     and communicate with download window Gui, Main frame gui"""
 
@@ -43,55 +43,32 @@ def brain(d=None):
     # load previous saved progress info
     d.load_progress_info()
 
-    # todo: more testing required, move part of this code to gui.start_download() asking user to proceed
-    # # use youtube-dl native downloader to download unsupported protocols
-    # # problem now is when youtube-dl use ffmpeg to download streams we get no progress at all
-    # if d.protocol in config.non_supported_protocols:
-    #     log('unsupported protocol detected use native youtube-dl downloader')
-    #     # popup('using native youtube-dl downloader, please check progress on log tab')
-    #     try:
-    #         done = hls_downloader(d)  # youtube_dl_downloader(d)
-    #         if done:
-    #             d.status = Status.completed
-    #         else:
-    #             d.status = Status.error
-    #     except:
-    #         if d.status != Status.cancelled:  # if not cancelled by user
-    #             d.status = Status.error
-    #     return
+    # todo: more testing required
+    # use youtube-dl native downloader to download unsupported protocols
+    # problem when youtube-dl uses ffmpeg to download streams we get no progress at all
+    if downloader == 'ytdl' or d.protocol in config.non_supported_protocols:
+        log('using native youtube-dl downloader')
+        try:
+            done = youtube_dl_downloader(d)  # hls_downloader(d)
+            if done:
+                d.status = Status.completed
+            else:
+                d.status = Status.error
+        except Exception as e:
+            if d.status != Status.cancelled:  # if not cancelled by user
+                d.status = Status.error
+            log(e)
+        return
 
     # experimental m3u8 protocols
     if 'm3u8' in d.protocol:  # todo: use better way to identify HLS streams
-        keep_segments = True  # don't delete segments after completed
+        keep_segments = True  # don't delete segments after completed, it will be post-processed by ffmpeg
         success = pre_process_hls(d)
         if not success:
             d.status = Status.error
             return
     else:
         keep_segments = False
-
-        # video_url_list = pre_process_hls(d.eff_url)
-
-        # if not video_url_list:
-        #     d.status = Status.error
-        #     return
-        # #
-        # # build segments
-        # d.segments = [Segment(name=os.path.join(d.temp_folder, str(i) + '.ts'), num=i, range=None, size=0,
-        #                       url=seg_url, tempfile=d.temp_file)
-        #               for i, seg_url in enumerate(video_url_list)]
-        #
-        # if d.type == 'dash':
-        #     audio_url_list = pre_process_hls(d.audio_url)
-        #
-        #     # build segments
-        #     audio_segments = [Segment(name=os.path.join(d.temp_folder, str(i) + '_audio.ts'), num=i, range=None, size=0,
-        #                               url=seg_url, tempfile=d.audio_file)
-        #                       for i, seg_url in enumerate(audio_url_list)]
-        #     d.segments += audio_segments
-        #
-        # # load previous segment information - resume download -
-        # d.load_progress_info()
 
     # run file manager in a separate thread
     Thread(target=file_manager, daemon=True, args=(d, keep_segments)).start()
@@ -222,8 +199,8 @@ def file_manager(d, keep_segments=False):
                         trgt_file.write(src_file.read())
 
                 seg.completed = True
-                d.q.log('completed seg:', seg.name)
-                print('completed seg:', seg.name)
+                # d.q.log('completed seg:', seg.name)
+                log('>> completed seg:', seg.name)
 
                 if not keep_segments:
                     delete_file(seg.name)

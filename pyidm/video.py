@@ -8,9 +8,13 @@
 """
 
 import os
+import re
+import shlex
 import subprocess
+import sys
 import zipfile
 import time
+from threading import Thread
 from urllib.parse import urljoin
 
 from . import config
@@ -39,9 +43,13 @@ class Logger(object):
 
 
 def get_ytdl_options():
-    ydl_opts = {'quiet': True, 'prefer_insecure': True, 'no_warnings': False, 'logger': Logger(), }
+    ydl_opts = {'quiet': True, 'prefer_insecure': True, 'no_warnings': False, 'logger': Logger(),}
     if config.proxy:
         ydl_opts['proxy'] = config.proxy
+
+    if config.log_level >= 2:
+        ydl_opts['verbose'] = True
+
     return ydl_opts
 
 
@@ -376,13 +384,131 @@ def import_ytdl():
     log(f'youtube-dl load_time= {load_time}')
 
 
-def youtube_dl_downloader(d=None, extra_options=None):
-    """download with youtube_dl"""
-    options = {}
+def parse_bytes(bytestr):
+    """Parse a string indicating a byte quantity into an integer., example format: 536.71KiB,
+    modified from original source: youtube-dl.common"""
+    matchobj = re.match(r'(?i)^(\d+(?:\.\d+)?)([kMGTPEZY]\S*)?$', bytestr)
+    if matchobj is None:
+        return None
+    number = float(matchobj.group(1))
+    unit = matchobj.group(2).lower()[0:1] if  matchobj.group(2) else ''
+    multiplier = 1024.0 ** 'bkmgtpezy'.index(unit)
+    return int(round(number * multiplier))
+
+
+def youtube_dl_downloader(d=None, extra_options=None, use_subprocess=True):
+    """download with youtube_dl
+    :param extra_options: youtube-dl extra options
+    :param subprocess: bool, if true will use a subprocess to launch youtube-dl like a command line, if False will use
+    an imported youtube-dl module which has a progress hook
+
+    """
     downloaded = {}
+    file_name = ''
+
+    # Launch youtube-dl in subprocess, has advantage of catching stdout/stderr output, drawback no progress
+    if use_subprocess:
+        # folder = d.folder.replace('\\', '/')
+        # name = os.path.splitext(d.name)[0]
+        name = d.target_file.replace("\\", "/")
+
+        # get executable path,
+        if config.FROZEN:  # if app. frozen by cx_freeze will use a compiled exe file
+            youtube_dl_executable = '"' + os.path.join(config.current_directory, 'youtube-dl.exe') + '"'
+        else:  # will use an installed module
+            youtube_dl_executable = f'"{sys.executable}" -m youtube_dl'
+
+        cmd = f'{youtube_dl_executable} -f "{d.format_id}"+"{d.audio_format_id}"/"{d.format_id}"+bestaudio {d.url} -o "{name}" -v'  #"{folder}/{name}.%(ext)s"'
+        log('cmd:', cmd)
+        # cmd = shlex.split(cmd)
+
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding='utf-8',
+                                   errors='replace', shell=True)
+
+        # process stdout
+        for line in process.stdout:
+            line = line.strip()
+            log(line)
+
+            # monitor cancel flag
+            if d.status == config.Status.cancelled:
+                log('youtube_dl_downloader()> killing subprocess, cancelled by user')
+                process.kill()
+                return()
+
+            # parse line looking for progress info example output: [download]   0.0% of 4.63MiB at 32.00KiB/s ETA 02:28
+            if line.startswith('[download]'):
+                buffer = line.split()
+
+                # get file name
+                if 'Destination' in buffer[1] and len(buffer) >= 3:
+                    file_name = buffer[2]
+                    log('file name .................................', file_name)
+
+                # get downloaded size
+                if '%' in buffer[1]:
+                    log(buffer)
+                    percent = buffer[1].strip()
+                    percent = percent.replace('%', '')
+                    try:
+                        # speed = buffer[5]
+                        # eta = buffer[7]
+                        percent = int(float(percent))
+                        size = parse_bytes(buffer[3])
+                        # log('percent:', percent, '- size:', size)
+
+                        if size and file_name:
+                            done = size * percent // 100
+                            downloaded[file_name] = done
+                            # log('done:', done, ' - downloaded:', downloaded)
+                            d.downloaded = sum(downloaded.values())
+
+                            # update video size
+                            if d.format_id.replace(' ', '_') in file_name:
+                                log()
+                                d.size = size
+
+                            # update audio size
+                            elif d.audio_format_id.replace(' ', '_') in file_name:
+                                d.audio_size = size
+
+                    except Exception as e:
+                        log(e)
+
+        # wait for subprocess to finish, process.wait() is not recommended
+        log('communicate()')
+        process.communicate()
+
+        # get return code
+        log('poll()')
+        process.poll()
+        error = process.returncode != 0  # True or False
+
+        log(f'youtube_dl_downloader {d.status}')
+        if not error:
+            return True
+        else:
+            return False
+
+
+
+    # ----------------------------------------
+
+    # update options
+    options = {}
+    options.update(**get_ytdl_options())
+
+    if isinstance(extra_options, dict):
+        options.update(**extra_options)
+
+    options['quiet'] = False
+    options['verbose'] = True
+    # options['hls-prefer-native'] = True
+    options['format'] = d.format_id
+    options['outtmpl'] = d.temp_file
 
     def progress_hook(progress_dict):
-        print(progress_dict)
+        log(progress_dict)
 
         # when downloading 2 streams "i.e. dash video and audio" downloaded_bytes will be reset to zero and report
         # wrong total downloaded bytes, fix >> use  a dictionary to store every stream progress
@@ -404,17 +530,7 @@ def youtube_dl_downloader(d=None, extra_options=None):
             log('youtube-dl cancelled download')
             raise KeyboardInterrupt
 
-    options.update(**get_ytdl_options())
-
-    if isinstance(extra_options, dict):
-        options.update(**extra_options)
-
     options['progress_hooks'] = [progress_hook]
-    options['quiet'] = False
-    options['verbose'] = True
-    options['hls-prefer-native'] = True
-    options['format'] = d.format_id
-    options['outtmpl'] = d.temp_file
 
     # start downloading
     try:
@@ -460,11 +576,12 @@ def youtube_dl_downloader(d=None, extra_options=None):
 
 def hls_downloader(d):
     cmd = f'"ffmpeg" -y -i "{d.eff_url}" -c copy -f mp4 "file:{d.temp_file}"'
-    error, output = run_command(cmd)
-    if error:
-        return False
-    else:
-        return True
+    subprocess.Popen(cmd)
+    # error, output = run_command(cmd)
+    # if error:
+    #     return False
+    # else:
+    #     return True
 
 
 def pre_process_hls(d):
@@ -490,7 +607,7 @@ def pre_process_hls(d):
             # get absolute path from url_list relative path
             url_list = [urljoin(url, seg_url) for seg_url in url_list]
 
-        # print('process hls> url list:', url_list)
+        # log('process hls> url list:', url_list)
         return buffer, url_list
 
     # first lets handle video stream
@@ -557,13 +674,13 @@ def post_process_hls(d):
         names = [f'{name}\n' for name in local_names]
         names.reverse()
 
-        # print(len([a for a in lines if not a.startswith('#')]))
+        # log(len([a for a in lines if not a.startswith('#')]))
 
         for i, line in enumerate(lines):
             if line and not line.startswith('#'):
                 try:
                     lines[i] = names.pop()
-                    print(lines[i])
+                    log(lines[i])
                 except:
                     pass
 

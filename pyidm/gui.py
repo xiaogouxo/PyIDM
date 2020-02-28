@@ -33,6 +33,9 @@ config.all_themes = sg.ListOfLookAndFeelValues()
 sg.SetOptions(icon=config.APP_ICON, font='Helvetica 11', auto_size_buttons=True, progress_meter_border_depth=0,
               border_width=1)
 
+# todo: change buttons to images, pysimplegui can set transparent buttons see below link
+# https://github.com/PySimpleGUI/PySimpleGUI/issues/142#issuecomment-590126165
+
 
 class MainWindow:
     def __init__(self, d_list):
@@ -103,10 +106,10 @@ class MainWindow:
             k, v = config.main_window_q.get()
             if k == 'log':
                 try:
-                    if len(config.log) > 1000_000:
-                        config.log = config.log[1000:]  # remove oldest 1000 characters
-                    config.log += v
-                    self.window['log'](config.log)
+                    if len(config.log_text) > 1000_000:
+                        config.log_text = config.log_text[1000:]  # remove oldest 1000 characters
+                    config.log_text += v
+                    self.window['log'](config.log_text)
                 except:
                     pass
 
@@ -154,7 +157,7 @@ class MainWindow:
 
             # url
             [sg.T('', size=(50, 1), justification='center', key='update_note', enable_events=True)],
-            [sg.Text('URL:'), sg.Input(self.d.url, enable_events=True, change_submits=True, key='url', size=(66, 1)),
+            [sg.Text('URL:'), sg.Input(self.d.url, enable_events=True, key='url', size=(66, 1)),
              sg.Button('Retry', key='Retry', tooltip=' retry ')],
             [sg.Text('Status:', size=(70, 1), key='status')],
 
@@ -176,8 +179,12 @@ class MainWindow:
              sg.FolderBrowse(key='browse')],
 
             # download button
-            [sg.Column([[sg.Button('Download', font='Helvetica 14', border_width=1)]], size=(120, 40),
-                       justification='center')],
+
+            [sg.Column([[sg.B('Download', font='Helvetica 14', border_width=0, pad=(0, 0), size=(10, 1),
+                              tooltip='Main download Engine'),
+                         sg.B('▼',  font='Helvetica 14', pad=(5, 0), border_width=0, key='ytdl_dl_btn', size=(2, 1),
+                              tooltip='Alternative Download with youtube-dl')]],
+                       size=(150, 40), justification='center')],
 
         ]
 
@@ -214,7 +221,7 @@ class MainWindow:
                                     enable_events=True, key='themes'),
                            sg.Text(f' Total: {len(config.all_themes)} Themes')],
                           [sg.Checkbox('Speed Limit:', default=True if config.speed_limit else False,
-                                       key='speed_limit_switch', change_submits=True,
+                                       key='speed_limit_switch', enable_events=True,
                                        tooltip='examples: 50 k, 10kb, 2m, 3mb, 20, 10MB '),
                            sg.Input(default_text=config.speed_limit if config.speed_limit else '', size=(10, 1),
                                     key='speed_limit',
@@ -236,12 +243,12 @@ class MainWindow:
                           [sg.Text('Segment size:'), sg.Input(default_text=seg_size, size=(6, 1),
                                                               enable_events=True, key='segment_size'),
                            sg.Combo(values=['KB', 'MB'], default_value=seg_size_unit, size=(4, 1), key='seg_size_unit',
-                                    change_submits=True),
+                                    enable_events=True),
                            sg.Text(f'current value: {size_format(config.segment_size)}', size=(30, 1),
                                    key='seg_current_value')],
                           [sg.T('')],
                           [sg.Checkbox('Check for update on startup', default=config.check_for_update_on_startup,
-                                       key='check_for_update_on_startup', change_submits=True)],
+                                       key='check_for_update_on_startup', enable_events=True)],
                           [sg.T('    '),
                            sg.T('Youtube-dl version = 00.00.00', size=(50, 1), key='youtube_dl_update_note'),
                            sg.Button('update youtube-dl', key='update_youtube_dl')],
@@ -257,7 +264,10 @@ class MainWindow:
 
         log_layout = [[sg.T('Details events:')], [sg.Multiline(default_text='', size=(70, 21), key='log', font='any 8',
                                                                autoscroll=True)],
-                      [sg.Button('Save Log'), sg.Button('Clear Log')]]
+                      [sg.T('Log Level:'), sg.Combo([1, 2, 3], default_value=config.log_level, enable_events=True,
+                                                    size=(3, 1), key='log_level'),
+                       sg.T('1: Standard, 2: Verbose, 3: Debugging                                    ', font='any 8'),
+                       sg.Button('Save Log'), sg.Button('Clear Log')]]
 
         # update_layout = [[sg.T('hello')]]
 
@@ -286,6 +296,9 @@ class MainWindow:
         self.window['table'].Widget.bind("<Button-3>", self.table_right_click)  # right click
         self.window['table'].bind('<Double-Button-1>', '_double_clicked')  # double click
         self.window['table'].bind('<Return>', '_enter_key')  # Enter key
+
+        # log text, disable word wrap
+        self.window['log'].Widget.config(wrap='none')
 
     def restart_window(self):
         try:
@@ -411,6 +424,9 @@ class MainWindow:
 
             elif event == 'Download':
                 self.download_btn()
+
+            elif event == 'ytdl_dl_btn':
+                self.download_btn(downloader='ytdl')
 
             elif event == 'folder':
                 if values['folder']:
@@ -622,11 +638,15 @@ class MainWindow:
             elif event in ['update_pyIDM']:
                 Thread(target=self.update_app, daemon=True).start()
 
-            # log
+            # log ---------------------------------------------------------------------------------------------------
+            elif event == 'log_level':
+                config.log_level = values['log_level']
+                log('Log Level changed to:', config.log_level)
+
             elif event == 'Clear Log':
                 try:
                     self.window['log']('')
-                    config.log = ''
+                    config.log_text = ''
                 except:
                     pass
 
@@ -716,10 +736,13 @@ class MainWindow:
 
         return _active_downloads
 
-    def start_download(self, d, silent=False):
-        """Receive a DownloadItem and pass it to brain
+    def start_download(self, d, silent=False, downloader=None):
+        """
+        Receive a DownloadItem and pass it to brain
         :param bool silent: True or False, show a warninig dialogues
-        :param DownloadItem d: DownloadItem() object"""
+        :param DownloadItem d: DownloadItem() object
+        :param downloader: name of alternative  downloader
+        """
 
         if d is None:
             return
@@ -753,6 +776,21 @@ class MainWindow:
         if d.name == '':
             sg.popup("File name can't be empty!!", title='invalid file name!!')
             return 'error'
+
+        # todo: more testing required, ffmpeg gives no progress, can't terminate
+        # check if protocol is not supported, will use native youtube-dl downloader, will be handled in brain module
+        if downloader == 'ytdl' or d.protocol in config.non_supported_protocols:
+            msg = f"Using youtube-dl downloader: \n\n" \
+                  f"Warning: There is some limitations: \n" \
+                  f"- sometimes there is no progress feedback \n" \
+                  f"- might be slow, only one connection will be used.\n" \
+                  f"proceed?"
+            window = sg.Window('Experimental', [[sg.T(msg)], [sg.Ok(), sg.Cancel()]])
+            event, values = window()
+            window.close()
+            if event != 'Ok':
+                log('Cancelled by user')
+                return 'cancelled'
 
         # check if file with the same name exist in destination
         if os.path.isfile(d.target_file):
@@ -829,27 +867,13 @@ class MainWindow:
             self.pending.append(d)
             return
 
-        # todo: more testing required, ffmpeg gives no progress, can't terminate
-        # check if protocol is not supported, will use native youtube-dl downloader, will be handled in brain module
-        if d.protocol in config.non_supported_protocols:
-            msg = f"protocol: {d.protocol} is not supported! \n Try native youtube-dl downloader? \n" \
-                  f"Warning: this is experimental, in some cases there might be no progress \n" \
-                  f" update while downloading,  only when finished downloading."
-            window = sg.Window('Experimental', [[sg.T(msg)], [sg.Ok(), sg.Cancel()]])
-            event, values = window()
-            if event != 'Ok':
-                log('Cancelled by user')
-                return
-
-            window.close()
-
         # start downloading
         if config.show_download_window and not silent:
             # create download window
             self.download_windows[d.id] = DownloadWindow(d)
 
         # create and start brain in a separate thread
-        Thread(target=brain, daemon=True, args=(d,)).start()
+        Thread(target=brain, daemon=True, args=(d, downloader)).start()
 
     def stop_all_downloads(self):
         # change status of pending items to cancelled
@@ -870,7 +894,7 @@ class MainWindow:
                 return i
         return None
 
-    def download_btn(self):
+    def download_btn(self, downloader=None):
 
         if self.disabled:
             sg.popup_ok('Nothing to download', 'it might be a web page or invalid url link',
@@ -880,9 +904,9 @@ class MainWindow:
         d = copy.copy(self.d)
         d.folder = config.download_folder
 
-        r = self.start_download(d)
+        r = self.start_download(d, downloader=downloader)
 
-        if r not in ('error', 'cancelled'):
+        if r not in ('error', 'cancelled', False):
             self.select_tab('Downloads')
 
     # endregion
@@ -1126,6 +1150,7 @@ class MainWindow:
 
         msg = f'looking for video streams ... Please wait'
         log(msg)
+        log('youtube_func()> processing:', self.d.url)
         # self.set_status(msg)
 
         # reset video controls
@@ -1152,8 +1177,8 @@ class MainWindow:
             # youtube-dl process
             log(get_ytdl_options())
             with video.ytdl.YoutubeDL(get_ytdl_options()) as ydl:
-                result = ydl.extract_info(self.d.url, download=False, process=False)
-                # print(result)
+                result = ydl.extract_info(self.d.url, download=False, process=True)
+                log(result, log_level=2)
 
                 # set playlist / video title
                 self.pl_title = result.get('title', '')
@@ -1164,7 +1189,7 @@ class MainWindow:
                 if result.get('_type') == 'playlist' or 'entries' in result:
                     pl_info = list(result.get('entries'))
 
-                    self.d.pl_url = self.d.url
+                    self.d.playlist_url = self.d.url
 
                     # progress bars
                     self.m_bar = 50  # decide increment value in side bar based on number of threads
@@ -1175,13 +1200,8 @@ class MainWindow:
                     self.playlist = [None for _ in range(len(pl_info))]  # fill list so we can store videos in order
                     v_threads = []
                     for num, item in enumerate(pl_info):
-                        # todo: get a full webpage url for refresh button to work correctly
-                        # we have an issue here with youtube-dl doesn't get full video url from playlist
-                        # print("item.get('url')=", item.get('url'))
-                        # print("item.get('webpage_url')=", item.get('webpage_url'))
-                        # print(item)
-
-                        t = Thread(target=self.get_video, daemon=True, args=[num, item.get('url'), yt_id, s_bar_incr])
+                        video_url = item.get('url', None) or item.get('webpage_url', None) or item.get('id', None)
+                        t = Thread(target=self.get_video, daemon=True, args=[num, video_url, yt_id, s_bar_incr])
                         v_threads.append(t)
                         t.start()
 
@@ -1238,6 +1258,9 @@ class MainWindow:
             self.change_cursor('default')
 
     def get_video(self, num, vid_url, yt_id, s_bar_incr):
+        log('Main_window.get_video()> url:', vid_url)
+        if not vid_url:
+            return None
         try:
             video = Video(vid_url)
 
@@ -1250,6 +1273,7 @@ class MainWindow:
 
         except Exception as e:
             log('MainWindow.get_video:> ', e)
+            raise e
         finally:
             with self.s_bar_lock:
                 self.s_bar += s_bar_incr
@@ -1304,6 +1328,7 @@ class MainWindow:
         self.update_video_param()
 
     def download_playlist(self):
+
         # check if there is a video file or quit
         if not self.video:
             sg.popup_ok('Playlist is empty, nothing to download :)', title='Playlist download')
@@ -1710,51 +1735,34 @@ class DownloadWindow:
                 pass
 
     def create_window(self):
-        main_layout = [
-            [sg.T('', size=(55, 7), key='out')],
+        layout = [
+            [sg.T('', size=(55, 4), key='out')],
+
+            [sg.T(' ' * 120, key='percent')],
 
             [sg.ProgressBar(max_value=100, key='progress_bar', size=(42, 15), border_width=3)],
 
-            [sg.Column([[sg.Button('Hide', key='hide'), sg.Button('Cancel', key='cancel')]], justification='right')],
-
+            # [sg.Column([[sg.Button('Hide', key='hide'), sg.Button('Cancel', key='cancel')]], justification='right')],
+            [sg.T(' ', key='status', size=(35, 1)), sg.Button('Hide', key='hide'), sg.Button('Cancel', key='cancel')],
+            [sg.T('', size=(100, 2), background_color='black', text_color='white', font='any 8', key='log2')],
         ]
 
-        log_layout = [[sg.T('Details events:')],
-                      [sg.Multiline(default_text='', size=(70, 16), font='any 8', key='log', autoscroll=True)],
-                      [sg.Button('Clear Log')]]
-
-        layout = [[sg.TabGroup([[sg.Tab('Main', main_layout), sg.Tab('Log', log_layout)]])]]
-
-        self.window = sg.Window(title=self.d.name, layout=layout, finalize=True, margins=(2, 2), size=(460, 240))
+        self.window = sg.Window(title=self.d.name, layout=layout, finalize=True, margins=(2, 2), size=(460, 220))
         self.window['progress_bar'].expand()
+        self.window['percent'].expand()
+
+        # log text, disable word wrap
+        # self.window['log2'].Widget.config(wrap='none')
 
     def update_gui(self):
         # trim name and folder length
         name = truncate(self.d.name, 50)
-        folder = truncate(self.d.folder, 50)
+        # folder = truncate(self.d.folder, 50)
 
-        out = (f"File: {name}\n"
-               f"Folder: {folder}\n"
-               f"Downloaded:    {size_format(self.d.downloaded)} out of"
-               f" {size_format(self.d.total_size)}\n"
-               f"speed: {size_format(self.d.speed, '/s')}  --- "
-               f"Time remaining: {time_format(self.d.time_left)}\n"
-               f"Live Connections: {self.d.live_connections} - Remaining parts: {self.d.remaining_parts}  ...  "
-               f"{self.d.progress}%\n\n"
-               f"Status: {self.d.status}  {self.d.i} {'Please wait...' if self.d.status==Status.merging_audio else ''}")
-
-        # update log
-        if self.d.q:
-            while self.d.q.d_window.qsize():
-                k, v = self.d.q.d_window.get()
-                # print(k, v)
-                if k == 'log':
-                    try:
-                        if len(self.window['log'].get()) > 3000:
-                            self.window['log'](self.window['log'].get()[:2000])
-                        self.window['log'](v, append=True)
-                    except:
-                        pass
+        out =  f"File: {name}\n" \
+               f"downloaded: {size_format(self.d.downloaded)} out of {size_format(self.d.total_size)}\n" \
+               f"speed: {size_format(self.d.speed, '/s') }  {time_format(self.d.time_left)} left \n" \
+               f"live connections: {self.d.live_connections} - remaining parts: {self.d.remaining_parts}\n" \
 
         try:
             self.window.Element('out').Update(value=out)
@@ -1769,6 +1777,17 @@ class DownloadWindow:
 
             if self.d.status in (Status.completed, Status.cancelled, Status.error):
                 self.close()
+
+            # log
+            if config.log_text:
+                self.window['log2']('activity:\n' + config.log_text.strip().rsplit(sep='\n', maxsplit=1,)[-1])
+
+            # percentage value to move with progress bar
+            position = int(self.d.progress) - 5 if self.d.progress > 5 else 0
+            self.window['percent'](f"{' ' * position} {self.d.progress}%")
+
+            # status update
+            self.window['status'](f"{self.d.status}  {self.d.i} {'Please wait' if self.d.status==Status.merging_audio else ''}")
         except:
             pass
 
@@ -1783,7 +1802,7 @@ class DownloadWindow:
             self.close()
 
         # update gui
-        if time.time() - self.timer >= 0.5:
+        if time.time() - self.timer >= 0.3:
             self.timer = time.time()
             self.update_gui()
 
