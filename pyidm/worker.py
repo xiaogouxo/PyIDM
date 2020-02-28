@@ -15,7 +15,7 @@ import certifi
 import pycurl
 
 from .config import Status, APP_NAME, proxy, USER_AGENT
-from .utils import get_seg_size
+from .utils import get_seg_size, log
 
 
 class Worker:
@@ -38,16 +38,15 @@ class Worker:
         self.speed_limit = 0
         self.headers = {}
 
-    def debug(self, *args, debug_level='standard'):
+    def debug(self, *args, log_level=2):
         # todo: make a debug levels i.e: standard, detailed, evrything
         args = [repr(arg) for arg in args]
         msg = '>> ' + ' '.join(args)
 
         try:
-            print(msg)
-            self.q.log(msg)
+            log(msg, log_level=log_level)
         except Exception as e:
-            print(e)
+            log(e)
 
     @property
     def current_filesize(self):
@@ -131,7 +130,6 @@ class Worker:
             self.d.downloaded -= self.start_size
             self.debug(self.seg.num, 'overwrite the previous download, start size =', self.start_size)
             self.start_size = 0
-
 
     def verify(self):
         """check if segment completed"""

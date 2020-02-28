@@ -131,6 +131,8 @@ def load_setting():
         config.segment_size = setting.get('segment_size', config.DEFAULT_SEGMENT_SIZE)
         config.check_for_update_on_startup = setting.get('check_for_update_on_startup', True)
 
+        config.log_level = setting.get('log_level', config.DEFAULT_LOG_LEVEL)
+
 
 def save_setting():
     setting = dict()
@@ -144,6 +146,7 @@ def save_setting():
     setting['proxy'] = config.proxy
     setting['segment_size'] = config.segment_size
     setting['check_for_update_on_startup'] = config.check_for_update_on_startup
+    setting['log_level'] = config.log_level
 
     try:
         file = os.path.join(config.sett_folder, 'setting.cfg')

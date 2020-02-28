@@ -64,7 +64,10 @@ def set_curl_options(c):
     c.setopt(pycurl.LOW_SPEED_TIME, 60)
 
     # verbose
-    c.setopt(pycurl.VERBOSE, 0)
+    if config.log_level >= 3:
+        c.setopt(pycurl.VERBOSE, 1)
+    else:
+        c.setopt(pycurl.VERBOSE, 0)
 
     # it tells curl not to include headers with the body
     c.setopt(pycurl.HEADEROPT, 0)
@@ -155,12 +158,12 @@ def download(url, file_name=None):
     file = None
     buffer = None
 
-    # return None if receive a webpage contents instead of a file
-    headers = get_headers(url)
-    content_type = headers.get('content-type', '')
-    if content_type == '' or 'html' in content_type:
-        log('download(): server sent an html webpage or invalid url')
-        # return False
+    # # return None if receive a webpage contents instead of a file
+    # headers = get_headers(url)
+    # content_type = headers.get('content-type', '')
+    # if content_type == '' or 'html' in content_type:
+    #     log('download(): server sent an html webpage or invalid url')
+    #     # return False
 
     # pycurl
     c = pycurl.Curl()
@@ -238,28 +241,40 @@ def log(*args, log_level=1):
     if log_level > config.log_level:
         return
 
-    s = ''
+    text = ''
     for arg in args:
-        s += str(arg)
-        s += ' '
-    s = s[:-1]  # remove last space
-    s = '>> ' + s
+        text += str(arg)
+        text += ' '
+    text = text[:-1]  # remove last space
+    text = '>> ' + text
 
     try:
-        print(s)
+        print(text)
+        config.main_window_q.put(('log', text + '\n'))
     except Exception as e:
         print(e)
 
 
 def echo_stdout(func):
     """Copy stdout / stderr and send it to gui"""
-    def copier(text):
+    def echo(text):
         try:
             config.main_window_q.put(('log', text))
             return func(text)
         except:
             return func(text)
-    return copier
+    return echo
+
+
+def echo_stderr(func):
+    """Copy stdout / stderr and send it to gui"""
+    def echo(text):
+        try:
+            config.main_window_q.put(('log', text))
+            return func(text)
+        except:
+            return func(text)
+    return echo
 
 
 def validate_file_name(f_name):
@@ -388,7 +403,11 @@ def run_command(cmd, verbose=True, shell=False, hide_window=False):
         process.communicate()
 
         # get return code
+        process.poll()
         error = process.returncode != 0  # True or False
+        # log("process.returncode", )
+        # log("returncode", returncode)
+        # log("error", error)
 
     except Exception as e:
         log('error running command: ', e, ' - cmd:', cmd)
@@ -445,7 +464,6 @@ def popup(msg, title='', type_=''):
     """Send message to main window to spawn a popup"""
     param = dict(title=title, msg=msg, type_=type_)
     config.main_window_q.put(('popup', param))
-
 
 
 def translate_server_code(code):
@@ -620,5 +638,5 @@ __all__ = [
     'validate_file_name', 'size_splitter', 'delete_folder', 'get_seg_size',
     'run_command', 'print_object', 'update_object', 'truncate', 'sort_dictionary', 'popup', 'compare_versions',
     'translate_server_code', 'validate_url', 'open_file', 'clipboard_read', 'clipboard_write', 'delete_file',
-    'rename_file', 'load_json', 'save_json', 'save_log', 'echo_stdout'
+    'rename_file', 'load_json', 'save_json', 'save_log', 'echo_stdout', 'echo_stderr',
 ]

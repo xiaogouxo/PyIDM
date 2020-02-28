@@ -30,6 +30,7 @@ APP_URL = 'https://github.com/pyIDM/pyIDM'
 LATEST_RELEASE_URL = 'https://github.com/pyIDM/pyIDM/releases/latest'
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3721.3'
 #            'Mozilla/5.0 (Windows NT 6.3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.116 Safari/537.36'
+DEFAULT_LOG_LEVEL = 1
 
 APP_LATEST_VERSION = None  # get value from update module
 ytdl_VERSION = 'xxx'  # will be loaded once youtube-dl get imported
@@ -58,7 +59,9 @@ segment_size = DEFAULT_SEGMENT_SIZE  # in bytes
 check_for_update_on_startup = True
 proxy = ''  # must be string example: 127.0.0.1:8080
 
-log = ''  # log text
+# logging
+log_text = ''  # log text
+log_level = DEFAULT_LOG_LEVEL  # standard=1, verbose=2, debug=3
 
 # -------------------------------------------------------------------------------------
 
