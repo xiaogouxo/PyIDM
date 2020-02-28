@@ -88,9 +88,9 @@ def singleApp():
 
 
 def main():
-    # copy stdout, stderr to our gui
-    sys.stdout.write = echo_stdout(sys.stdout.write)
-    sys.stderr.write = echo_stdout(sys.stderr.write)
+    # echo stdout, stderr to our gui
+    # sys.stdout.write = echo_stdout(sys.stdout.write)
+    # sys.stderr.write = echo_stderr(sys.stderr.write)
 
     log('starting application')
 
