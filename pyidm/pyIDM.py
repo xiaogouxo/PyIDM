@@ -92,7 +92,9 @@ def main():
     # sys.stdout.write = echo_stdout(sys.stdout.write)
     # sys.stderr.write = echo_stderr(sys.stderr.write)
 
-    log('starting application')
+    log('Starting PyIDM version:', config.APP_VERSION, 'Frozen' if config.FROZEN else 'Non-Frozen')
+    # log('starting application')
+    log('operating system:', config.operating_system_info)
 
     # quit if there is previous instance of this script already running
     if not singleApp():

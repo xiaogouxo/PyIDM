@@ -30,7 +30,7 @@ APP_URL = 'https://github.com/pyIDM/pyIDM'
 LATEST_RELEASE_URL = 'https://github.com/pyIDM/pyIDM/releases/latest'
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3721.3'
 #            'Mozilla/5.0 (Windows NT 6.3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.116 Safari/537.36'
-DEFAULT_LOG_LEVEL = 1
+DEFAULT_LOG_LEVEL = 2
 
 APP_LATEST_VERSION = None  # get value from update module
 ytdl_VERSION = 'xxx'  # will be loaded once youtube-dl get imported
@@ -43,6 +43,8 @@ FROZEN = getattr(sys, "frozen", False)  # check if app is being compiled by cx_f
 
 # current operating system  ('Windows', 'Linux', 'Darwin')
 operating_system = platform.system()
+operating_system_info = f'{platform.platform()} - {platform.machine()}'   # i.e. Win7-64 and Vista-32
+
 
 # application exit flag
 terminate = False 
