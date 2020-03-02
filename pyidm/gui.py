@@ -6,6 +6,7 @@
     :copyright: (c) 2019-2020 by Mahmoud Elshahat.
     :license: GNU LGPLv3, see LICENSE for more details.
 """
+import sys
 
 import PySimpleGUI as sg
 import os
@@ -266,7 +267,7 @@ class MainWindow:
                                                                autoscroll=True)],
                       [sg.T('Log Level:'), sg.Combo([1, 2, 3], default_value=config.log_level, enable_events=True,
                                                     size=(3, 1), key='log_level'),
-                       sg.T('1: Standard, 2: Verbose, 3: Debugging                                    ', font='any 8'),
+                       sg.T('*(1=Standard, 2=Verbose, 3=Debugging)                                    ', font='any 8'),
                        sg.Button('Save Log'), sg.Button('Clear Log')]]
 
         # update_layout = [[sg.T('hello')]]
@@ -426,7 +427,7 @@ class MainWindow:
                 self.download_btn()
 
             elif event == 'ytdl_dl_btn':
-                self.download_btn(downloader='ytdl')
+                self.ytdl_downloader()
 
             elif event == 'folder':
                 if values['folder']:
@@ -440,7 +441,7 @@ class MainWindow:
             elif event == 'Retry':
                 self.retry()
 
-            # downloads tab events
+            # downloads tab events -----------------------------------------------------------------------------------
             elif event == 'table':
                 try:
                     row_num = values['table'][0]
@@ -545,7 +546,7 @@ class MainWindow:
             elif event == 'stream_menu':
                 self.stream_OnChoice(values['stream_menu'])
 
-            # setting tab
+            # setting tab -------------------------------------------------------------------------------------------
             elif event == 'themes':
                 config.current_theme = values['themes']
                 sg.ChangeLookAndFeel(config.current_theme)
@@ -556,6 +557,7 @@ class MainWindow:
                 self.download_windows = {}
 
                 self.restart_window()
+                self.select_tab('Setting')
 
             elif event == 'speed_limit_switch':
                 switch = values['speed_limit_switch']
@@ -909,6 +911,43 @@ class MainWindow:
         if r not in ('error', 'cancelled', False):
             self.select_tab('Downloads')
 
+    def ytdl_downloader(self):
+        """launch youtube-dl in terminal with proper command args.
+        This method is very limited, basically mimic running youtube-dl from command line"""
+        d = self.d
+        ytdl_executable = 'youtube-dl.exe' if config.FROZEN else f'"{sys.executable}" -m youtube_dl'
+
+        verbose = '-v' if config.log_level >= 3 else ''
+
+        if not self.video:
+            cmd = f'{ytdl_executable} {self.d.url} {verbose}'
+        else:
+            name = d.target_file.replace("\\", "/")
+            if d.type == 'dash':
+                # default format: bestvideo+bestaudio/best
+                requested_format = f'"{d.format_id}"+"{d.audio_format_id}"/"{d.format_id}"+bestaudio/best'
+            else:
+                requested_format = f'"{d.format_id}"/best'
+
+            # creating command
+            cmd = f'{ytdl_executable} -f {requested_format} {d.url} -o "{name}" {verbose} --hls-use-mpegts'
+            log('cmd:', cmd)
+
+        # executing command
+        if config.operating_system == 'Windows':
+            # write a batch file to start anew cmd terminal
+            batch_file = os.path.join(config.current_directory, 'ytdl_cmd.bat')
+            with open(batch_file, 'w') as f:
+                f.write(cmd + '\npause')
+
+            # execute batch file
+            os.startfile(batch_file)
+        else:
+            # not tested yet
+            subprocess.Popen([os.getenv('SHELL'), '-i', '-c', cmd])
+
+        # self.download_btn(downloader='ytdl')
+
     # endregion
 
     # region downloads tab
@@ -1007,8 +1046,8 @@ class MainWindow:
             return
 
         # warning / confirmation dialog, user has to write ok to proceed
-        msg = 'you are about to delete all the items in download list and their progress temp files\n' \
-              'if you are sure write the word "delete" down below and hit ok button?\n'
+        msg = 'Delete all items and their progress temp files\n' \
+              'Type the word "delete" and hit ok\n'
         response = sg.PopupGetText(msg, title='Warning!!', keep_on_top=True)
         if response == 'delete':
             log('start deleting all download items')
@@ -1744,7 +1783,7 @@ class DownloadWindow:
 
             # [sg.Column([[sg.Button('Hide', key='hide'), sg.Button('Cancel', key='cancel')]], justification='right')],
             [sg.T(' ', key='status', size=(35, 1)), sg.Button('Hide', key='hide'), sg.Button('Cancel', key='cancel')],
-            [sg.T('', size=(100, 2), background_color='black', text_color='white', font='any 8', key='log2')],
+            [sg.T('', size=(100, 2),  font='any 8', key='log2')],
         ]
 
         self.window = sg.Window(title=self.d.name, layout=layout, finalize=True, margins=(2, 2), size=(460, 220))
@@ -1802,7 +1841,7 @@ class DownloadWindow:
             self.close()
 
         # update gui
-        if time.time() - self.timer >= 0.3:
+        if time.time() - self.timer >= 0.5:
             self.timer = time.time()
             self.update_gui()
 
