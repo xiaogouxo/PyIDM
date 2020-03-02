@@ -65,15 +65,12 @@ def load_d_list():
         for d in d_list:
             status = config.Status.completed if d.progress >= 100 else config.Status.cancelled
             d.status = status
-
-            d.time_left = '---'
-            d.speed = '---'
             d.live_connections = 0
 
     except FileNotFoundError:
         log('downloads.cfg file not found')
     except Exception as e:
-        handle_exceptions(f'load_d_list: {e}')
+        log(f'load_d_list()>: {e}')
     finally:
         if not isinstance(d_list, list):
             d_list = []
