@@ -47,7 +47,7 @@ def get_ytdl_options():
     if config.proxy:
         ydl_opts['proxy'] = config.proxy
 
-    if config.log_level >= 2:
+    if config.log_level >= 3:
         ydl_opts['verbose'] = True
 
     return ydl_opts
@@ -340,6 +340,10 @@ def check_ffmpeg():
         error, output = run_command(cmd, verbose=False)
         if not error:
             found = True
+
+            # fix issue 47 where command line return \n\r with path
+            # todo: just ignore the output path since ffmpeg in sys path and  we can call ffmpeg directly
+            output = output.strip()
             config.ffmpeg_actual_path = os.path.realpath(output)
 
     if found:
@@ -386,7 +390,7 @@ def import_ytdl():
 
 def parse_bytes(bytestr):
     """Parse a string indicating a byte quantity into an integer., example format: 536.71KiB,
-    modified from original source: youtube-dl.common"""
+    modified from original source at youtube-dl.common"""
     matchobj = re.match(r'(?i)^(\d+(?:\.\d+)?)([kMGTPEZY]\S*)?$', bytestr)
     if matchobj is None:
         return None
@@ -397,7 +401,13 @@ def parse_bytes(bytestr):
 
 
 def youtube_dl_downloader(d=None, extra_options=None, use_subprocess=True):
-    """download with youtube_dl
+    """ ---- NOT IMPLEMENTED ----
+    This is non-completed attempt to integrate youtube-dl native downloader into PyIDM,
+    main issue is the lack of a proper method to interrupt / terminate youtube-dl subprocess, since process.kill() only
+    kill youtube-dl and leave the child ffmpeg subprocess running in background.
+    this issue still have no proper solution on windows.
+
+    download with youtube_dl
     :param extra_options: youtube-dl extra options
     :param subprocess: bool, if true will use a subprocess to launch youtube-dl like a command line, if False will use
     an imported youtube-dl module which has a progress hook
@@ -405,12 +415,17 @@ def youtube_dl_downloader(d=None, extra_options=None, use_subprocess=True):
     """
     downloaded = {}
     file_name = ''
+    name = d.target_file.replace("\\", "/")
+
+    # requested format
+    if d.type == 'dash':
+        # default format: bestvideo+bestaudio/best
+        requested_format = f'"{d.format_id}"+"{d.audio_format_id}"/"{d.format_id}"+bestaudio/best'
+    else:
+        requested_format = f'"{d.audio_format_id}"/best'
 
     # Launch youtube-dl in subprocess, has advantage of catching stdout/stderr output, drawback no progress
     if use_subprocess:
-        # folder = d.folder.replace('\\', '/')
-        # name = os.path.splitext(d.name)[0]
-        name = d.target_file.replace("\\", "/")
 
         # get executable path,
         if config.FROZEN:  # if app. frozen by cx_freeze will use a compiled exe file
@@ -418,14 +433,15 @@ def youtube_dl_downloader(d=None, extra_options=None, use_subprocess=True):
         else:  # will use an installed module
             youtube_dl_executable = f'"{sys.executable}" -m youtube_dl'
 
-        cmd = f'{youtube_dl_executable} -f "{d.format_id}"+"{d.audio_format_id}"/"{d.format_id}"+bestaudio {d.url} -o "{name}" -v'  #"{folder}/{name}.%(ext)s"'
+        cmd = f'{youtube_dl_executable} -f {requested_format} {d.url} -o "{name}" -v --hls-use-mpegts'
+
         log('cmd:', cmd)
-        # cmd = shlex.split(cmd)
 
+        cmd = shlex.split(cmd)
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding='utf-8',
-                                   errors='replace', shell=True)
+                                   errors='replace', shell=False)
 
-        # process stdout
+        # process stdout and parse youtube-dl progress data
         for line in process.stdout:
             line = line.strip()
             log(line)
@@ -476,11 +492,9 @@ def youtube_dl_downloader(d=None, extra_options=None, use_subprocess=True):
                         log(e)
 
         # wait for subprocess to finish, process.wait() is not recommended
-        log('communicate()')
         process.communicate()
 
         # get return code
-        log('poll()')
         process.poll()
         error = process.returncode != 0  # True or False
 
@@ -490,9 +504,7 @@ def youtube_dl_downloader(d=None, extra_options=None, use_subprocess=True):
         else:
             return False
 
-
-
-    # ----------------------------------------
+    # using imported youtube-dl library -----------------------------------------------------------------------
 
     # update options
     options = {}
@@ -504,8 +516,8 @@ def youtube_dl_downloader(d=None, extra_options=None, use_subprocess=True):
     options['quiet'] = False
     options['verbose'] = True
     # options['hls-prefer-native'] = True
-    options['format'] = d.format_id
-    options['outtmpl'] = d.temp_file
+    options['format'] = requested_format
+    options['outtmpl'] = name
 
     def progress_hook(progress_dict):
         log(progress_dict)
@@ -538,43 +550,15 @@ def youtube_dl_downloader(d=None, extra_options=None, use_subprocess=True):
             ydl.download([d.url])
     except Exception as e:
         log('youtube_dl_downloader()> ', e)
-        # raise e
         return False
-
-    # audio file -------------------------------------
-    if d.type == 'dash':
-        options['format'] = f'{d.audio_format_id}/bestaudio'
-        options['outtmpl'] = d.audio_file
-
-        # start downloading
-        try:
-            with ytdl.YoutubeDL(options) as ydl:
-                ydl.download([d.url])
-        except Exception as e:
-            log('youtube_dl_downloader()> ', e)
-            # raise e
-            return False
-
-    # mux audio/video
-    if d.type == 'dash':
-        audio, video = d.audio_file, d.temp_file  # file_names.pop(), file_names.pop()
-
-        # set status to merge
-        d.status = config.Status.merging_audio
-
-        error, output = merge_video_audio(video, audio, d.target_file)
-        if error:
-            log('failed to merge', d.target_file, output)
-            return False
-        else:
-            delete_file(video)
-            delete_file(audio)
 
     log('youtube_dl_downloader()> done downloading', d.name)
     return True
 
 
 def hls_downloader(d):
+    """using ffmpeg to download hls streams ---- NOT IMPLEMENTED ----"""
+
     cmd = f'"ffmpeg" -y -i "{d.eff_url}" -c copy -f mp4 "file:{d.temp_file}"'
     subprocess.Popen(cmd)
     # error, output = run_command(cmd)
@@ -680,7 +664,7 @@ def post_process_hls(d):
             if line and not line.startswith('#'):
                 try:
                     lines[i] = names.pop()
-                    log(lines[i])
+                    # log(lines[i])
                 except:
                     pass
 

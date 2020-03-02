@@ -625,7 +625,8 @@ def save_log():
     """Save log text to disk"""
     file = os.path.join(config.current_directory, 'log.txt')
     try:
-        with open(file, 'w') as f:
+        # add  errors="ignore" fix for issue #47 https://github.com/pyIDM/pyIDM/issues/47
+        with open(file, 'w', encoding="utf-8",  errors="ignore") as f:
             f.write(config.log_text)
             popup(f'log saved at: {config.current_directory}', title='Log file saving')
     except Exception as e:
