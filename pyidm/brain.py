@@ -45,20 +45,20 @@ def brain(d=None, downloader=None):
 
     # todo: more testing required
     # use youtube-dl native downloader to download unsupported protocols
-    # problem when youtube-dl uses ffmpeg to download streams we get no progress at all
-    if downloader == 'ytdl' or d.protocol in config.non_supported_protocols:
-        log('using native youtube-dl downloader')
-        try:
-            done = youtube_dl_downloader(d)  # hls_downloader(d)
-            if done:
-                d.status = Status.completed
-            else:
-                d.status = Status.error
-        except Exception as e:
-            if d.status != Status.cancelled:  # if not cancelled by user
-                d.status = Status.error
-            log(e)
-        return
+    # problem when youtube-dl uses ffmpeg to download streams we get no progress at all and can't be terminated
+    # if downloader == 'ytdl' or d.protocol in config.non_supported_protocols:
+    #     log('using native youtube-dl downloader')
+    #     try:
+    #         done = youtube_dl_downloader(d)  # hls_downloader(d)
+    #         if done:
+    #             d.status = Status.completed
+    #         else:
+    #             d.status = Status.error
+    #     except Exception as e:
+    #         if d.status != Status.cancelled:  # if not cancelled by user
+    #             d.status = Status.error
+    #         log(e)
+    #     return
 
     # experimental m3u8 protocols
     if 'm3u8' in d.protocol:  # todo: use better way to identify HLS streams
