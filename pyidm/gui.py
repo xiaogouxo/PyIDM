@@ -750,9 +750,11 @@ class MainWindow:
             return
 
         # check for ffmpeg availability in case this is a dash video
-        if d.type == 'dash':
-            log('Dash video detected')
-            self.ffmpeg_check()
+        if d.type == 'dash' or 'm3u8' in d.protocol:
+            # log('Dash video detected')
+            if not self.ffmpeg_check():
+                log('Download cancelled, FFMPEG is missing')
+                return 'cancelled'
 
         # validate destination folder for existence and permissions
         # in case of missing download folder value will fallback to current download folder
@@ -1499,12 +1501,19 @@ class MainWindow:
     def ffmpeg_check(self):
         if not check_ffmpeg():
             if config.operating_system == 'Windows':
-                response = sg.popup_yes_no(
-                    '"ffmpeg" is missing',
-                    'Download it for you?',
-                    title='ffmpeg is missing')
-                if response == 'Yes':
-                    download_ffmpeg()
+                layout = [[sg.T('"ffmpeg" is missing!! and need to be downloaded:\n')],
+                          [sg.T('destination:')],
+                          [sg.Radio(f'recommended: {config.sett_folder}', group_id=0, key='radio1', default=True)],
+                          [sg.Radio(f'Local folder: {config.current_directory}', group_id=0, key='radio2')],
+                          [sg.B('Download'), sg.Cancel()]]
+
+                window = sg.Window('ffmpeg is missing', layout)
+
+                event, values = window()
+                window.close()
+                selected_folder = config.sett_folder if values['radio1'] else config.current_directory
+                if event == 'Download':
+                    download_ffmpeg(destination=selected_folder)
             else:
                 sg.popup_error(
                     '"ffmpeg" is required to merge an audio stream with your video',
@@ -1512,6 +1521,10 @@ class MainWindow:
                     '',
                     'you can download it manually from https://www.ffmpeg.org/download.html',
                     title='ffmpeg is missing')
+
+            return False
+        else:
+            return True
 
     # endregion
 

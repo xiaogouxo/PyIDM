@@ -79,7 +79,9 @@ sys.path.insert(0, current_directory)
 sett_folder = None
 download_folder = DEFAULT_DOWNLOAD_FOLDER
 
+# ffmpeg
 ffmpeg_actual_path = None
+ffmpeg_download_folder = sett_folder
 
 # downloads
 active_downloads = set()  # indexes for active downloading items

@@ -272,8 +272,11 @@ class Stream:
         return self._mediatype
 
 
-def download_ffmpeg():
+def download_ffmpeg(destination=config.sett_folder):
     """it should download ffmpeg.exe for windows os"""
+
+    # set download folder
+    config.ffmpeg_download_folder = destination
 
     # first check windows 32 or 64
     import platform
@@ -288,11 +291,11 @@ def download_ffmpeg():
     log('downloading: ', url)
 
     # create a download object, will store ffmpeg in setting folder
-    print('config.sett_folder = ', config.sett_folder)
-    d = DownloadItem(url=url, folder=config.sett_folder)
+    # print('config.sett_folder = ', config.sett_folder)
+    d = DownloadItem(url=url, folder=config.ffmpeg_download_folder)
     d.update(url)
     d.name = 'ffmpeg.zip'  # must rename it for unzip to find it
-    print('d.folder = ', d.folder)
+    # print('d.folder = ', d.folder)
 
     # post download
     d.callback = 'unzip_ffmpeg'
@@ -305,26 +308,26 @@ def unzip_ffmpeg():
     log('unzip_ffmpeg:', 'unzipping')
 
     try:
-        file_name = os.path.join(config.sett_folder, 'ffmpeg.zip')
+        file_name = os.path.join(config.ffmpeg_download_folder, 'ffmpeg.zip')
         with zipfile.ZipFile(file_name, 'r') as zip_ref:  # extract zip file
-            zip_ref.extractall(config.sett_folder)
+            zip_ref.extractall(config.ffmpeg_download_folder)
 
         log('ffmpeg update:', 'delete zip file')
         delete_file(file_name)
-        log('ffmpeg update:', 'ffmpeg .. is ready at: ', config.sett_folder)
+        log('ffmpeg update:', 'ffmpeg .. is ready at: ', config.ffmpeg_download_folder)
     except Exception as e:
         log('unzip_ffmpeg: error ', e)
 
 
 def check_ffmpeg():
-    """check for ffmpeg availability, first: config.sett_folder, second: current folder,
+    """check for ffmpeg availability, first: current folder, second config.sett_folder,
     and finally: system wide"""
 
     log('check ffmpeg availability?')
     found = False
 
-    # search in default installation folder then current directory
-    for folder in [config.sett_folder, config.current_directory]:
+    # search in current directory then default setting folder
+    for folder in [config.current_directory, config.sett_folder]:
         for file in os.listdir(folder):
             # print(file)
             if file == 'ffmpeg.exe':
