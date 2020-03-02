@@ -657,7 +657,9 @@ class MainWindow:
 
             # about window
             elif event == 'about':
-                sg.PopupNoButtons(about_notes, title=f'About {config.APP_NAME} DM', non_blocking=True)
+                self.window['about'](disabled=True)
+                sg.PopupNoButtons(about_notes, title=f'About {config.APP_NAME}', keep_on_top=True)
+                self.window['about'](disabled=False)
 
             # Run every n seconds
             if time.time() - timer1 >= 0.5:

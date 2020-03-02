@@ -1,12 +1,10 @@
-from .config import APP_NAME
-
-about_notes = f"""{APP_NAME} is an open source multi-connections download manager based on python,
-it downloads general files, also support downloading videos, and playlists from youtube, and other stream websites.
-Developed in Python, based on "pyCuRL/curl", "youtube_dl", and "PySimpleGUI"
+about_notes = f"""PyIDM is a python open source (Internet Download Manager) with multi-connections, high speed engine, 
+it downloads general files and videos from youtube and tons of other streaming websites .
+Developed in Python, based on "pyCuRL/libcurl", "youtube_dl", and "PySimpleGUI"
 
 your feedback is most welcomed on
 
-https://github.com/pyIDM/{APP_NAME}
+https://github.com/pyIDM/pyIDM
 email: mahmoud_elshahhat@yahoo.com
 
 Author,
