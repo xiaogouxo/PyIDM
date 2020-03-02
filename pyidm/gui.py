@@ -920,7 +920,7 @@ class MainWindow:
         verbose = '-v' if config.log_level >= 3 else ''
 
         if not self.video:
-            cmd = f'{ytdl_executable} {self.d.url} {verbose}'
+            cmd = f'{ytdl_executable} {self.d.url} {verbose} --ffmpeg-location {config.ffmpeg_actual_path}'
         else:
             name = d.target_file.replace("\\", "/")
             if d.type == 'dash':
@@ -930,7 +930,7 @@ class MainWindow:
                 requested_format = f'"{d.format_id}"/best'
 
             # creating command
-            cmd = f'{ytdl_executable} -f {requested_format} {d.url} -o "{name}" {verbose} --hls-use-mpegts'
+            cmd = f'{ytdl_executable} -f {requested_format} {d.url} -o "{name}" {verbose} --hls-use-mpegts --ffmpeg-location {config.ffmpeg_actual_path}'
             log('cmd:', cmd)
 
         # executing command
