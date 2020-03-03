@@ -168,7 +168,8 @@ class MainWindow:
             # youtube playlist ⚡
             [sg.Frame('Playlist / videos:', key='youtube_frame', pad=(5, 5), layout=[
                 [sg.Column(col1, size=(300, 40), element_justification='center'),
-                 sg.Button('⚡', pad=(0, 0), tooltip='download this playlist', key='pl_download'),
+                 sg.T(' ', font='any 4'),
+                 sg.Button('⚡', pad=(0, 0), size=(2, 1), tooltip='download this playlist', key='pl_download'),
                  sg.Column(col2, size=(300, 40), element_justification='center')]]
                       )
              ],
