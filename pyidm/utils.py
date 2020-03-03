@@ -400,7 +400,7 @@ def run_command(cmd, verbose=True, shell=False, hide_window=False):
             line = line.strip()
             output += line
             if verbose:
-                print(line)
+                log(line, log_level=2)
 
         # wait for subprocess to finish, process.wait() is not recommended
         process.communicate()
