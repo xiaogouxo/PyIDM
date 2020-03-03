@@ -131,7 +131,9 @@ def update_youtube_dl():
 
     def compile_file(file):
         if file.endswith('.py'):
+            log('compiling file:', file)
             py_compile.compile(file, cfile=file + 'c')
+
             os.remove(file)
         else:
             print(file, 'not .py file')
@@ -170,10 +172,11 @@ def update_youtube_dl():
     log('youtube-dl.zip extracted to: ', current_directory + '/temp')
 
     # compile files from py to pyc
-    log('compile files')
+    log('compiling files, please wait')
     compile_all()
 
     # delete old youtube-dl module and replace it with new one
+    log('overwrite old youtube-dl module')
     overwrite_module()
 
     # clean old files
