@@ -11,6 +11,8 @@ import os
 import sys
 import io
 import pycurl
+import time
+
 import plyer
 import certifi
 import shutil
@@ -250,6 +252,8 @@ def log(*args, log_level=1):
 
     try:
         print(text)
+        config.log_entry = text
+        config.log_recorder_q.put(text + '\n')
         config.main_window_q.put(('log', text + '\n'))
     except Exception as e:
         print(e)
@@ -636,11 +640,39 @@ def save_log():
         log('failed to save log file: ', e)
 
 
+def log_recorder():
+    """write log to disk in real-time"""
+    q = config.log_recorder_q
+    buffer = ''
+    file = os.path.join(config.current_directory, 'auto_log.txt')
+
+    # clear previous file
+    with open(file, 'w') as f:
+        f.write(buffer)
+
+    while True:
+        time.sleep(0.1)
+        if config.terminate:
+            break
+
+        # read log messages from queue
+        for _ in range(q.qsize()):
+            buffer += q.get()
+
+        # write buffer to file
+        if buffer:
+            try:
+                with open(file, 'a', encoding="utf-8",  errors="ignore") as f:
+                    f.write(buffer)
+                    buffer = ''  # reset buffer
+            except Exception as e:
+                print('log_recorder()> error:', e)
+
 
 __all__ = [
     'notify', 'handle_exceptions', 'get_headers', 'download', 'size_format', 'time_format', 'log',
     'validate_file_name', 'size_splitter', 'delete_folder', 'get_seg_size',
     'run_command', 'print_object', 'update_object', 'truncate', 'sort_dictionary', 'popup', 'compare_versions',
     'translate_server_code', 'validate_url', 'open_file', 'clipboard_read', 'clipboard_write', 'delete_file',
-    'rename_file', 'load_json', 'save_json', 'save_log', 'echo_stdout', 'echo_stderr',
+    'rename_file', 'load_json', 'save_json', 'save_log', 'echo_stdout', 'echo_stderr', 'log_recorder'
 ]

@@ -92,6 +92,9 @@ def main():
     # sys.stdout.write = echo_stdout(sys.stdout.write)
     # sys.stderr.write = echo_stderr(sys.stderr.write)
 
+    # start log recorder
+    Thread(target=log_recorder, daemon=True).start()
+
     log('Starting PyIDM version:', config.APP_VERSION, 'Frozen' if config.FROZEN else 'Non-Frozen')
     # log('starting application')
     log('operating system:', config.operating_system_info)

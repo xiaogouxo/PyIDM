@@ -61,8 +61,10 @@ check_for_update_on_startup = True
 proxy = ''  # must be string example: 127.0.0.1:8080
 
 # logging
-log_text = ''  # log text
+log_entry = ''  # one log line
+log_text = ''  # all log text
 log_level = DEFAULT_LOG_LEVEL  # standard=1, verbose=2, debug=3
+log_recorder_q = Queue()
 
 # -------------------------------------------------------------------------------------
 

@@ -267,11 +267,9 @@ class MainWindow:
         log_layout = [[sg.T('Details events:')], [sg.Multiline(default_text='', size=(70, 21), key='log', font='any 8',
                                                                autoscroll=True)],
                       [sg.T('Log Level:'), sg.Combo([1, 2, 3], default_value=config.log_level, enable_events=True,
-                                                    size=(3, 1), key='log_level'),
-                       sg.T('*(1=Standard, 2=Verbose, 3=Debugging)                                    ', font='any 8'),
-                       sg.Button('Save Log'), sg.Button('Clear Log')]]
-
-        # update_layout = [[sg.T('hello')]]
+                                                    size=(3, 1), key='log_level', tooltip='*(1=Standard, 2=Verbose, 3=Debugging)'),
+                       sg.T(f'*This log will be auto-saved at {config.current_directory}', font='any 8', size=(70, 1), tooltip=config.current_directory),
+                       sg.Button('Clear Log')]]
 
         layout = [[sg.TabGroup(
             [[sg.Tab('Main', main_layout), sg.Tab('Downloads', downloads_layout), sg.Tab('Setting', setting_layout),
@@ -653,8 +651,8 @@ class MainWindow:
                 except:
                     pass
 
-            elif event == 'Save Log':
-                save_log()
+            # elif event == 'Save Log':
+            #     save_log()
 
             # about window
             elif event == 'about':
@@ -1278,7 +1276,7 @@ class MainWindow:
             self.m_bar = 100
 
         except Exception as e:
-            # handle_exceptions(e)  # will disable this line since youtube-dl logger do the same job
+            log('youtube_func()> error:', e)
             self.reset_video_controls()
 
         finally:
@@ -1817,8 +1815,7 @@ class DownloadWindow:
                 self.close()
 
             # log
-            if config.log_text:
-                self.window['log2']('activity:\n' + config.log_text.strip().rsplit(sep='\n', maxsplit=1,)[-1])
+            self.window['log2']('Activity:\n' + config.log_entry)
 
             # percentage value to move with progress bar
             position = int(self.d.progress) - 5 if self.d.progress > 5 else 0
