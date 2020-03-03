@@ -29,7 +29,6 @@ DEFAULT_CONCURRENT_CONNECTIONS = 3
 APP_URL = 'https://github.com/pyIDM/pyIDM'
 LATEST_RELEASE_URL = 'https://github.com/pyIDM/pyIDM/releases/latest'
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3721.3'
-#            'Mozilla/5.0 (Windows NT 6.3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.116 Safari/537.36'
 DEFAULT_LOG_LEVEL = 2
 
 APP_LATEST_VERSION = None  # get value from update module
@@ -90,13 +89,8 @@ d_list = []
 # queues
 main_window_q = Queue()  # queue for Main application window
 
-# todo: more testing required, make non_supported_protocols = [] to disable this feature
-# youtube-dl protocols
-# protocol: (http, https, rtsp, rtmp, rtmpe, mms, f4m, ism, http_dash_segments, m3u8, or m3u8_native)
-# below is the list where we'll use native youtube-dl downloader
-non_supported_protocols = []  # ['m3u8', 'm3u8_native']
-
 # -------------------------------------------------------------------------------------
+
 
 # status class as an Enum
 class Status:
