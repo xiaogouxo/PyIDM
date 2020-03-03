@@ -27,28 +27,30 @@ ytdl = None  # youtube-dl will be imported in a separate thread to save loading 
 
 
 class Logger(object):
-    """used for capturing youtube-dl messages"""
+    """used for capturing youtube-dl stdout/stderr output"""
 
     def debug(self, msg):
         log(msg)
 
     def error(self, msg):
-        log('error: %s' % msg)
+        log('error:', msg)
 
     def warning(self, msg):
-        log('warning: %s' % msg)
+        log('warning:', msg)
 
     def __repr__(self):
         return "youtube-dl Logger"
 
 
 def get_ytdl_options():
-    ydl_opts = {'quiet': True, 'prefer_insecure': True, 'no_warnings': False, 'logger': Logger(),}
+    ydl_opts = {'prefer_insecure': True, 'no_warnings': False, 'logger': Logger()}
     if config.proxy:
         ydl_opts['proxy'] = config.proxy
 
-    if config.log_level >= 3:
-        ydl_opts['verbose'] = True
+    # if config.log_level >= 3:
+    #     ydl_opts['verbose'] = True  # it make problem with Frozen PyIDM, extractor doesn't work
+    # elif config.log_level <= 1:
+    #     ydl_opts['quiet'] = True  # it doesn't work
 
     return ydl_opts
 
