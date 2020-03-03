@@ -151,7 +151,7 @@ class Worker:
         # self.debug('worker', self.tag, 'completed', self.seg.name)
         self.seg.downloaded = True
 
-        self.debug('downloaded segment:', self.seg.num)
+        self.debug('downloaded segment:', os.path.basename(self.seg.name))
 
         # in case couldn't fetch segment size from headers we put the downloaded length as segment size
         if not self.seg.size:
