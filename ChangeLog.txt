@@ -1,3 +1,14 @@
+2020.3.2:
+- Ability to use youtube-dl native downloader as an alternative option.
+- add support for more websites.
+- add log level option in log tab.
+- user can select ffmpeg download folder.
+- Fix about window.
+- Download window re-design.
+- Application restart on setting tab after selecting new theme.
+- Changed default theme to "Topanga".
+- some other bug fixes and tweaks.
+
 2020.2.22:
 - Add support for encrypted HLS streams.
 - Critical bug fix for download playlist.
