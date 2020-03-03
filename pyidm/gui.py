@@ -783,21 +783,6 @@ class MainWindow:
             sg.popup("File name can't be empty!!", title='invalid file name!!')
             return 'error'
 
-        # todo: more testing required, ffmpeg gives no progress, can't terminate
-        # check if protocol is not supported, will use native youtube-dl downloader, will be handled in brain module
-        if downloader == 'ytdl' or d.protocol in config.non_supported_protocols:
-            msg = f"Using youtube-dl downloader: \n\n" \
-                  f"Warning: There is some limitations: \n" \
-                  f"- sometimes there is no progress feedback \n" \
-                  f"- might be slow, only one connection will be used.\n" \
-                  f"proceed?"
-            window = sg.Window('Experimental', [[sg.T(msg)], [sg.Ok(), sg.Cancel()]])
-            event, values = window()
-            window.close()
-            if event != 'Ok':
-                log('Cancelled by user')
-                return 'cancelled'
-
         # check if file with the same name exist in destination
         if os.path.isfile(d.target_file):
             #  show dialogue
