@@ -38,7 +38,7 @@ def brain(d=None, downloader=None):
     # # add item index to active download set
     # active_downloads.add(d.id)
 
-    q.log(f'start downloading file: {d.name}, size: {size_format(d.size)}')
+    log(f'start downloading file: {d.name}, size: {size_format(d.size)}')
 
     # load previous saved progress info
     d.load_progress_info()
@@ -66,6 +66,7 @@ def brain(d=None, downloader=None):
             # os notification popup
             notification = f"File: {d.name} \nsaved at: {d.folder}"
             notify(notification, title=f'{APP_NAME} - Download completed')
+            log('File:', d.name, 'completed.')
             break
         elif d.status == Status.cancelled:
             log(f'brain {d.num}: Cancelled download')
@@ -181,8 +182,7 @@ def file_manager(d, keep_segments=False):
                         trgt_file.write(src_file.read())
 
                 seg.completed = True
-                # d.q.log('completed seg:', seg.name)
-                log('>> completed seg:', seg.name)
+                log('>> completed segment: ', seg.num)
 
                 if not keep_segments:
                     delete_file(seg.name)
