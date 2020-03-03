@@ -384,8 +384,8 @@ class MainWindow:
                 f'pyIDM version = {config.APP_VERSION}, Latest version = {config.APP_LATEST_VERSION}')
 
         except Exception as e:
-            # print('MainWindow.update_gui() error:', e)
-            raise e
+            log('MainWindow.update_gui() error:', e)
+            # raise e
 
     def enable(self):
         self.disabled = False
@@ -1300,7 +1300,7 @@ class MainWindow:
 
         except Exception as e:
             log('MainWindow.get_video:> ', e)
-            raise e
+            # raise e
         finally:
             with self.s_bar_lock:
                 self.s_bar += s_bar_incr
