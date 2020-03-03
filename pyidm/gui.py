@@ -642,7 +642,7 @@ class MainWindow:
 
             # log ---------------------------------------------------------------------------------------------------
             elif event == 'log_level':
-                config.log_level = values['log_level']
+                config.log_level = int(values['log_level'])
                 log('Log Level changed to:', config.log_level)
 
             elif event == 'Clear Log':
@@ -1194,11 +1194,9 @@ class MainWindow:
         msg = f'looking for video streams ... Please wait'
         log(msg)
         log('youtube_func()> processing:', self.d.url)
-        # self.set_status(msg)
 
         # reset video controls
         self.reset_video_controls()
-        # self.disable()
         self.change_cursor('busy')
 
         # main progress bar
@@ -1220,17 +1218,17 @@ class MainWindow:
             # youtube-dl process
             log(get_ytdl_options())
             with video.ytdl.YoutubeDL(get_ytdl_options()) as ydl:
-                result = ydl.extract_info(self.d.url, download=False, process=True)
-                log(result, log_level=2)
+                info = ydl.extract_info(self.d.url, download=False, process=True)
+                log('Media info:', info, log_level=3)
 
                 # set playlist / video title
-                self.pl_title = result.get('title', '')
+                self.pl_title = info.get('title', '')
 
                 # main progress bar
                 self.m_bar = 30
                 # check results if it's a playlist
-                if result.get('_type') == 'playlist' or 'entries' in result:
-                    pl_info = list(result.get('entries'))
+                if info.get('_type') == 'playlist' or 'entries' in info:
+                    pl_info = list(info.get('entries'))
 
                     self.d.playlist_url = self.d.url
 
@@ -1255,7 +1253,7 @@ class MainWindow:
                     self.playlist = [v for v in self.playlist if v]
 
                 else:  # in case of single video
-                    self.playlist = [Video(self.d.url, vid_info=result)]
+                    self.playlist = [Video(self.d.url, vid_info=info)]
                     self.s_bar = 100
 
             # quit if main window terminated
