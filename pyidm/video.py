@@ -33,10 +33,10 @@ class Logger(object):
         log(msg)
 
     def error(self, msg):
-        log('error:', msg)
+        log(msg)
 
     def warning(self, msg):
-        log('warning:', msg)
+        log(msg)
 
     def __repr__(self):
         return "youtube-dl Logger"
@@ -362,7 +362,7 @@ def check_ffmpeg():
 def merge_video_audio(video, audio, output):
     log('merging video and audio')
     # ffmpeg
-    ffmpeg = config.ffmpeg_actual_path  # 'ffmpeg'  # os.path.join(current_directory, 'ffmpeg', 'ffmpeg')
+    ffmpeg = config.ffmpeg_actual_path
 
     # very fast audio just copied, format must match [mp4, m4a] and [webm, webm]
     cmd1 = f'"{ffmpeg}" -y -i "{video}" -i "{audio}" -c copy "{output}"'
@@ -370,14 +370,16 @@ def merge_video_audio(video, audio, output):
     # slow, mix different formats
     cmd2 = f'"{ffmpeg}" -y -i "{video}" -i "{audio}" "{output}"'
 
+    verbose = True if config.log_level > 1 else False
+
     # run command with shell=False if failed will use shell=True option
-    error, output = run_command(cmd1, verbose=True, shell=False)
+    error, output = run_command(cmd1, verbose=verbose, shell=False)
 
     if error:
-        error, output = run_command(cmd1, verbose=True, shell=True)
+        error, output = run_command(cmd1, verbose=verbose, shell=True)
 
     if error:
-        error, output = run_command(cmd2, verbose=True, shell=True)
+        error, output = run_command(cmd2, verbose=verbose, shell=True)
 
     return error, output
             

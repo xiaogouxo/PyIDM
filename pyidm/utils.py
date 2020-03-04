@@ -404,7 +404,7 @@ def run_command(cmd, verbose=True, shell=False, hide_window=False):
             line = line.strip()
             output += line
             if verbose:
-                log(line, log_level=2)
+                log(line)
 
         # wait for subprocess to finish, process.wait() is not recommended
         process.communicate()
@@ -412,13 +412,9 @@ def run_command(cmd, verbose=True, shell=False, hide_window=False):
         # get return code
         process.poll()
         error = process.returncode != 0  # True or False
-        # log("process.returncode", )
-        # log("returncode", returncode)
-        # log("error", error)
 
     except Exception as e:
         log('error running command: ', e, ' - cmd:', cmd)
-        pass
 
     return error, output
 
