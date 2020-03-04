@@ -383,7 +383,6 @@ class MainWindow:
 
         except Exception as e:
             log('MainWindow.update_gui() error:', e)
-            # raise e
 
     def enable(self):
         self.disabled = False
@@ -1298,11 +1297,9 @@ class MainWindow:
 
         except Exception as e:
             log('MainWindow.get_video:> ', e)
-            # raise e
         finally:
             with self.s_bar_lock:
                 self.s_bar += s_bar_incr
-                # log('MainWindow.get_video:>', f'num={num} - self.s_bar={self.s_bar} - s_bar_incr={s_bar_incr}')
 
     def update_pl_menu(self):
         try:
