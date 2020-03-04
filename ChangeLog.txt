@@ -1,3 +1,8 @@
+2020.3.3:
+- Critical Fix fpr application crash.
+- include ffmpeg with portable windows version
+- auto-save log events.
+
 2020.3.2:
 - Ability to use youtube-dl native downloader as an alternative option.
 - add support for more websites.
