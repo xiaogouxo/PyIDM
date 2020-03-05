@@ -644,7 +644,7 @@ def log_recorder():
     """write log to disk in real-time"""
     q = config.log_recorder_q
     buffer = ''
-    file = os.path.join(config.current_directory, 'auto_log.txt')
+    file = os.path.join(config.sett_folder, 'auto_log.txt')
 
     # clear previous file
     with open(file, 'w') as f:

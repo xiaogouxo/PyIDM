@@ -15,7 +15,8 @@ from . import downloaditem
 from .utils import log, handle_exceptions, update_object
 
 
-def get_sett_folder():
+def get_global_sett_folder():
+    """return a proper global setting folder"""
     home_folder = os.path.expanduser('~')
 
     if config.operating_system == 'Windows':
@@ -41,7 +42,31 @@ def get_sett_folder():
     return _sett_folder
 
 
-config.sett_folder = get_sett_folder()
+config.global_sett_folder = get_global_sett_folder()
+
+
+def locate_setting_folder():
+    """check local folder and global setting folder for setting.cfg file"""
+    if 'setting.cfg' in os.listdir(config.current_directory):
+        return config.current_directory
+    elif 'setting.cfg' in os.listdir(config.global_sett_folder):
+        return config.global_sett_folder
+
+    # no setting file found will check local folder for writing permission, otherwise will return global sett folder
+    try:
+        folder = config.current_directory
+        with open(os.path.join(folder, 'test'), 'w') as test_file:
+            test_file.write('0')
+        os.unlink(os.path.join(folder, 'test'))
+        return config.current_directory
+
+    except PermissionError:
+        log("No enough permission to store setting at local folder:", folder)
+        log('Global setting folder will be selected:', config.global_sett_folder)
+        return config.global_sett_folder
+
+
+config.sett_folder = locate_setting_folder()
 
 
 def load_d_list():

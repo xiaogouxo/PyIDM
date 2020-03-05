@@ -78,6 +78,7 @@ sys.path.insert(0, os.path.dirname(current_directory))
 sys.path.insert(0, current_directory)
 
 sett_folder = None
+global_sett_folder = None
 download_folder = DEFAULT_DOWNLOAD_FOLDER
 
 # ffmpeg

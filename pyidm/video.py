@@ -322,14 +322,14 @@ def unzip_ffmpeg():
 
 
 def check_ffmpeg():
-    """check for ffmpeg availability, first: current folder, second config.sett_folder,
+    """check for ffmpeg availability, first: current folder, second config.global_sett_folder,
     and finally: system wide"""
 
     log('check ffmpeg availability?')
     found = False
 
     # search in current directory then default setting folder
-    for folder in [config.current_directory, config.sett_folder]:
+    for folder in [config.current_directory, config.global_sett_folder]:
         for file in os.listdir(folder):
             # print(file)
             if file == 'ffmpeg.exe':
@@ -356,7 +356,7 @@ def check_ffmpeg():
         return True
     else:
         log(f'can not find ffmpeg!!, install it, or add executable location to PATH, or copy executable to ',
-            config.sett_folder, 'or', config.current_directory)
+            config.global_sett_folder, 'or', config.current_directory)
 
 
 def merge_video_audio(video, audio, output):

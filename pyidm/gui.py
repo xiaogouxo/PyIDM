@@ -234,8 +234,8 @@ class MainWindow:
                                        default=config.show_download_window, enable_events=True)],
                           [sg.Text('Max concurrent downloads:'),
                            sg.Combo(values=[x for x in range(1, 101)], size=(5, 1), enable_events=True,
-                                    key='max_concurrent_downloads', default_value=config.max_concurrent_downloads)],
-                          [sg.Text('Max connections per download:'),
+                                    key='max_concurrent_downloads', default_value=config.max_concurrent_downloads),
+                           sg.Text('  ...    Max connections per download:'),
                            sg.Combo(values=[x for x in range(1, 101)], size=(5, 1), enable_events=True,
                                     key='max_connections', default_value=config.max_connections)],
                           [sg.T('Proxy: '), sg.I(default_text=config.proxy, size=(30, 1),
@@ -247,15 +247,18 @@ class MainWindow:
                                     enable_events=True),
                            sg.Text(f'current value: {size_format(config.segment_size)}', size=(30, 1),
                                    key='seg_current_value')],
+                          [sg.T('Setting Folder:'), sg.Combo(values=['Local', 'Global'], default_value='Local' if config.sett_folder == config.current_directory else 'Global',
+                                                             key='sett_folder', enable_events=True),
+                           sg.T(config.sett_folder, key='sett_folder_text', size=(50, 1))],
                           [sg.T('')],
                           [sg.Checkbox('Check for update on startup', default=config.check_for_update_on_startup,
                                        key='check_for_update_on_startup', enable_events=True)],
                           [sg.T('    '),
                            sg.T('Youtube-dl version = 00.00.00', size=(50, 1), key='youtube_dl_update_note'),
-                           sg.Button('update youtube-dl', key='update_youtube_dl')],
+                           sg.Button('Check for update', key='update_youtube_dl')],
                           [sg.T('    '),
                            sg.T(f'pyIDM version = {config.APP_VERSION}', size=(50, 1), key='pyIDM_version_note'),
-                           sg.Button('update pyIDM', key='update_pyIDM')],
+                           sg.Button('Check for update', key='update_pyIDM')],
                           [sg.T('')],
 
                           ]
@@ -267,7 +270,7 @@ class MainWindow:
                                                                autoscroll=True)],
                       [sg.T('Log Level:'), sg.Combo([1, 2, 3], default_value=config.log_level, enable_events=True,
                                                     size=(3, 1), key='log_level', tooltip='*(1=Standard, 2=Verbose, 3=Debugging)'),
-                       sg.T(f'*This log will be auto-saved at {config.current_directory}', font='any 8', size=(70, 1), tooltip=config.current_directory),
+                       sg.T(f'*This log will be auto-saved at {config.sett_folder}', font='any 8', size=(70, 1), tooltip=config.current_directory),
                        sg.Button('Clear Log')]]
 
         layout = [[sg.TabGroup(
@@ -625,6 +628,27 @@ class MainWindow:
                     self.window['seg_current_value'](f'current value: {size_format(config.segment_size)}')
                     self.d.segment_size = seg_size
 
+                except:
+                    pass
+
+            elif event == 'sett_folder':
+                selected = values['sett_folder']
+                if selected == 'Local':
+                    # choose local folder as a setting folder
+                    config.sett_folder = config.current_directory
+
+                    # remove setting.cfg from global folder
+                    delete_file(os.path.join(config.global_sett_folder, 'setting.cfg'))
+                else:
+                    # choose global folder as a setting folder
+                    config.sett_folder = config.global_sett_folder
+
+                    # remove setting.cfg from local folder
+                    delete_file(os.path.join(config.current_directory, 'setting.cfg'))
+
+                # update display test
+                try:
+                    self.window['sett_folder_text'](config.sett_folder)
                 except:
                     pass
 
