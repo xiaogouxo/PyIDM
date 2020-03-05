@@ -261,23 +261,27 @@ def log(*args, log_level=1):
 
 def echo_stdout(func):
     """Copy stdout / stderr and send it to gui"""
+
     def echo(text):
         try:
             config.main_window_q.put(('log', text))
             return func(text)
         except:
             return func(text)
+
     return echo
 
 
 def echo_stderr(func):
     """Copy stdout / stderr and send it to gui"""
+
     def echo(text):
         try:
             config.main_window_q.put(('log', text))
             return func(text)
         except:
             return func(text)
+
     return echo
 
 
@@ -629,7 +633,7 @@ def save_log():
     file = os.path.join(config.current_directory, 'log.txt')
     try:
         # add  errors="ignore" fix for issue #47 https://github.com/pyIDM/pyIDM/issues/47
-        with open(file, 'w', encoding="utf-8",  errors="ignore") as f:
+        with open(file, 'w', encoding="utf-8", errors="ignore") as f:
             f.write(config.log_text)
             popup(f'log saved at: {config.current_directory}', title='Log file saving')
     except Exception as e:
@@ -658,11 +662,19 @@ def log_recorder():
         # write buffer to file
         if buffer:
             try:
-                with open(file, 'a', encoding="utf-8",  errors="ignore") as f:
+                with open(file, 'a', encoding="utf-8", errors="ignore") as f:
                     f.write(buffer)
                     buffer = ''  # reset buffer
             except Exception as e:
                 print('log_recorder()> error:', e)
+
+
+def natural_sort(my_list):
+    """ Sort the given list in the way that humans expect.
+    source: https://blog.codinghorror.com/sorting-for-humans-natural-sort-order/	"""
+    convert = lambda text: int(text) if text.isdigit() else text
+    alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)]
+    return sorted(my_list, key=alphanum_key)
 
 
 __all__ = [
@@ -670,5 +682,5 @@ __all__ = [
     'validate_file_name', 'size_splitter', 'delete_folder', 'get_seg_size',
     'run_command', 'print_object', 'update_object', 'truncate', 'sort_dictionary', 'popup', 'compare_versions',
     'translate_server_code', 'validate_url', 'open_file', 'clipboard_read', 'clipboard_write', 'delete_file',
-    'rename_file', 'load_json', 'save_json', 'save_log', 'echo_stdout', 'echo_stderr', 'log_recorder'
+    'rename_file', 'load_json', 'save_json', 'save_log', 'echo_stdout', 'echo_stderr', 'log_recorder', 'natural_sort'
 ]

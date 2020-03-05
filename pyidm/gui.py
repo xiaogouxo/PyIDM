@@ -30,7 +30,7 @@ from .downloaditem import DownloadItem
 # todo: this module needs some clean up
 
 # gui setting
-config.all_themes = sg.ListOfLookAndFeelValues()
+config.all_themes = natural_sort(sg.ListOfLookAndFeelValues())
 sg.SetOptions(icon=config.APP_ICON, font='Helvetica 11', auto_size_buttons=True, progress_meter_border_depth=0,
               border_width=1)
 
