@@ -251,8 +251,9 @@ class MainWindow:
                                                              key='sett_folder', enable_events=True),
                            sg.T(config.sett_folder, key='sett_folder_text', size=(50, 1))],
                           [sg.T('')],
-                          [sg.Checkbox('Check for update on startup', default=config.check_for_update_on_startup,
-                                       key='check_for_update_on_startup', enable_events=True)],
+                          [sg.T('Check for update every:'),
+                           sg.Combo([1, 7, 30], default_value=config.update_frequency, size=(4, 1),
+                                    key='update_frequency', enable_events=True), sg.T('day(s).')],
                           [sg.T('    '),
                            sg.T('Youtube-dl version = 00.00.00', size=(50, 1), key='youtube_dl_update_note'),
                            sg.Button('Check for update', key='update_youtube_dl')],
@@ -652,8 +653,9 @@ class MainWindow:
                 except:
                     pass
 
-            elif event == 'check_for_update_on_startup':
-                config.check_for_update_on_startup = values['check_for_update_on_startup']
+            elif event == 'update_frequency':
+                selected = values['update_frequency']
+                config.update_frequency = selected  # config.update_frequency_map[selected]
 
             elif event == 'update_youtube_dl':
                 self.update_ytdl()
@@ -713,10 +715,20 @@ class MainWindow:
                 # check availability of ffmpeg in the system or in same folder with this script
                 self.ffmpeg_check()
 
-                # check_for_update_on_startup
-                if config.check_for_update_on_startup:
-                    Thread(target=self.check_for_update, daemon=True).start()
-                    Thread(target=self.check_for_ytdl_update, daemon=True).start()
+                # check_for_update
+                t = time.localtime()
+                today = t.tm_yday  # today number in the year range (1 to 366)
+
+                try:
+                    days_since_last_update = today - config.last_update_check
+                    log('days since last check for update:', days_since_last_update, 'day(s).')
+
+                    if days_since_last_update >= config.update_frequency:
+                        Thread(target=self.check_for_update, daemon=True).start()
+                        Thread(target=self.check_for_ytdl_update, daemon=True).start()
+                        config.last_update_check = today
+                except Exception as e:
+                    log('MainWindow.run()>', e)
 
             if time.time() - timer2 >= 1:
                 timer2 = time.time()
@@ -1672,7 +1684,6 @@ class MainWindow:
 
         self.change_cursor('default')
 
-    # todo: use separate thread for update, the app. freezes :(
     def update_app(self, remote=True):
         """show changelog with latest version and ask user for update
         :param remote: bool, check remote server for update"""

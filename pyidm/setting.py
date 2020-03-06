@@ -151,7 +151,8 @@ def load_setting():
         config.max_connections = setting.get('max_connections', config.DEFAULT_CONNECTIONS)
         config.proxy = setting.get('proxy', '')
         config.segment_size = setting.get('segment_size', config.DEFAULT_SEGMENT_SIZE)
-        config.check_for_update_on_startup = setting.get('check_for_update_on_startup', True)
+        config.last_update_check = setting.get('last_update_check', 0)
+        config.update_frequency = setting.get('update_frequency', 1)
 
         config.log_level = setting.get('log_level', config.DEFAULT_LOG_LEVEL)
 
@@ -167,7 +168,9 @@ def save_setting():
     setting['max_connections'] = config.max_connections
     setting['proxy'] = config.proxy
     setting['segment_size'] = config.segment_size
-    setting['check_for_update_on_startup'] = config.check_for_update_on_startup
+    setting['last_update_check'] = config.last_update_check
+    setting['update_frequency'] = config.update_frequency
+
     setting['log_level'] = config.log_level
 
     try:
