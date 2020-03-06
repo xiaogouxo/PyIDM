@@ -438,13 +438,13 @@ class DownloadItem:
 
     def update(self, url):
         """get headers and update properties (eff_url, name, ext, size, type, resumable, status code/description)"""
-        print('update d parameters')
 
         if url in ('', None):
             return
 
         self.url = url
         headers = get_headers(url)
+        print('update d parameters:', headers)
 
         # update headers only if no other update thread created with different url
         if url == self.url:
@@ -458,8 +458,7 @@ class DownloadItem:
             name = ''
             if 'content-disposition' in headers:  # example content-disposition : attachment; filename=ffmpeg.zip
                 try:
-                    name = headers['content-disposition'].split(';')[1]
-                    name = name.split('=')[1].strip()
+                    name = headers['content-disposition'].split('=')[1].strip('"')
                 except:
                     pass
 
@@ -467,7 +466,7 @@ class DownloadItem:
                 name = headers['file-name']
             else:
                 clean_url = url.split('?')[0] if '?' in url else url
-                name = clean_url.split('/')[-1]
+                name = clean_url.split('/')[-1].strip()
 
             # file size
             size = int(headers.get('content-length', 0))
@@ -480,13 +479,12 @@ class DownloadItem:
                 content_type = guessed_content_type
 
             # file extension:
-            if not guessed_content_type:  # None if no ext in file name
+            ext = os.path.splitext(name)[1]
+            if not ext:  # if no ext in file name
                 ext = mimetypes.guess_extension(content_type, strict=False) if content_type not in ('N/A', None) else ''
 
                 if ext:
                     name += ext
-            else:
-                _, ext = os.path.splitext(name)
 
             # check for resume support
             resumable = headers.get('accept-ranges', 'none') != 'none'
