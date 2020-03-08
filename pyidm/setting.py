@@ -149,7 +149,12 @@ def load_setting():
         config.show_download_window = setting.get('show_download_window', True)
         config.max_concurrent_downloads = setting.get('max_concurrent_downloads', config.DEFAULT_CONCURRENT_CONNECTIONS)
         config.max_connections = setting.get('max_connections', config.DEFAULT_CONNECTIONS)
+
+        config.raw_proxy = setting.get('raw_proxy', '')
         config.proxy = setting.get('proxy', '')
+        config.proxy_type = setting.get('proxy_type', 'http/https')
+        config.enable_proxy = setting.get('enable_proxy', False)
+
         config.segment_size = setting.get('segment_size', config.DEFAULT_SEGMENT_SIZE)
         config.last_update_check = setting.get('last_update_check', 0)
         config.update_frequency = setting.get('update_frequency', 1)
@@ -166,7 +171,12 @@ def save_setting():
     setting['show_download_window'] = config.show_download_window
     setting['max_concurrent_downloads'] = config.max_concurrent_downloads
     setting['max_connections'] = config.max_connections
+
+    setting['raw_proxy'] = config.raw_proxy
     setting['proxy'] = config.proxy
+    setting['proxy_type'] = config.proxy_type
+    setting['enable_proxy'] = config.enable_proxy
+
     setting['segment_size'] = config.segment_size
     setting['last_update_check'] = config.last_update_check
     setting['update_frequency'] = config.update_frequency

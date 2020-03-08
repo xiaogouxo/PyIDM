@@ -216,6 +216,13 @@ class MainWindow:
         else:
             seg_size_unit = 'KB'
 
+        proxy_tooltip = """proxy setting examples:
+        http://proxy_address:port
+        157.245.224.29:3128
+        
+        Authentication: http://username:password@proxyserveraddress:port
+        then choose proxy type "http/https, socks4, socks5"
+        """
         setting_layout = [[sg.T('User Setting:'), sg.T(' ', size=(50, 1)), sg.Button(' about ', key='about')],
                           [sg.Text('Select Theme:'),
                            sg.Combo(values=config.all_themes, default_value=config.current_theme, size=(15, 1),
@@ -238,9 +245,13 @@ class MainWindow:
                            sg.Text('  ...    Max connections per download:'),
                            sg.Combo(values=[x for x in range(1, 101)], size=(5, 1), enable_events=True,
                                     key='max_connections', default_value=config.max_connections)],
-                          [sg.T('Proxy: '), sg.I(default_text=config.proxy, size=(30, 1),
-                                                 tooltip='proxy server ip:port, ex: 157.245.224.29:3128',
-                                                 key='proxy', enable_events=True)],
+                          [sg.Checkbox('Proxy:', default=config.enable_proxy, key='enable_proxy', enable_events=True),
+                           sg.I(default_text=config.raw_proxy, size=(25, 1), font='any 9', key='raw_proxy',
+                                enable_events=True, disabled=not config.enable_proxy), sg.T('?', tooltip=proxy_tooltip),
+                           sg.Combo(['http/https', 'socks4', 'socks5'], default_value=config.proxy_type, font='any 9',
+                                    enable_events=True, key='proxy_type'),
+                           sg.T(config.proxy if config.proxy else '_no proxy_', key='current_proxy_value', size=(40, 1), font='any 9',),
+                           ],
                           [sg.Text('Segment size:'), sg.Input(default_text=seg_size, size=(6, 1),
                                                               enable_events=True, key='segment_size'),
                            sg.Combo(values=['KB', 'MB'], default_value=seg_size_unit, size=(4, 1), key='seg_size_unit',
@@ -409,7 +420,7 @@ class MainWindow:
         one_time = True
         while True:
             event, values = self.window.Read(timeout=50)
-            # self.event, self.values = event, values
+            self.event, self.values = event, values
             # if event != '__TIMEOUT__': print(event, values)
 
             if event is None:
@@ -612,10 +623,8 @@ class MainWindow:
             elif event == 'show_download_window':
                 config.show_download_window = values['show_download_window']
 
-            elif event == 'proxy':
-                if isinstance(values['proxy'], str):
-                    config.proxy = values.get('proxy', '')
-                print('config.proxy = ', config.proxy)
+            elif event in ('raw_proxy', 'http/https', 'socks4', 'socks5', 'proxy_type', 'enable_proxy'):
+                self.set_proxy()
 
             elif event in ('segment_size', 'seg_size_unit'):
                 try:
@@ -942,7 +951,9 @@ class MainWindow:
         verbose = '-v' if config.log_level >= 3 else ''
 
         if not self.video:
-            cmd = f'{ytdl_executable} {self.d.url} {verbose} --ffmpeg-location {config.ffmpeg_actual_path}'
+            requested_format = 'best'
+            name = config.download_folder.replace("\\", "/") + '/%(title)s.%(ext)s'
+            # cmd = f'{ytdl_executable} {self.d.url} {verbose} --ffmpeg-location {config.ffmpeg_actual_path}'
         else:
             name = d.target_file.replace("\\", "/")
             if d.type == 'dash':
@@ -951,9 +962,9 @@ class MainWindow:
             else:
                 requested_format = f'"{d.format_id}"/best'
 
-            # creating command
-            cmd = f'{ytdl_executable} -f {requested_format} {d.url} -o "{name}" {verbose} --hls-use-mpegts --ffmpeg-location {config.ffmpeg_actual_path}'
-            log('cmd:', cmd)
+        # creating command
+        cmd = f'{ytdl_executable} -f {requested_format} {d.url} -o "{name}" {verbose} --hls-use-mpegts --ffmpeg-location {config.ffmpeg_actual_path} --proxy {config.proxy}'
+        log('cmd:', cmd)
 
         # executing command
         if config.operating_system == 'Windows':
@@ -1651,6 +1662,40 @@ class MainWindow:
 
         window.close()
         return response
+
+    def set_proxy(self):
+        enable_proxy = self.values['enable_proxy']
+        config.enable_proxy = enable_proxy
+
+        # enable disable proxy entry text
+        self.window['raw_proxy'](disabled=not enable_proxy)
+
+        if not enable_proxy:
+            config.proxy = ''
+            self.window['current_proxy_value']('_no proxy_')
+            return
+
+        # set raw proxy
+        raw_proxy = self.values.get('raw_proxy', '')
+        config.raw_proxy = raw_proxy
+
+        # proxy type
+        config.proxy_type = self.values['proxy_type']
+
+        if raw_proxy and isinstance(raw_proxy, str):
+
+            if config.proxy_type != 'http/https':
+                if raw_proxy.startswith('http://'):
+                    proxy = raw_proxy.replace('http', config.proxy_type)
+                elif raw_proxy.startswith('https://'):
+                    proxy = raw_proxy.replace('https', config.proxy_type)
+                else:
+                    proxy = config.proxy_type + '://' + raw_proxy
+
+        config.proxy = proxy
+        self.window['current_proxy_value'](config.proxy)
+        # print('config.proxy = ', config.proxy)
+        print(self.event)
 
     # endregion
 

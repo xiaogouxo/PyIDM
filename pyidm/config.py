@@ -61,7 +61,12 @@ check_for_update_on_startup = True
 update_frequency = 7  # 'every day'=1, every week=7, every month=30 and so on
 last_update_check = 0  # day number in the year range from 1 to 366
 update_frequency_map = {'every day': 1, 'every week': 7, 'every month': 30}
+
+# proxy
 proxy = ''  # must be string example: 127.0.0.1:8080
+proxy_type = 'http/https'  # socks4, socks5
+raw_proxy = ''  # unprocessed from user input
+enable_proxy = False
 
 # logging
 log_entry = ''  # one log line
