@@ -175,6 +175,7 @@ class Video(DownloadItem):
         self.fragments = stream.fragments
         self.protocol = stream.protocol
         self.format_id = stream.format_id
+        self.manifest_url = stream.manifest_url
 
         # select an audio to embed if our stream is dash video
         if stream.mediatype == 'dash':
@@ -231,6 +232,9 @@ class Stream:
             self.size = 0
         if not isinstance(self.size, int):
             self.size = self.get_size()
+
+        # hls stream specific
+        self.manifest_url = stream_info.get('manifest_url', '')
 
         # print(self.name, self.size, isinstance(self.size, int))
 
@@ -704,8 +708,8 @@ def post_process_hls(d):
             return False
 
     # now processing with ffmpeg
-    cmd = f'"{config.ffmpeg_actual_path}" -y -protocol_whitelist "file,http,https,tcp,tls,crypto"  -i ' \
-          f'"{local_video_m3u8_file}" -c copy -f mp4 "file:{d.temp_file}"'
+    cmd = f'"{config.ffmpeg_actual_path}" -y -protocol_whitelist "file,http,https,tcp,tls,crypto"  -http_proxy {config.proxy} ' \
+          f'-i "{local_video_m3u8_file}" -c copy -f mp4 "file:{d.temp_file}"'
 
     error, output = run_command(cmd)
     if error:
@@ -713,8 +717,8 @@ def post_process_hls(d):
         return False
 
     if d.type == 'dash':
-        cmd = f'"{config.ffmpeg_actual_path}" -y -protocol_whitelist "file,http,https,tcp,tls,crypto"  -i ' \
-              f'"{local_audio_m3u8_file}" -c copy -f mp4 "file:{d.audio_file}"'
+        cmd = f'"{config.ffmpeg_actual_path}" -y -protocol_whitelist "file,http,https,tcp,tls,crypto"  -http_proxy {config.proxy} ' \
+              f'-i "{local_audio_m3u8_file}" -c copy -f mp4 "file:{d.audio_file}"'
 
         error, output = run_command(cmd)
         if error:
