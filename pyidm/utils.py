@@ -148,6 +148,9 @@ def download(url, file_name=None):
     :param file_name: if specified it will save file to disk, otherwise it will buffer to memory
     it will return True / buffer or False"""
 
+    if not url:
+        log('download()> url not valid:', url)
+
     log('download()> downloading', url, '\n')
 
     def set_options():
