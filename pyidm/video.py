@@ -632,11 +632,12 @@ def pre_process_hls(d):
         log('buffer:', video_m3u8)
         log('trying to get correct url from master m3u8 list')
 
-        d.eff_url = get_correct_m3u8_url()
+        eff_url = get_correct_m3u8_url()
         if not d.eff_url:
             log('pre_process_hls()> Failed to get master m3u8 list, quitting!')
             return False
         else:
+            d.eff_url = eff_url
             video_m3u8, video_url_list = get_url_list(d.eff_url)
 
     # create temp_folder if doesn't exist
@@ -696,7 +697,7 @@ def post_process_hls(d):
 
         # log(len([a for a in lines if not a.startswith('#')]))
 
-        for i, line in enumerate(lines):
+        for i, line in enumerate(lines[:]):
             if line and not line.startswith('#'):
                 try:
                     lines[i] = names.pop()
@@ -734,8 +735,9 @@ def post_process_hls(d):
 
     # now processing with ffmpeg
     # note: ffmpeg doesn't support socks proxy
+    proxy = f'-http_proxy {config.proxy}' if config.proxy else ''
     cmd = f'"{config.ffmpeg_actual_path}" -y -protocol_whitelist "file,http,https,tcp,tls,crypto"  ' \
-          f'-http_proxy {config.proxy} -i "{local_video_m3u8_file}" -c copy -f mp4 "file:{d.temp_file}"'
+          f'{proxy} -i "{local_video_m3u8_file}" -c copy -f mp4 "file:{d.temp_file}"'
 
     error, output = run_command(cmd)
     if error:
@@ -744,7 +746,7 @@ def post_process_hls(d):
 
     if d.type == 'dash':
         cmd = f'"{config.ffmpeg_actual_path}" -y -protocol_whitelist "file,http,https,tcp,tls,crypto"  ' \
-              f'-http_proxy {config.proxy} -i "{local_audio_m3u8_file}" -c copy -f mp4 "file:{d.audio_file}"'
+              f'{proxy} -i "{local_audio_m3u8_file}" -c copy -f mp4 "file:{d.audio_file}"'
 
         error, output = run_command(cmd)
         if error:
