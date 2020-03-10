@@ -48,6 +48,9 @@ class Worker:
         except Exception as e:
             log(e)
 
+    def __repr__(self):
+        return f"worker_{self.tag}"
+
     @property
     def current_filesize(self):
         return self.start_size + self.downloaded
@@ -59,24 +62,14 @@ class Worker:
         self.seg = seg
         self.speed_limit = speed_limit
 
-        # get start file size if this segment file partially downloaded before
-        if os.path.exists(self.seg.name):
-            with open(self.seg.name, 'rb') as f:
-                self.start_size = len(f.read())
-
-        # try to get missing segment size, if this is a fresh file, segment size will be updated from
-        # self.header_callback() method
-        if not self.seg.size:
-            self.seg.get_size()
-
-        self.debug('start seg:', self.seg.num, 'range:', self.seg.range, 'size:', self.seg.size, 'SL=',
+        self.debug('worker', self.tag, 'start seg:', self.seg.num, 'range:', self.seg.range, 'size:', self.seg.size, 'SL=',
                    self.speed_limit)
 
         self.check_previous_download()
 
     def reset(self):
         # reset curl
-        self.c.reset()
+        # self.c.reset()
 
         # reset variables
         self.start_size = 0
@@ -86,16 +79,21 @@ class Worker:
         self.resume_range = None
 
     def check_previous_download(self):
+        # get start file size if this segment file partially downloaded before
+        if os.path.exists(self.seg.name):
+            with open(self.seg.name, 'rb') as f:
+                self.start_size = len(f.read())
 
-        # in this case we will overwrite the previous download, reset startsize and remove value from d.downloaded
-        if not self.seg.size:
-            self.mode = 'wb'
-            self.d.downloaded -= self.start_size
-            self.debug(self.seg.num, 'overwrite the previous download, start size =', self.start_size)
-            self.start_size = 0
+            if not self.seg.size:
+                # in this case we will overwrite previous download, reset startsize and remove value from d.downloaded
+                self.mode = 'wb'
+                self.d.downloaded -= self.start_size
+                self.debug(self.seg.num, 'overwrite the previous download, start size =', self.start_size)
+                self.start_size = 0
+                return
 
         # no previous file existed - start fresh file
-        elif not self.current_filesize:
+        if not self.current_filesize:
             self.mode = 'wb'
 
         elif self.current_filesize == self.seg.size:  # segment is completed before
@@ -237,8 +235,6 @@ class Worker:
 
         self.set_options()
 
-        # self.debug(self.seg)
-
         # make sure target directory exist
         target_directory = os.path.dirname(self.seg.name)
         if not os.path.isdir(target_directory):
@@ -253,14 +249,12 @@ class Worker:
             completed = self.verify()
             if completed:
                 self.report_completed()
-                # print('worker', self.tag, 'completed')
             else:
                 self.report_not_completed()
 
             response_code = self.c.getinfo(pycurl.RESPONSE_CODE)
             if response_code in range(400, 512):
                 self.debug('server refuse connection', response_code, 'cancel download and try to refresh link')
-                self.q.brain.put(('server', ['error', response_code]))
 
         except Exception as e:
             if any(statement in repr(e) for statement in ('Failed writing body', 'Callback aborted')):
