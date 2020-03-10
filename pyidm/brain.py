@@ -122,16 +122,24 @@ def thread_manager(d):
             worker_sl = 0
 
         # reuse a free worker to handle a job from job_list
-        if len(busy_workers) < config.max_connections and free_workers and job_list and d.status == Status.downloading:
-            worker_num, seg = free_workers.pop(), job_list.pop()  # get available tag # get a new job
-            busy_workers.append(worker_num)  # add number to busy workers
+        if free_workers and job_list and d.status == Status.downloading:
+            for _ in free_workers[:]:
+                try:
+                    worker_num, seg = free_workers.pop(), job_list.pop()  # get available tag # get a new job
+                    busy_workers.append(worker_num)  # add number to busy workers
 
-            # create new threads
-            worker = workers[worker_num]
-            worker.reuse(seg=seg, speed_limit=worker_sl)
-            t = Thread(target=worker.run, daemon=True, name=str(worker_num))
-            live_threads.append(t)
-            t.start()
+                    # create new threads
+                    worker = workers[worker_num]
+                    worker.reuse(seg=seg, speed_limit=worker_sl)
+                    t = Thread(target=worker.run, daemon=True, name=str(worker_num))
+                    live_threads.append(t)
+                    t.start()
+                except:
+                    break
+
+        # update d param
+        d.live_connections = len(busy_workers)
+        d.remaining_parts = len(busy_workers) + len(job_list) + q.jobs.qsize()
 
         # Monitor active threads and add the offline to a free_workers
         for t in live_threads:
@@ -140,10 +148,6 @@ def thread_manager(d):
                 live_threads.remove(t)
                 busy_workers.remove(worker_num)
                 free_workers.append(worker_num)
-
-        # update d param
-        d.live_connections = len(live_threads)
-        d.remaining_parts = len(live_threads) + len(job_list) + q.jobs.qsize()
 
         # change status
         if d.status != Status.downloading:
