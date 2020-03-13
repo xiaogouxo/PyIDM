@@ -62,8 +62,8 @@ class Worker:
         self.seg = seg
         self.speed_limit = speed_limit
 
-        self.debug('worker', self.tag, 'start seg:', self.seg.num, 'range:', self.seg.range, 'size:', self.seg.size, 'SL=',
-                   self.speed_limit)
+        self.debug('worker', self.tag, 'start seg:', os.path.basename(self.seg.name), 'range:', self.seg.range, 'size:',
+                   self.seg.size, 'SL=', self.speed_limit)
 
         self.check_previous_download()
 
@@ -262,7 +262,7 @@ class Worker:
             else:
                 error = repr(e)
 
-            self.debug('worker', self.tag, ': quitting ...', error)
+            self.debug('worker', self.tag, ': quitting ...', error, self.seg.url)
             self.report_not_completed()
 
     def write(self, data):
