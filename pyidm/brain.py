@@ -197,10 +197,11 @@ def file_manager(d, keep_segments=False):
                 log('failed to merge segment', seg.name, ' - ', e)
 
         # check if all segments already merged
-        if all([seg.completed for seg in job_list]):
+        if not job_list:
 
             # handle HLS streams
             if 'm3u8' in d.protocol:
+                log('handling hls videos')
                 # Set status to merging
                 d.status = Status.merging_audio  # todo: should be renamed to merging instead of merging_audio
 
@@ -212,6 +213,7 @@ def file_manager(d, keep_segments=False):
 
             # handle dash video
             if d.type == 'dash':
+                log('handling dash videos')
                 # merge audio and video
                 output_file = d.target_file.replace(' ', '_')  # remove spaces from target file
 
@@ -247,8 +249,9 @@ def file_manager(d, keep_segments=False):
             # print('--------------file manager cancelled-----------------')
             break
 
-    # save progress info
-    d.save_progress_info()
+    # save progress info for future resuming
+    if d.status != Status.completed:
+        d.save_progress_info()
 
     # Report quitting
     log(f'file_manager {d.num}: quitting')
