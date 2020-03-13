@@ -181,6 +181,7 @@ class Video(DownloadItem):
         if stream.mediatype == 'dash':
             audio_stream = [audio for audio in self.audio_streams.values() if audio.extension == stream.extension
                             or (audio.extension == 'm4a' and stream.extension == 'mp4')][0]
+            self.audio_stream = audio_stream
             self.audio_url = audio_stream.url
             self.audio_size = audio_stream.size
             self.audio_fragment_base_url = audio_stream.fragment_base_url
@@ -585,60 +586,83 @@ def pre_process_hls(d):
     log('pre_process_hls()> start processing', d.name)
 
     # get correct url of m3u8 file
-    def get_correct_m3u8_url():
-        if not d.manifest_url:
+    def get_correct_m3u8_url(master_m3u8_doc, media='video'):
+        if not master_m3u8_doc:
             return False
-        buffer = download(d.manifest_url)
-        if buffer:
-            # convert to string
-            buffer = buffer.getvalue().decode()
-            if '#EXT' not in repr(buffer): return False
 
-            master_m3u8 = buffer
-            lines = master_m3u8.splitlines()
-            for i, line in enumerate(lines):
-                if str(d.selected_stream.width) in line and str(
-                        d.selected_stream.height) in line or d.format_id in line:
-                    correct_url = urljoin(d.manifest_url, lines[i + 1])
-                    return correct_url
+        lines = master_m3u8_doc.splitlines()
+        for i, line in enumerate(lines):
 
-    def get_url_list(url):
+            if media == 'video' and (str(d.selected_stream.width) in line and str(
+                    d.selected_stream.height) in line or d.format_id in line):
+                correct_url = urljoin(d.manifest_url, lines[i + 1])
+                return correct_url
+            elif media == 'audio' and (str(d.audio_stream.abr) in line or str(
+                    d.selected_stream.tbr) in line or d.format_id in line):
+                correct_url = urljoin(d.manifest_url, lines[i + 1])
+                return correct_url
+
+    def extract_url_list(m3u8_doc):
         # url_list
         url_list = []
+        keys = []  # for encrypted streams
 
+        for line in m3u8_doc.splitlines():
+            line.strip()
+            if line and not line.startswith('#'):
+                url_list.append(line)
+            elif line.startswith('#EXT-X-KEY'):
+                # '#EXT-X-KEY:METHOD=AES-128,URI="https://content-aus...62a9",IV=0x00000000000000000000000000000000'
+                match = re.search(r'URI="(.*)"', line)
+                if match:
+                    url = match.group(1)
+                    keys.append(url)
+
+        # log('process hls> url list:', url_list)
+        return url_list, keys
+
+    def download_m3u8(url):
         # download the manifest from m3u8 file descriptor located at url
         buffer = download(url)  # get BytesIO object
 
         if buffer:
             # convert to string
             buffer = buffer.getvalue().decode()
-            for line in buffer.splitlines():
-                line.strip()
-                if line and not line.startswith('#'):
-                    url_list.append(line)
+            if '#EXT' in repr(buffer):
+                return buffer
 
-            # get absolute path from url_list relative path
-            url_list = [urljoin(url, seg_url) for seg_url in url_list]
-
-        # log('process hls> url list:', url_list)
-        return buffer, url_list
-
-    # first lets handle video stream
-    video_m3u8, video_url_list = get_url_list(d.eff_url)
-
-    # validate video m3u8 file
-    if '#EXT' not in repr(video_m3u8):
         log('pre_process_hls()> received invalid m3u8 file from server')
-        log('buffer:', video_m3u8)
-        log('trying to get correct url from master m3u8 list')
+        return None
 
-        eff_url = get_correct_m3u8_url()
-        if not d.eff_url:
-            log('pre_process_hls()> Failed to get master m3u8 list, quitting!')
+    # download m3u8 files
+    master_m3u8 = download_m3u8(d.manifest_url)
+    video_m3u8 = download_m3u8(d.eff_url)
+    audio_m3u8 = download_m3u8(d.audio_url)
+
+    if not video_m3u8:
+        eff_url = get_correct_m3u8_url(master_m3u8, media='video')
+        if not eff_url:
+            log('pre_process_hls()> Failed to get correct video m3u8 url, quitting!')
             return False
         else:
             d.eff_url = eff_url
-            video_m3u8, video_url_list = get_url_list(d.eff_url)
+            video_m3u8 = download_m3u8(d.eff_url)
+
+    if d.type == 'dash' and not audio_m3u8:
+        eff_url = get_correct_m3u8_url(master_m3u8, media='audio')
+        if not eff_url:
+            log('pre_process_hls()> Failed to get correct audio m3u8 url, quitting!')
+            return False
+        else:
+            d.audio_url = eff_url
+            audio_m3u8 = download_m3u8(d.audio_url)
+
+    # first lets handle video stream
+    video_url_list, video_keys_url_list = extract_url_list(video_m3u8)
+
+    # get absolute path from url_list relative path
+    video_url_list = [urljoin(d.eff_url, seg_url) for seg_url in video_url_list]
+    video_keys_url_list = [urljoin(d.eff_url, seg_url) for seg_url in video_keys_url_list]
 
     # create temp_folder if doesn't exist
     if not os.path.isdir(d.temp_folder):
@@ -650,17 +674,20 @@ def pre_process_hls(d):
 
     # build video segments
     d.segments = [Segment(name=os.path.join(d.temp_folder, str(i) + '.ts'), num=i, range=None, size=0,
-                          url=seg_url, tempfile=d.temp_file)
+                          url=seg_url, tempfile=d.temp_file, merge=False)
                   for i, seg_url in enumerate(video_url_list)]
+
+    # add video crypt keys
+    vkeys = [Segment(name=os.path.join(d.temp_folder, 'crypt' + str(i) + '.key'), num=i, range=None, size=0,
+                          url=seg_url, seg_type='video_keys', merge=False)
+                  for i, seg_url in enumerate(video_keys_url_list)]
+
+    # add to d.segments
+    d.segments += vkeys
 
     # handle audio stream in case of dash videos
     if d.type == 'dash':
-        audio_m3u8, audio_url_list = get_url_list(d.audio_url)
-
-        # validate audio m3u8 file
-        if '#EXT' not in repr(audio_m3u8):
-            log('pre_process_hls()> received invalid m3u8 file from server')
-            return False
+        audio_url_list, audio_keys_url_list = extract_url_list(audio_m3u8)
 
         # save m3u8 file to disk
         with open(os.path.join(d.temp_folder, 'remote_audio.m3u8'), 'w') as f:
@@ -668,11 +695,16 @@ def pre_process_hls(d):
 
         # build audio segments
         audio_segments = [Segment(name=os.path.join(d.temp_folder, str(i) + '_audio.ts'), num=i, range=None, size=0,
-                                  url=seg_url, tempfile=d.audio_file)
+                                  url=seg_url, tempfile=d.audio_file, merge=False)
                           for i, seg_url in enumerate(audio_url_list)]
 
+        # audio crypt segments
+        akeys = [Segment(name=os.path.join(d.temp_folder, 'audio_crypt' + str(i) + '.key'), num=i, range=None, size=0,
+                                  url=seg_url, seg_type='audio_keys', merge=False)
+                          for i, seg_url in enumerate(audio_keys_url_list)]
+
         # add to video segments
-        d.segments += audio_segments
+        d.segments += audio_segments + akeys
 
     # load previous segment information from disk - resume download -
     d.load_progress_info()
@@ -687,7 +719,7 @@ def post_process_hls(d):
 
     log('post_process_hls()> start processing', d.name)
 
-    def create_local_m3u8(remote_file, local_file, local_names):
+    def create_local_m3u8(remote_file, local_file, local_names, crypt_key_names=None):
 
         with open(remote_file, 'r') as f:
             lines = f.readlines()
@@ -695,15 +727,27 @@ def post_process_hls(d):
         names = [f'{name}\n' for name in local_names]
         names.reverse()
 
+        crypt_key_names.reverse()
+
         # log(len([a for a in lines if not a.startswith('#')]))
 
         for i, line in enumerate(lines[:]):
             if line and not line.startswith('#'):
                 try:
-                    lines[i] = names.pop()
-                    # log(lines[i])
+                    name = names.pop()
+                    lines[i] = name
                 except:
                     pass
+            elif line.startswith('#EXT-X-KEY'):
+                # '#EXT-X-KEY:METHOD=AES-128,URI="https://content-aus...62a9",IV=0x00000000000000000000000000000000'
+                match = re.search(r'URI="(.*)"', line)
+                if match:
+                    try:
+                        key_name = crypt_key_names.pop()
+                        key_name = key_name.replace('\\', '/')
+                        lines[i] = line.replace(match.group(1), key_name)
+                    except:
+                        pass
 
         with open(local_file, 'w') as f:
             f.writelines(lines)
@@ -715,8 +759,8 @@ def post_process_hls(d):
 
     try:
         names = [seg.name for seg in d.segments if seg.tempfile == d.temp_file]
-        # print('names = ', names)
-        create_local_m3u8(remote_video_m3u8_file, local_video_m3u8_file, names)
+        crypt_key_names = [seg.name for seg in d.segments if seg.seg_type == 'video_keys']
+        create_local_m3u8(remote_video_m3u8_file, local_video_m3u8_file, names, crypt_key_names)
     except Exception as e:
         log('post_process_hls()> error', e)
         return False
@@ -727,17 +771,21 @@ def post_process_hls(d):
         local_audio_m3u8_file = os.path.join(d.temp_folder, 'local_audio.m3u8')
 
         try:
-            create_local_m3u8(remote_audio_m3u8_file, local_audio_m3u8_file,
-                              [seg.name for seg in d.segments if seg.tempfile == d.audio_file])
+            names = [seg.name for seg in d.segments if seg.tempfile == d.audio_file]
+            crypt_key_names = [seg.name for seg in d.segments if seg.seg_type == 'audio_keys']
+            create_local_m3u8(remote_audio_m3u8_file, local_audio_m3u8_file, names, crypt_key_names)
         except Exception as e:
             log('post_process_hls()> error', e)
             return False
 
     # now processing with ffmpeg
-    # note: ffmpeg doesn't support socks proxy
-    proxy = f'-http_proxy {config.proxy}' if config.proxy else ''
+    # note: ffmpeg doesn't support socks proxy, also proxy must start with "http://"
+    # currently will download crypto keys manually and use ffmpeg for merging only
+
+    # proxy = f'-http_proxy "{config.proxy}"' if config.proxy else ''
+
     cmd = f'"{config.ffmpeg_actual_path}" -y -protocol_whitelist "file,http,https,tcp,tls,crypto"  ' \
-          f'{proxy} -i "{local_video_m3u8_file}" -c copy -f mp4 "file:{d.temp_file}"'
+          f'-allowed_extensions ALL -i "{local_video_m3u8_file}" -c copy -f mp4 "file:{d.temp_file}"'
 
     error, output = run_command(cmd)
     if error:
@@ -746,7 +794,7 @@ def post_process_hls(d):
 
     if d.type == 'dash':
         cmd = f'"{config.ffmpeg_actual_path}" -y -protocol_whitelist "file,http,https,tcp,tls,crypto"  ' \
-              f'{proxy} -i "{local_audio_m3u8_file}" -c copy -f mp4 "file:{d.audio_file}"'
+              f'-allowed_extensions ALL -i "{local_audio_m3u8_file}" -c copy -f mp4 "file:{d.audio_file}"'
 
         error, output = run_command(cmd)
         if error:

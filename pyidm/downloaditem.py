@@ -79,7 +79,7 @@ class Communication:
 
 
 class Segment:
-    def __init__(self, name=None, num=None, range=None, size=None, url=None, tempfile=None):
+    def __init__(self, name=None, num=None, range=None, size=None, url=None, tempfile=None, seg_type='', merge=True):
         self.num = num
         self.size = size
         self.range = range
@@ -89,6 +89,8 @@ class Segment:
         self.tempfile = tempfile
         self.headers = {}
         self.url = url
+        self.seg_type = seg_type
+        self.merge = merge
 
     def get_size(self):
         self.headers = get_headers(self.url)
@@ -143,6 +145,7 @@ class DownloadItem:
         self.animation_index = 0  # self.id % 2  # to give it a different start point than neighbour items
 
         # audio
+        self.audio_stream = None
         self.audio_url = None
         self.audio_size = 0
         self.is_audio = False
@@ -187,6 +190,8 @@ class DownloadItem:
 
         self.animation_timer = 0
 
+        self.manifest_url = ''
+
     def get_persistent_properties(self):
         """return a dict of important parameters to be saved in file"""
         a = dict(id=self.id, _name=self._name, folder=self.folder, url=self.url, eff_url=self.eff_url,
@@ -196,7 +201,7 @@ class DownloadItem:
                  type=self.type, fragments=self.fragments, fragment_base_url=self.fragment_base_url,
                  audio_fragments=self.audio_fragments, audio_fragment_base_url=self.audio_fragment_base_url,
                  last_known_size=self.last_known_size, last_known_progress=self.last_known_progress,
-                 protocol=self.protocol
+                 protocol=self.protocol, manifest_url=self.manifest_url
                  )
         return a
 
