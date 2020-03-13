@@ -679,7 +679,7 @@ def pre_process_hls(d):
 
     # add video crypt keys
     vkeys = [Segment(name=os.path.join(d.temp_folder, 'crypt' + str(i) + '.key'), num=i, range=None, size=0,
-                          url=seg_url, seg_type='video_keys', merge=False)
+                          url=seg_url, seg_type='video_key', merge=False)
                   for i, seg_url in enumerate(video_keys_url_list)]
 
     # add to d.segments
@@ -688,6 +688,10 @@ def pre_process_hls(d):
     # handle audio stream in case of dash videos
     if d.type == 'dash':
         audio_url_list, audio_keys_url_list = extract_url_list(audio_m3u8)
+
+        # get absolute path from url_list relative path
+        audio_url_list = [urljoin(d.audio_url, seg_url) for seg_url in audio_url_list]
+        audio_keys_url_list = [urljoin(d.audio_url, seg_url) for seg_url in audio_keys_url_list]
 
         # save m3u8 file to disk
         with open(os.path.join(d.temp_folder, 'remote_audio.m3u8'), 'w') as f:
@@ -700,7 +704,7 @@ def pre_process_hls(d):
 
         # audio crypt segments
         akeys = [Segment(name=os.path.join(d.temp_folder, 'audio_crypt' + str(i) + '.key'), num=i, range=None, size=0,
-                                  url=seg_url, seg_type='audio_keys', merge=False)
+                                  url=seg_url, seg_type='audio_key', merge=False)
                           for i, seg_url in enumerate(audio_keys_url_list)]
 
         # add to video segments
@@ -759,7 +763,7 @@ def post_process_hls(d):
 
     try:
         names = [seg.name for seg in d.segments if seg.tempfile == d.temp_file]
-        crypt_key_names = [seg.name for seg in d.segments if seg.seg_type == 'video_keys']
+        crypt_key_names = [seg.name for seg in d.segments if seg.seg_type == 'video_key']
         create_local_m3u8(remote_video_m3u8_file, local_video_m3u8_file, names, crypt_key_names)
     except Exception as e:
         log('post_process_hls()> error', e)
@@ -772,7 +776,7 @@ def post_process_hls(d):
 
         try:
             names = [seg.name for seg in d.segments if seg.tempfile == d.audio_file]
-            crypt_key_names = [seg.name for seg in d.segments if seg.seg_type == 'audio_keys']
+            crypt_key_names = [seg.name for seg in d.segments if seg.seg_type == 'audio_key']
             create_local_m3u8(remote_audio_m3u8_file, local_audio_m3u8_file, names, crypt_key_names)
         except Exception as e:
             log('post_process_hls()> error', e)
