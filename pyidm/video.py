@@ -375,7 +375,7 @@ def merge_video_audio(video, audio, output):
     # slow, mix different formats
     cmd2 = f'"{ffmpeg}" -y -i "{video}" -i "{audio}" "{output}"'
 
-    verbose = True if config.log_level > 1 else False
+    verbose = True if config.log_level >= 3 else False
 
     # run command with shell=False if failed will use shell=True option
     error, output = run_command(cmd1, verbose=verbose, shell=False)
