@@ -73,8 +73,7 @@ class MainWindow:
         self.disabled = True  # for download button
 
         # download list
-        self.d_headers = ['i', 'num', 'name', 'progress', 'speed', 'time_left', 'downloaded', 'total_size', 'status',]
-                          # 'resumable', 'folder', 'max_connections', 'live_connections', 'remaining_parts']
+        self.d_headers = ['i', 'num', 'name', 'progress', 'speed', 'time_left', 'downloaded', 'total_size', 'status']
         self.d_list = d_list  # list of DownloadItem() objects
         self.selected_row_num = None
         self._selected_d = None
@@ -107,12 +106,16 @@ class MainWindow:
             k, v = config.main_window_q.get()
             if k == 'log':
                 try:
-                    if len(config.log_text) > 1000_000:
-                        config.log_text = config.log_text[1000:]  # remove oldest 1000 characters
-                    config.log_text += v
-                    self.window['log'](config.log_text)
-                except:
-                    pass
+                    contents = self.window['log'].get()
+                    # print(size_format(len(contents)))
+                    if len(contents) > config.max_log_size:
+                        # delete 20% of contents to keep size under max_log_size
+                        slice_size = int(config.max_log_size * 0.2)
+                        self.window['log'](contents[slice_size:])
+
+                    self.window['log'](v, append=True)
+                except Exception as e:
+                    print(e)
 
                 # show youtube_dl activity in status text
                 if '[youtube]' in v:
@@ -248,7 +251,7 @@ class MainWindow:
                           [sg.Checkbox('Proxy:', default=config.enable_proxy, key='enable_proxy', enable_events=True),
                            sg.I(default_text=config.raw_proxy, size=(25, 1), font='any 9', key='raw_proxy',
                                 enable_events=True, disabled=not config.enable_proxy), sg.T('?', tooltip=proxy_tooltip),
-                           sg.Combo(['http/https', 'socks4', 'socks5'], default_value=config.proxy_type, font='any 9',
+                           sg.Combo(['http', 'https', 'socks4', 'socks5'], default_value=config.proxy_type, font='any 9',
                                     enable_events=True, key='proxy_type'),
                            sg.T(config.proxy if config.proxy else '_no proxy_', key='current_proxy_value', size=(40, 1), font='any 9',),
                            ],
@@ -312,7 +315,8 @@ class MainWindow:
         self.window['table'].bind('<Return>', '_enter_key')  # Enter key
 
         # log text, disable word wrap
-        self.window['log'].Widget.config(wrap='none')
+        # use "undo='false'" disable tkinter caching to fix issue #59 "solve huge memory usage and app crash"
+        self.window['log'].Widget.config(wrap='none', undo='false')
 
     def restart_window(self):
         try:
@@ -362,6 +366,7 @@ class MainWindow:
 
         # update Elements
         try:
+            # file name
             if self.window['name'].get() != self.d.name:  # it will prevent cursor jump to end when modifying name
                 self.window['name'](self.d.name)
 
@@ -623,7 +628,7 @@ class MainWindow:
             elif event == 'show_download_window':
                 config.show_download_window = values['show_download_window']
 
-            elif event in ('raw_proxy', 'http/https', 'socks4', 'socks5', 'proxy_type', 'enable_proxy'):
+            elif event in ('raw_proxy', 'http', 'https', 'socks4', 'socks5', 'proxy_type', 'enable_proxy'):
                 self.set_proxy()
 
             elif event in ('segment_size', 'seg_size_unit'):
@@ -680,12 +685,8 @@ class MainWindow:
             elif event == 'Clear Log':
                 try:
                     self.window['log']('')
-                    config.log_text = ''
                 except:
                     pass
-
-            # elif event == 'Save Log':
-            #     save_log()
 
             # about window
             elif event == 'about':
@@ -1683,19 +1684,12 @@ class MainWindow:
         config.proxy_type = self.values['proxy_type']
 
         if raw_proxy and isinstance(raw_proxy, str):
+            raw_proxy = raw_proxy.split('://')[-1]
+            proxy = config.proxy_type + '://' + raw_proxy
 
-            if config.proxy_type != 'http/https':
-                if raw_proxy.startswith('http://'):
-                    proxy = raw_proxy.replace('http', config.proxy_type)
-                elif raw_proxy.startswith('https://'):
-                    proxy = raw_proxy.replace('https', config.proxy_type)
-                else:
-                    proxy = config.proxy_type + '://' + raw_proxy
-
-        config.proxy = proxy
-        self.window['current_proxy_value'](config.proxy)
+            config.proxy = proxy
+            self.window['current_proxy_value'](config.proxy)
         # print('config.proxy = ', config.proxy)
-        print(self.event)
 
     # endregion
 
