@@ -6,6 +6,7 @@
     :copyright: (c) 2019-2020 by Mahmoud Elshahat.
     :license: GNU LGPLv3, see LICENSE for more details.
 """
+import io
 import os
 import time
 from threading import Thread
@@ -165,14 +166,13 @@ def thread_manager(d):
 def file_manager(d, keep_segments=False):
 
     while True:
-        time.sleep(1)
+        time.sleep(0.1)
 
         job_list = [seg for seg in d.segments if not seg.completed]
         # print(job_list)
 
         for seg in job_list:
             # process segments in order
-            # print(seg.name, seg.downloaded, seg.completed)
 
             if seg.completed:  # skip completed segment
                 continue
@@ -182,9 +182,10 @@ def file_manager(d, keep_segments=False):
 
             # append downloaded segment to temp file, mark as completed, then delete it.
             try:
-                with open(seg.tempfile, 'ab') as trgt_file:
-                    with open(seg.name, 'rb') as src_file:
-                        trgt_file.write(src_file.read())
+                if seg.merge:
+                    with open(seg.tempfile, 'ab') as trgt_file:
+                        with open(seg.name, 'rb') as src_file:
+                            trgt_file.write(src_file.read())
 
                 seg.completed = True
                 log('>> completed segment: ',  os.path.basename(seg.name))
@@ -192,8 +193,6 @@ def file_manager(d, keep_segments=False):
                 if not keep_segments:
                     delete_file(seg.name)
 
-                # save progress info
-                d.save_progress_info()
             except Exception as e:
                 log('failed to merge segment', seg.name, ' - ', e)
 
@@ -247,6 +246,9 @@ def file_manager(d, keep_segments=False):
         if d.status != Status.downloading:
             # print('--------------file manager cancelled-----------------')
             break
+
+    # save progress info
+    d.save_progress_info()
 
     # Report quitting
     log(f'file_manager {d.num}: quitting')
