@@ -1,3 +1,13 @@
+2020.3.13:
+- Added support for more hls video streams / websites.
+- Added support for http, https, socks4, and socks5 proxy
+- Fixed high memory usage bug and possible crash.
+- Speed up file manager performance
+- Fixed number of live workers for fragmented downloads.
+- Fixed file name extraction from headers.
+- Add option to Select Setting folder, default to local folder.
+- Natural sorting themes
+
 2020.3.3:
 - Critical Fix fpr application crash.
 - include ffmpeg with portable windows version
