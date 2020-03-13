@@ -64,13 +64,14 @@ update_frequency_map = {'every day': 1, 'every week': 7, 'every month': 30}
 
 # proxy
 proxy = ''  # must be string example: 127.0.0.1:8080
-proxy_type = 'http/https'  # socks4, socks5
+proxy_type = 'http'  # socks4, socks5
 raw_proxy = ''  # unprocessed from user input
 enable_proxy = False
 
 # logging
 log_entry = ''  # one log line
-log_text = ''  # all log text
+# log_text = []  # all log text
+max_log_size = 1024 * 1024 * 5  # 5 MB
 log_level = DEFAULT_LOG_LEVEL  # standard=1, verbose=2, debug=3
 log_recorder_q = Queue()
 

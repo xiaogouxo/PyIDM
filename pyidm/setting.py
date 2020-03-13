@@ -152,7 +152,7 @@ def load_setting():
 
         config.raw_proxy = setting.get('raw_proxy', '')
         config.proxy = setting.get('proxy', '')
-        config.proxy_type = setting.get('proxy_type', 'http/https')
+        config.proxy_type = setting.get('proxy_type', 'http')
         config.enable_proxy = setting.get('enable_proxy', False)
 
         config.segment_size = setting.get('segment_size', config.DEFAULT_SEGMENT_SIZE)
