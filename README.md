@@ -5,7 +5,7 @@
 ![GitHub issues](https://img.shields.io/github/issues-raw/pyidm/pyidm?color=blue) - ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/pyidm/pyidm?color=blue)
 
 
-pyIDM is a python open source (Internet Download Manager) 
+PyIDM is a python open source (Internet Download Manager) 
 with multi-connections, high speed engine, 
 it downloads general files and videos from youtube and tons of other streaming websites . <br>
 Developed in Python, based on "pyCuRL/libcurl", "youtube_dl", and "PySimpleGUI"
@@ -27,7 +27,7 @@ Developed in Python, based on "pyCuRL/libcurl", "youtube_dl", and "PySimpleGUI"
 * Clipboard Monitor.
 * Refresh expired urls.
 * Simple GUI interface with 140 themes available.
-* http proxy support.
+* proxy support (http, https, socks4, and socks5).
 * user can control a lot of options:
     - select theme.
     - set proxy.
@@ -38,7 +38,7 @@ Developed in Python, based on "pyCuRL/libcurl", "youtube_dl", and "PySimpleGUI"
 
 
 ---
-# How to install pyIDM?
+# How to install PyIDM?
 You have 3 options to run pyIDM on your operating system:
 
 1. **Windows portable version**:<br>
@@ -46,7 +46,7 @@ Latest Windows portable version available [here](https://github.com/pyIDM/pyIDM/
 unzip, and run from pyidm.exe, no installation required.
 
 2. **pip**:<br>
-    `pip install pyIDM`
+    `python -m pip install pyidm --upgrade`
     
     then you can run application from Terminal by:<br>
     `python -m pyidm`          note pyidm name in small letters 
