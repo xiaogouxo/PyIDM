@@ -793,7 +793,7 @@ def post_process_hls(d):
     cmd = f'"{config.ffmpeg_actual_path}" -y -protocol_whitelist "file,http,https,tcp,tls,crypto"  ' \
           f'-allowed_extensions ALL -i "{local_video_m3u8_file}" -c copy -f mp4 "file:{d.temp_file}"'
 
-    error, output = run_command(cmd)
+    error, output = run_command(cmd, d=d)
     if error:
         log('post_process_hls()> ffmpeg failed:', output)
         return False
@@ -802,7 +802,7 @@ def post_process_hls(d):
         cmd = f'"{config.ffmpeg_actual_path}" -y -protocol_whitelist "file,http,https,tcp,tls,crypto"  ' \
               f'-allowed_extensions ALL -i "{local_audio_m3u8_file}" -c copy -f mp4 "file:{d.audio_file}"'
 
-        error, output = run_command(cmd)
+        error, output = run_command(cmd, d=d)
         if error:
             log('post_process_hls()> ffmpeg failed:', output)
             return False
