@@ -364,9 +364,11 @@ def check_ffmpeg():
             config.global_sett_folder, 'or', config.current_directory)
 
 
-def merge_video_audio(video, audio, output):
+def merge_video_audio(video, audio, output, d):
+    """merge video file and audio file into output file, d is a reference for current DownloadItem object"""
     log('merging video and audio')
-    # ffmpeg
+
+    # ffmpeg file full location
     ffmpeg = config.ffmpeg_actual_path
 
     # very fast audio just copied, format must match [mp4, m4a] and [webm, webm]
@@ -378,13 +380,13 @@ def merge_video_audio(video, audio, output):
     verbose = True if config.log_level >= 3 else False
 
     # run command with shell=False if failed will use shell=True option
-    error, output = run_command(cmd1, verbose=verbose, shell=False)
+    error, output = run_command(cmd1, verbose=verbose, shell=False, d=d)
 
     if error:
-        error, output = run_command(cmd1, verbose=verbose, shell=True)
+        error, output = run_command(cmd1, verbose=verbose, shell=True, d=d)
 
     if error:
-        error, output = run_command(cmd2, verbose=verbose, shell=True)
+        error, output = run_command(cmd2, verbose=verbose, shell=True, d=d)
 
     return error, output
             

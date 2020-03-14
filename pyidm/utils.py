@@ -372,8 +372,10 @@ def get_seg_size(seg):
         return 0
 
 
-def run_command(cmd, verbose=True, shell=False, hide_window=False):
-    """run command in as a subprocess"""
+def run_command(cmd, verbose=True, shell=False, hide_window=False, d=None):
+    """run command in as a subprocess
+    :param d, DownloadItem reference, if exist will monitor user cancel action for terminating process
+    """
 
     if verbose:
         log('running command:', cmd)
@@ -406,6 +408,12 @@ def run_command(cmd, verbose=True, shell=False, hide_window=False):
             output += line
             if verbose:
                 log(line)
+
+            # monitor kill switch
+            if d and d.status == config.Status.cancelled:
+                log('terminate run_command()>', cmd)
+                process.kill()
+                return 1, 'Cancelled by user'
 
         # wait for subprocess to finish, process.wait() is not recommended
         process.communicate()

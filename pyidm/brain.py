@@ -219,7 +219,7 @@ def file_manager(d, keep_segments=False):
 
                 # set status to merge
                 d.status = Status.merging_audio
-                error, output = merge_video_audio(d.temp_file, d.audio_file, output_file)
+                error, output = merge_video_audio(d.temp_file, d.audio_file, output_file, d)
 
                 if not error:
                     log('done merging video and audio for: ', d.target_file)

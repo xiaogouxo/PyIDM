@@ -1032,12 +1032,13 @@ class MainWindow:
             return
 
         d = self.selected_d
-        if d.status == Status.pending:
-            self.d_list[d.id].status = Status.cancelled
-            self.pending.pop(d.id)
+        if d.status == Status.completed:
+            return
 
-        elif d.status == Status.downloading:
-            d.status = Status.cancelled
+        d.status = Status.cancelled
+
+        if d.status == Status.pending:
+            self.pending.pop(d.id)
 
     def delete_btn(self):
         if self.selected_row_num is None:
