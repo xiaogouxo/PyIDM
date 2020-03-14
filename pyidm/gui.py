@@ -876,9 +876,15 @@ class MainWindow:
                     log('file: ', d.name, 'has different size and will be downloaded from beginning')
                     d.delete_tempfiles()
 
+                # replace old item in download list
+                self.d_list[found_index] = d
+
             elif response == 'Overwrite':
                 print('overwrite')
                 d.delete_tempfiles()
+
+                # replace old item in download list
+                self.d_list[found_index] = d
 
             else:
                 log('Download cancelled by user')
