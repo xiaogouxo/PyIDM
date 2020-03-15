@@ -73,7 +73,7 @@ class MainWindow:
         self.disabled = True  # for download button
 
         # download list
-        self.d_headers = ['i', 'num', 'name', 'progress', 'speed', 'time_left', 'downloaded', 'total_size', 'status']
+        self.d_headers = ['i', 'name', 'progress', 'speed', 'time_left', 'downloaded', 'total_size', 'status']
         self.d_list = d_list  # list of DownloadItem() objects
         self.selected_row_num = None
         self._selected_d = None
@@ -196,8 +196,8 @@ class MainWindow:
         table_right_click_menu = ['Table', ['!Options for selected file:', '---', 'Open File', 'Open File Location',
                                             '▶ Watch while downloading', 'copy webpage url', 'copy download url',
                                             '⏳ Schedule download', '⏳ Cancel schedule!', 'properties']]
-        headings = ['i', 'num', 'name', 'progress', 'speed', 'left', 'done', 'size', 'status']
-        spacing = [' ' * 4, ' ' * 3, ' ' * 30, ' ' * 3, ' ' * 6, ' ' * 7, ' ' * 6, ' ' * 6, ' ' * 10]
+        headings = ['i', 'name', 'progress', 'speed', 'left', 'done', 'size', 'status']
+        spacing = [' ' * 4, ' ' * 30, ' ' * 3, ' ' * 6, ' ' * 7, ' ' * 6, ' ' * 6, ' ' * 10]
 
         downloads_layout = [[sg.Button('Resume'), sg.Button('Cancel'), sg.Button('Refresh'),
                              sg.Button('Folder'), sg.Button('D.Window'),
@@ -294,12 +294,8 @@ class MainWindow:
                                sg.Button('Check for update', key='update_youtube_dl')],
                           ])],
 
-
-
-
                           # [sg.T('')],
                           # [sg.T('Website Auth:'), sg.T('user:'), sg.I(' ', size=(15, 1), key='username'), sg.T('    Pass:'), sg.I(' ', size=(15, 1),key='password')],
-
 
                           [sg.T('')],
 
