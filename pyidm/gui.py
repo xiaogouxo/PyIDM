@@ -29,7 +29,7 @@ from .downloaditem import DownloadItem
 
 # todo: this module needs some clean up
 
-# gui setting
+# gui Settings
 config.all_themes = natural_sort(sg.ListOfLookAndFeelValues())
 sg.SetOptions(icon=config.APP_ICON, font='Helvetica 11', auto_size_buttons=True, progress_meter_border_depth=0,
               border_width=1)
@@ -211,7 +211,7 @@ class MainWindow:
                              sg.Button('Delete All', button_color=('white', 'red'))],
                             ]
 
-        # setting tab
+        # Settings tab -------------------------------------------------------------------------------------------
         seg_size = config.segment_size // 1024  # kb
         if seg_size >= 1024:
             seg_size = seg_size // 1024
@@ -220,64 +220,91 @@ class MainWindow:
             seg_size_unit = 'KB'
 
         proxy_tooltip = """proxy setting examples:
-        http://proxy_address:port
-        157.245.224.29:3128
+        - http://proxy_address:port
+        - 157.245.224.29:3128
         
-        Authentication: http://username:password@proxyserveraddress:port
-        then choose proxy type "http/https, socks4, socks5"
+        or if authentication required: 
+        - http://username:password@proxyserveraddress:port  
+        
+        then choose proxy type i.e. "http, https, socks4, or socks5"  
         """
-        setting_layout = [[sg.T('User Setting:'), sg.T(' ', size=(50, 1)), sg.Button(' about ', key='about')],
-                          [sg.Text('Select Theme:'),
-                           sg.Combo(values=config.all_themes, default_value=config.current_theme, size=(15, 1),
-                                    enable_events=True, key='themes'),
-                           sg.Text(f' Total: {len(config.all_themes)} Themes')],
-                          [sg.Checkbox('Speed Limit:', default=True if config.speed_limit else False,
-                                       key='speed_limit_switch', enable_events=True,
-                                       tooltip='examples: 50 k, 10kb, 2m, 3mb, 20, 10MB '),
-                           sg.Input(default_text=config.speed_limit if config.speed_limit else '', size=(10, 1),
-                                    key='speed_limit',
-                                    disabled=False if config.speed_limit else True, enable_events=True),
-                           sg.T('0', size=(30, 1), key='current_speed_limit')],
-                          [sg.Checkbox('Monitor copied urls in clipboard', default=config.monitor_clipboard,
-                                       key='monitor', enable_events=True)],
-                          [sg.Checkbox("Show download window", key='show_download_window',
-                                       default=config.show_download_window, enable_events=True)],
-                          [sg.Text('Max concurrent downloads:'),
-                           sg.Combo(values=[x for x in range(1, 101)], size=(5, 1), enable_events=True,
-                                    key='max_concurrent_downloads', default_value=config.max_concurrent_downloads),
-                           sg.Text('  ...    Max connections per download:'),
-                           sg.Combo(values=[x for x in range(1, 101)], size=(5, 1), enable_events=True,
-                                    key='max_connections', default_value=config.max_connections)],
-                          [sg.Checkbox('Proxy:', default=config.enable_proxy, key='enable_proxy', enable_events=True),
-                           sg.I(default_text=config.raw_proxy, size=(25, 1), font='any 9', key='raw_proxy',
-                                enable_events=True, disabled=not config.enable_proxy), sg.T('?', tooltip=proxy_tooltip),
-                           sg.Combo(['http', 'https', 'socks4', 'socks5'], default_value=config.proxy_type, font='any 9',
-                                    enable_events=True, key='proxy_type'),
-                           sg.T(config.proxy if config.proxy else '_no proxy_', key='current_proxy_value', size=(40, 1), font='any 9',),
-                           ],
-                          [sg.Text('Segment size:'), sg.Input(default_text=seg_size, size=(6, 1),
-                                                              enable_events=True, key='segment_size'),
-                           sg.Combo(values=['KB', 'MB'], default_value=seg_size_unit, size=(4, 1), key='seg_size_unit',
-                                    enable_events=True),
-                           sg.Text(f'current value: {size_format(config.segment_size)}', size=(30, 1),
-                                   key='seg_current_value')],
-                          [sg.T('Setting Folder:'), sg.Combo(values=['Local', 'Global'], default_value='Local' if config.sett_folder == config.current_directory else 'Global',
-                                                             key='sett_folder', enable_events=True),
-                           sg.T(config.sett_folder, key='sett_folder_text', size=(50, 1))],
+        setting_layout = [[sg.T('User Settings:'), sg.T(' ', size=(50, 1)), sg.Button(' about ', key='about')],
+                          [sg.Frame('General:', layout=[
+                              [sg.T('Settings Folder:'), sg.Combo(values=['Local', 'Global'],
+                                                                  default_value='Local' if config.sett_folder == config.current_directory else 'Global',
+                                                                  key='sett_folder', enable_events=True),
+                               sg.T(config.sett_folder, key='sett_folder_text', size=(50, 1))],
+                              [sg.Text('Select Theme:  '),
+                               sg.Combo(values=config.all_themes, default_value=config.current_theme, size=(15, 1),
+                                        enable_events=True, key='themes'),
+                               sg.Text(f' Total: {len(config.all_themes)} Themes')],
+                              [sg.Checkbox('Monitor copied urls in clipboard', default=config.monitor_clipboard,
+                                           key='monitor', enable_events=True)],
+                              [sg.Checkbox("Show download window", key='show_download_window',
+                                           default=config.show_download_window, enable_events=True)],
+                              [sg.Text('Segment size:  '), sg.Input(default_text=seg_size, size=(6, 1),
+                                                                  enable_events=True, key='segment_size'),
+                               sg.Combo(values=['KB', 'MB'], default_value=seg_size_unit, size=(4, 1),
+                                        key='seg_size_unit',
+                                        enable_events=True),
+                               sg.Text(f'current value: {size_format(config.segment_size)}', size=(30, 1),
+                                       key='seg_current_value')],
+                          ])],
+
                           [sg.T('')],
-                          [sg.T('Check for update every:'),
-                           sg.Combo([1, 7, 30], default_value=config.update_frequency, size=(4, 1),
-                                    key='update_frequency', enable_events=True), sg.T('day(s).')],
-                          [sg.T('    '),
-                           sg.T('Youtube-dl version = 00.00.00', size=(50, 1), key='youtube_dl_update_note'),
-                           sg.Button('Check for update', key='update_youtube_dl')],
-                          [sg.T('    '),
-                           sg.T(f'pyIDM version = {config.APP_VERSION}', size=(50, 1), key='pyIDM_version_note'),
-                           sg.Button('Check for update', key='update_pyIDM')],
+
+                          [sg.Frame('Connection / Network:', layout=[
+                              [sg.Checkbox('Speed Limit:', default=True if config.speed_limit else False,
+                                           key='speed_limit_switch', enable_events=True,
+                                           tooltip='examples: 50 k, 10kb, 2m, 3mb, 20, 10MB '),
+                               sg.Input(default_text=config.speed_limit if config.speed_limit else '', size=(10, 1),
+                                        key='speed_limit',
+                                        disabled=False if config.speed_limit else True, enable_events=True),
+                               sg.T('0', size=(30, 1), key='current_speed_limit')],
+                              [sg.Text('Max concurrent downloads:      '),
+                               sg.Combo(values=[x for x in range(1, 101)], size=(5, 1), enable_events=True,
+                                        key='max_concurrent_downloads', default_value=config.max_concurrent_downloads)],
+                               [sg.Text('Max connections per download:'),
+                               sg.Combo(values=[x for x in range(1, 101)], size=(5, 1), enable_events=True,
+                                        key='max_connections', default_value=config.max_connections)],
+                              [sg.Checkbox('Proxy:', default=config.enable_proxy, key='enable_proxy',
+                                           enable_events=True),
+                               sg.I(default_text=config.raw_proxy, size=(25, 1), font='any 9', key='raw_proxy',
+                                    enable_events=True, disabled=not config.enable_proxy),
+                               sg.T('?', tooltip=proxy_tooltip),
+                               sg.Combo(['http', 'https', 'socks4', 'socks5'], default_value=config.proxy_type,
+                                        font='any 9',
+                                        enable_events=True, key='proxy_type'),
+                               sg.T(config.proxy if config.proxy else '_no proxy_', key='current_proxy_value',
+                                    size=(40, 1), font='any 9', ),
+                               ],
+                          ])],
+
+                          [sg.T('')],
+
+                          [sg.Frame('Update:', layout=[
+                              [sg.T('Check for update every:'),
+                               sg.Combo([1, 7, 30], default_value=config.update_frequency, size=(4, 1),
+                                        key='update_frequency', enable_events=True), sg.T('day(s).')],
+                              [sg.T('    '),
+                               sg.T(f'pyIDM version = {config.APP_VERSION}', size=(50, 1), key='pyIDM_version_note'),
+                               sg.Button('Check for update', key='update_pyIDM')],
+                              [sg.T('    '),
+                               sg.T('Youtube-dl version = 00.00.00', size=(50, 1), key='youtube_dl_update_note'),
+                               sg.Button('Check for update', key='update_youtube_dl')],
+                          ])],
+
+
+
+
+                          # [sg.T('')],
+                          # [sg.T('Website Auth:'), sg.T('user:'), sg.I(' ', size=(15, 1), key='username'), sg.T('    Pass:'), sg.I(' ', size=(15, 1),key='password')],
+
+
                           [sg.T('')],
 
                           ]
-        # put setting layout in a scrollable column, to add more options
+        # put Settings layout in a scrollable column, to add more options
         setting_layout = [[sg.Column(setting_layout, scrollable=True, vertical_scroll_only=True, size=(650, 370),
                                      key='col')]]
 
@@ -289,7 +316,7 @@ class MainWindow:
                        sg.Button('Clear Log')]]
 
         layout = [[sg.TabGroup(
-            [[sg.Tab('Main', main_layout), sg.Tab('Downloads', downloads_layout), sg.Tab('Setting', setting_layout),
+            [[sg.Tab('Main', main_layout), sg.Tab('Downloads', downloads_layout), sg.Tab('Settings', setting_layout),
               sg.Tab('Log', log_layout)]],
             key='tab_group')],
             [sg.StatusBar('', size=(81, 1), font='Helvetica 11', key='status_bar')]
@@ -391,9 +418,9 @@ class MainWindow:
             self.window.Element('status_bar').Update(
                 f'Active downloads: {len(self.active_downloads)}, pending: {len(self.pending)}')
 
-            # setting
+            # Settings
             speed_limit = size_format(config.speed_limit * 1024) if config.speed_limit > 0 else "_no limit_"
-            self.window['current_speed_limit'](f'current speed limit: {speed_limit}')
+            self.window['current_speed_limit'](f'{speed_limit}')
 
             self.window['youtube_dl_update_note'](
                 f'Youtube-dl version = {config.ytdl_VERSION}, Latest version = {config.ytdl_LATEST_VERSION}')
@@ -563,7 +590,7 @@ class MainWindow:
             elif event == 'stream_menu':
                 self.stream_OnChoice(values['stream_menu'])
 
-            # setting tab -------------------------------------------------------------------------------------------
+            # Settings tab -------------------------------------------------------------------------------------------
             elif event == 'themes':
                 config.current_theme = values['themes']
                 sg.ChangeLookAndFeel(config.current_theme)
@@ -574,7 +601,7 @@ class MainWindow:
                 self.download_windows = {}
 
                 self.restart_window()
-                self.select_tab('Setting')
+                self.select_tab('Settings')
 
             elif event == 'speed_limit_switch':
                 switch = values['speed_limit_switch']
@@ -649,7 +676,7 @@ class MainWindow:
             elif event == 'sett_folder':
                 selected = values['sett_folder']
                 if selected == 'Local':
-                    # choose local folder as a setting folder
+                    # choose local folder as a Settings folder
                     config.sett_folder = config.current_directory
 
                     # remove setting.cfg from global folder
@@ -1611,7 +1638,7 @@ class MainWindow:
             cursor_name = 'arrow'
 
         self.window['Main'].set_cursor(cursor_name)
-        self.window['Setting'].set_cursor(cursor_name)
+        self.window['Settings'].set_cursor(cursor_name)
 
     def main_frameOnClose(self):
         # config.terminate = True
