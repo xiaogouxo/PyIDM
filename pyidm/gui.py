@@ -192,7 +192,7 @@ class MainWindow:
 
         ]
 
-        # downloads tab
+        # downloads tab -----------------------------------------------------------------------------------------
         table_right_click_menu = ['Table', ['!Options for selected file:', '---', 'Open File', 'Open File Location',
                                             '▶ Watch while downloading', 'copy webpage url', 'copy download url',
                                             '⏳ Schedule download', '⏳ Cancel schedule!', 'properties']]
@@ -233,7 +233,7 @@ class MainWindow:
                               [sg.T('Settings Folder:'), sg.Combo(values=['Local', 'Global'],
                                                                   default_value='Local' if config.sett_folder == config.current_directory else 'Global',
                                                                   key='sett_folder', enable_events=True),
-                               sg.T(config.sett_folder, key='sett_folder_text', size=(50, 1))],
+                               sg.T(config.sett_folder, key='sett_folder_text', size=(60, 1), font='any 9')],
                               [sg.Text('Select Theme:  '),
                                sg.Combo(values=config.all_themes, default_value=config.current_theme, size=(15, 1),
                                         enable_events=True, key='themes'),
@@ -271,12 +271,12 @@ class MainWindow:
                                            enable_events=True),
                                sg.I(default_text=config.raw_proxy, size=(25, 1), font='any 9', key='raw_proxy',
                                     enable_events=True, disabled=not config.enable_proxy),
-                               sg.T('?', tooltip=proxy_tooltip),
+                               sg.T('?', tooltip=proxy_tooltip, pad=(3, 1)),
                                sg.Combo(['http', 'https', 'socks4', 'socks5'], default_value=config.proxy_type,
                                         font='any 9',
                                         enable_events=True, key='proxy_type'),
                                sg.T(config.proxy if config.proxy else '_no proxy_', key='current_proxy_value',
-                                    size=(40, 1), font='any 9', ),
+                                    size=(37, 1), font='any 9'),
                                ],
                           ])],
 
@@ -304,11 +304,12 @@ class MainWindow:
         setting_layout = [[sg.Column(setting_layout, scrollable=True, vertical_scroll_only=True, size=(650, 370),
                                      key='col')]]
 
+        # log tab ------------------------------------------------------------------------------------------------
         log_layout = [[sg.T('Details events:')], [sg.Multiline(default_text='', size=(70, 21), key='log', font='any 8',
                                                                autoscroll=True)],
                       [sg.T('Log Level:'), sg.Combo([1, 2, 3], default_value=config.log_level, enable_events=True,
                                                     size=(3, 1), key='log_level', tooltip='*(1=Standard, 2=Verbose, 3=Debugging)'),
-                       sg.T(f'*This log will be auto-saved at {config.sett_folder}', font='any 8', size=(70, 1), tooltip=config.current_directory),
+                       sg.T(f'*saved to {config.sett_folder}', font='any 8', size=(75, 1), tooltip=config.current_directory),
                        sg.Button('Clear Log')]]
 
         layout = [[sg.TabGroup(
