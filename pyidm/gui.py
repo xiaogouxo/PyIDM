@@ -147,6 +147,10 @@ class MainWindow:
 
     # region gui design
     def create_window(self):
+        # get current bg and text colors
+        bg_color = sg.theme_background_color()
+        text_color = sg.theme_text_color()
+
         # main tab
         # column for playlist menu
         col1 = [[sg.Combo(values=self.pl_menu, size=(34, 1), key='pl_menu', enable_events=True)],
@@ -162,7 +166,7 @@ class MainWindow:
             # url
             [sg.T('', size=(50, 1), justification='center', key='update_note', enable_events=True)],
             [sg.Text('URL:'), sg.Input(self.d.url, enable_events=True, key='url', size=(66, 1)),
-             sg.Button('Retry', key='Retry', tooltip=' retry ')],
+             sg.Button('Retry', key='Retry', tooltip=' retry ', font='any 9')],
             [sg.Text('Status:', size=(70, 1), key='status')],
 
             # spacer
@@ -177,10 +181,12 @@ class MainWindow:
              ],
 
             # file info
-            [sg.Text('File name:'), sg.Input('', size=(65, 1), key='name', enable_events=True)],
             [sg.T('-' * 300, key='file_properties')],
-            [sg.Text('Save To:  '), sg.Input(config.download_folder, size=(55, 1), key='folder', enable_events=True),
-             sg.FolderBrowse(key='browse')],
+
+            [sg.Text('File name:  '), sg.Input('', size=(65, 1), key='name', enable_events=True, background_color=bg_color, text_color=text_color)],
+
+            [sg.Text('Destination:'), sg.Input(config.download_folder, size=(55, 1), key='folder', enable_events=True, background_color=bg_color, text_color=text_color, ),
+             sg.FolderBrowse(key='browse', font='any 9')],
 
             # download button
 
