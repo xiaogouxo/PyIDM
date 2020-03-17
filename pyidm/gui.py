@@ -164,9 +164,8 @@ class MainWindow:
         main_layout = [
             [sg.Text(f'{config.APP_NAME}', font='any 20', justification='center', key='app_title')],
 
-            # url
-            [sg.T('', size=(50, 1), justification='center', key='update_note', enable_events=True)],
-            [sg.Text('URL:'), sg.Input(self.d.url, enable_events=True, key='url', size=(66, 1), right_click_menu=['url', ['copy url', 'paste url']]),
+            [sg.Text('URL:'), sg.T('', size=(50, 1), justification='center', key='update_note', enable_events=True)],
+            [sg.Input(self.d.url, enable_events=True, key='url', size=(66, 1), right_click_menu=['url', ['copy url', 'paste url']]),
              sg.Button('Retry', key='Retry', tooltip=' retry ', font='any 9')],
             [sg.Text('Status:', size=(70, 1), key='status')],
 
@@ -241,6 +240,7 @@ class MainWindow:
         """
         setting_layout = [[sg.T('User Settings:'), sg.T(' ', size=(50, 1)), sg.Button(' about ', key='about')],
                           [sg.Frame('General:', layout=[
+                              [sg.T('')],
                               [sg.T('Settings Folder:'), sg.Combo(values=['Local', 'Global'],
                                                                   default_value='Local' if config.sett_folder == config.current_directory else 'Global',
                                                                   key='sett_folder', enable_events=True),
@@ -265,6 +265,7 @@ class MainWindow:
                           [sg.T('')],
 
                           [sg.Frame('Connection / Network:', layout=[
+                              [sg.T('')],
                               [sg.Checkbox('Speed Limit:', default=True if config.speed_limit else False,
                                            key='speed_limit_switch', enable_events=True,
                                            tooltip='examples: 50 k, 10kb, 2m, 3mb, 20, 10MB '),
@@ -294,6 +295,7 @@ class MainWindow:
                           [sg.T('')],
 
                           [sg.Frame('Update:', layout=[
+                              [sg.T('')],
                               [sg.T('Check for update every:'),
                                sg.Combo([1, 7, 30], default_value=config.update_frequency, size=(4, 1),
                                         key='update_frequency', enable_events=True), sg.T('day(s).')],
@@ -664,10 +666,13 @@ class MainWindow:
                 self.url_text_change()
 
             elif event == 'copy url':
-                clipboard_write(values['url'])
+                url = values['url']
+                if url:
+                    clipboard_write(url)
 
             elif event == 'paste url':
                 self.window['url'](clipboard_read())
+                self.url_text_change()
 
             elif event == 'Download':
                 self.download_btn()
@@ -1094,7 +1099,7 @@ class MainWindow:
 
             #
             if response == 'Resume':
-                print('resuming')
+                log('resuming')
 
                 # to resume, size must match, otherwise it will just overwrite
                 if d.size == d_from_list.size:
@@ -1109,7 +1114,7 @@ class MainWindow:
                 self.d_list[found_index] = d
 
             elif response == 'Overwrite':
-                print('overwrite')
+                log('overwrite')
                 d.delete_tempfiles()
 
                 # replace old item in download list
