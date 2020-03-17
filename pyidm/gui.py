@@ -166,7 +166,7 @@ class MainWindow:
 
             # url
             [sg.T('', size=(50, 1), justification='center', key='update_note', enable_events=True)],
-            [sg.Text('URL:'), sg.Input(self.d.url, enable_events=True, key='url', size=(66, 1)),
+            [sg.Text('URL:'), sg.Input(self.d.url, enable_events=True, key='url', size=(66, 1), right_click_menu=['url', ['copy url', 'paste url']]),
              sg.Button('Retry', key='Retry', tooltip=' retry ', font='any 9')],
             [sg.Text('Status:', size=(70, 1), key='status')],
 
@@ -662,6 +662,12 @@ class MainWindow:
 
             elif event == 'url':
                 self.url_text_change()
+
+            elif event == 'copy url':
+                clipboard_write(values['url'])
+
+            elif event == 'paste url':
+                self.window['url'](clipboard_read())
 
             elif event == 'Download':
                 self.download_btn()
