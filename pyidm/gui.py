@@ -116,9 +116,7 @@ class MainWindow:
                 except Exception as e:
                     print(e)
 
-                # show youtube_dl activity in status text
-                if '[youtube]' in v:
-                    self.set_status(v.strip('\n'))
+                self.set_status(v.strip('\n'))
 
             elif k == 'url':
                 self.window.Element('url').Update(v)
@@ -231,8 +229,8 @@ class MainWindow:
             sg.Button('', key='Retry', tooltip=' retry ', image_data=refresh_icon, button_color=('black', bg_color), border_width=0)],
 
             # playlist/video block
-            [sg.Col([[sg.T('       '), sg.Image(data=thumbnail_icon), ]], size=(320, 110)),
-             sg.Frame('Playlist/video:', [[video_block]], relief=sg.RELIEF_SUNKEN), pl_button],
+            [sg.Col([[sg.T('       '), sg.Image(data=thumbnail_icon, key='main_thumbnail')]], size=(320, 110)),
+             sg.Frame('Playlist/video:', [[video_block]], relief=sg.RELIEF_SUNKEN, key='playlist_frame'), pl_button],
 
             # spacer
             [sg.T('', font='any 1')],
@@ -251,7 +249,7 @@ class MainWindow:
 
             # file properties
             [sg.T('-' * 300, key='file_properties', font='any 9'),
-             sg.T('     '), sg.Text('Status:', size=(10, 1), key='status', font='any 8', pad=(0, 0)),
+
              sg.ProgressBar(max_value=100, size=(1, 1), key='s_bar')
              ],
 
@@ -396,7 +394,12 @@ class MainWindow:
             [[sg.Tab('Main', main_layout), sg.Tab('Downloads', downloads_layout), sg.Tab('Settings', setting_layout),
               sg.Tab('Log', log_layout)]],
             key='tab_group')],
-            [sg.StatusBar('', size=(81, 1), font='Helvetica 11', key='status_bar')]
+            [
+             sg.T(r'', size=(73, 1), relief=sg.RELIEF_SUNKEN, font='any 8', key='status_bar'),
+             sg.Text('', size=(10, 1), key='status_code', relief=sg.RELIEF_SUNKEN, font='any 8'),
+             sg.T('5 ▼  |  6 ⏳', size=(12, 1), key='active_downloads', relief=sg.RELIEF_SUNKEN, font='any 8', tooltip=' active downloads | pending downloads '),
+             sg.T('⬇350 bytes/s', font='any 8', relief=sg.RELIEF_SUNKEN, size=(12, 1), key='total_speed'),
+            ]
         ]
 
         # window
@@ -409,7 +412,7 @@ class MainWindow:
 
         # expand elements to fit
         elements = ['url', 'name', 'folder', 'm_bar', 'pl_menu', 'file_properties', 'update_note',
-                    'stream_menu', 'log', 'status_bar', ]  # elements to be expanded , 'youtube_frame' 'app_title','s_bar',
+                    'stream_menu', 'log',  ]  # elements to be expanded , 'youtube_frame' 'app_title','s_bar', 'status_bar',
         for e in elements:
             self.window[e].expand(expand_x=True)
 
@@ -491,9 +494,8 @@ class MainWindow:
                 # update selected item number
                 self.window.Element('selected_row_num').Update('---')
 
-            # update status bar
-            self.window.Element('status_bar').Update(
-                f'Active downloads: {len(self.active_downloads)}, pending: {len(self.pending)}')
+            # update active and pending downloads
+            self.window['active_downloads'](f' {len(self.active_downloads)} ▼  |  {len(self.pending)} ⏳')
 
             # Settings
             speed_limit = size_format(config.speed_limit * 1024) if config.speed_limit > 0 else "_no limit_"
@@ -503,6 +505,13 @@ class MainWindow:
                 f'Youtube-dl version = {config.ytdl_VERSION}, Latest version = {config.ytdl_LATEST_VERSION}')
             self.window['pyIDM_version_note'](
                 f'pyIDM version = {config.APP_VERSION}, Latest version = {config.APP_LATEST_VERSION}')
+
+            # update total speed
+            total_speed = 0
+            for i in self.active_downloads:
+                d = self.d_list[i]
+                total_speed += d.speed
+            self.window['total_speed'](f'⬇ {size_format(total_speed, "/s")}')
 
         except Exception as e:
             log('MainWindow.update_gui() error:', e)
@@ -514,9 +523,9 @@ class MainWindow:
         self.disabled = True
 
     def set_status(self, text):
-        """update text under url input widget"""
+        """update status bar text widget"""
         try:
-            self.window.Element('status').Update(text)
+            self.window['status_bar'](text)
         except:
             pass
 
@@ -526,6 +535,7 @@ class MainWindow:
         """main loop"""
         timer1 = 0
         timer2 = 0
+        statusbar_timer = 0
         one_time = True
         while True:
             event, values = self.window.Read(timeout=50)
@@ -861,6 +871,11 @@ class MainWindow:
                 else:
                     self.window['update_note']('')
 
+            # reset statusbar periodically
+            if time.time() - statusbar_timer >= 3:
+                statusbar_timer = time.time()
+                self.set_status('')
+
     # region headers
     def refresh_headers(self, url):
         if self.d.url != '':
@@ -874,7 +889,12 @@ class MainWindow:
         # update headers only if no other curl thread created with different url
         if url == self.d.url:
 
-            self.set_status(self.d.status_code_description)
+            # update status code widget
+            try:
+                self.window['status_code'](f'status: {self.d.status_code}')
+            except:
+                pass
+            # self.set_status(self.d.status_code_description)
 
             # enable download button
             if self.d.status_code not in self.bad_headers and self.d.type != 'text/html':
@@ -1354,6 +1374,19 @@ class MainWindow:
         self.m_bar = 0
         self.s_bar = 0
 
+    def show_thumbnail(self, url):
+        if not self.video.thumbnail:
+            thumbnail = process_thumbnail(url)
+            self.video.thumbnail = thumbnail
+        else:
+            thumbnail = self.video.thumbnail
+
+        try:
+            if thumbnail:
+                self.window['main_thumbnail'](data=thumbnail)
+        except Exception as e:
+            log('show thumbnail()> error:', e)
+
     def youtube_func(self):
         """fetch metadata from youtube and other stream websites"""
         # todo: parse youtube-dl log lines "[download] Downloading video 3 of 30" to get progress value and use one progress bar
@@ -1436,7 +1469,7 @@ class MainWindow:
             if not self.playlist:
                 self.reset_video_controls()
                 self.disable()
-                self.set_status('')
+                # self.set_status('')
                 self.change_cursor('default')
                 self.reset()
                 log('youtube func: quitting, can not extract videos')
@@ -1494,7 +1527,9 @@ class MainWindow:
     def update_pl_menu(self):
         try:
             # set playlist label
-            self.set_status(f'{len(self.playlist)} videos in Playlist: {self.pl_title}')
+            # self.set_status(f'{len(self.playlist)} videos in Playlist: {self.pl_title}')
+            num = len(self.playlist)
+            self.window['playlist_frame'](value=f'Playlist ({num} {"video" if {num > 1} else "videos"}):')
 
             # update playlist menu items
             self.pl_menu = [str(i + 1) + '- ' + video.title for i, video in enumerate(self.playlist)]
@@ -1506,6 +1541,10 @@ class MainWindow:
 
     def update_video_param(self):
         self.d = self.video
+
+        thumbnail_url = self.video.thumbnail_url
+        if thumbnail_url:
+            self.show_thumbnail(thumbnail_url)
 
     def update_stream_menu(self):
         try:
@@ -1728,9 +1767,10 @@ class MainWindow:
         self.url_text_change()
 
     def reset(self):
-        # reset some values
-        # self.d.reset()
+        # create new download item, the old one will be garbage collected by python interpreter
         self.d = DownloadItem()
+
+        # reset some values
         self.set_status('')
         self.playlist = []
         self.video = None
@@ -1738,6 +1778,7 @@ class MainWindow:
         # widgets
         self.disable()
         self.reset_video_controls()
+        self.window['status_code']('')
 
     def change_cursor(self, cursor='default'):
         # todo: check if we can set cursor  for window not individual tabs
