@@ -27,16 +27,14 @@ from . import video
 from .video import Video, check_ffmpeg, download_ffmpeg, unzip_ffmpeg, get_ytdl_options
 from .about import about_notes
 from .downloaditem import DownloadItem
+from .iconsbase64 import *
 
 # todo: this module needs some clean up
 
 # gui Settings
 config.all_themes = natural_sort(sg.ListOfLookAndFeelValues())
-sg.SetOptions(icon=config.APP_ICON, font='Helvetica 11', auto_size_buttons=True, progress_meter_border_depth=0,
-              border_width=1)
-
-# todo: change buttons to images, pysimplegui can set transparent buttons see below link
-# https://github.com/PySimpleGUI/PySimpleGUI/issues/142#issuecomment-590126165
+sg.SetOptions(icon=config.APP_ICON, font='Helvetica 10', auto_size_buttons=True, progress_meter_border_depth=0,
+              border_width=1)  # Helvetica font is guaranteed to work on all operating systems
 
 
 class MainWindow:
@@ -147,7 +145,8 @@ class MainWindow:
                 self.show_update_gui()
 
     # region gui design
-    def create_window(self):
+    def create_classic_main_tab(self):
+        """Create main tab layout, this is a classic method which use the old design without icons"""
         # get current bg and text colors
         bg_color = sg.theme_background_color()
         text_color = sg.theme_text_color()
@@ -190,7 +189,7 @@ class MainWindow:
             [sg.Text('Destination:'),
              sg.Input(config.download_folder, size=(55, 1), key='folder', enable_events=True, background_color=bg_color,
                       text_color=text_color, ),
-             sg.FolderBrowse(key='browse', font='any 9')],
+             sg.FolderBrowse(' ... ', key='browse', font='any 9')],
 
             # download button
 
@@ -201,6 +200,72 @@ class MainWindow:
                        size=(150, 40), justification='center')],
 
         ]
+
+        return  main_layout
+
+    def create_main_tab(self):
+        # get current bg and text colors
+        bg_color = sg.theme_background_color()
+        text_color = sg.theme_text_color() if sg.theme_text_color() != "1234567890" else 'black'
+
+        # column for playlist menu
+        video_block = sg.Col([
+                              [sg.Combo(values=self.pl_menu, size=(34, 1), key='pl_menu', enable_events=True)],
+                              [sg.Combo(values=self.stream_menu, size=(34, 1), key='stream_menu', enable_events=True)],
+                              [sg.ProgressBar(max_value=100, size=(20, 9), key='m_bar', pad=(5, 9))]], size=(278, 80))
+
+        pl_button = sg.Button('', size=(2, 1), tooltip='download this playlist', key='pl_download',
+                              image_data=playlist_icon, button_color=('black', bg_color), border_width=0)
+
+        layout = [
+            # spacer
+            [sg.T('', font='any 2')],
+
+            # app icon and app name
+            [ sg.Image(data=APP_ICON), sg.Text(f'{config.APP_NAME}', font='any 20', justification='center', key='app_title'),
+            sg.T('', size=(50, 1), justification='center', key='update_note', enable_events=True, font='any 9'),],
+
+            # url entry
+            [sg.T('Link:  '),
+            sg.Input(self.d.url, enable_events=True, key='url', size=(49, 1),  right_click_menu=['url', ['copy url', 'paste url']]),
+            sg.Button('', key='Retry', tooltip=' retry ', image_data=refresh_icon, button_color=('black', bg_color), border_width=0)],
+
+            # playlist/video block
+            [sg.Col([[sg.T('       '), sg.Image(data=thumbnail_icon), ]], size=(320, 110)),
+             sg.Frame('Playlist/video:', [[video_block]], relief=sg.RELIEF_SUNKEN), pl_button],
+
+            # spacer
+            [sg.T('', font='any 1')],
+
+            # folder
+            [sg.Image(data=folder_icon),
+             sg.Input(config.download_folder, size=(55, 1), key='folder', enable_events=True, background_color=bg_color,
+                      text_color=text_color, ),
+             sg.B('', image_data=browse_icon, button_color=(text_color, bg_color), border_width=0, key='browse',
+                  button_type=sg.BUTTON_TYPE_BROWSE_FOLDER, target='folder')],
+
+            # file name
+            [sg.Text('file:', pad=(5, 0)),
+             sg.Input('', size=(65, 1), key='name', enable_events=True, background_color=bg_color,
+                      text_color=text_color), sg.Text('      ')],
+
+            # file properties
+            [sg.T('-' * 300, key='file_properties', font='any 9'),
+             sg.T('     '), sg.Text('Status:', size=(10, 1), key='status', font='any 8', pad=(0, 0)),
+             sg.ProgressBar(max_value=100, size=(1, 1), key='s_bar')
+             ],
+
+            # download button
+            [sg.Column([[sg.B('', tooltip='Main download Engine', image_data=download_icon, key='Download')]],
+                       size=(200, 50), justification='center')],
+
+        ]
+
+        return layout
+
+    def create_window(self):
+        # main tab layout
+        main_layout = self.create_main_tab()
 
         # downloads tab -----------------------------------------------------------------------------------------
         table_right_click_menu = ['Table', ['!Options for selected file:', '---', 'Open File', 'Open File Location',
@@ -338,199 +403,13 @@ class MainWindow:
         window = sg.Window(title=config.APP_TITLE, layout=layout, size=(700, 450), margins=(2, 2))
         return window
 
-    def create_window2(self):
-        """This is a test layout to check for new mods"""
-        # get current bg and text colors
-        bg_color = sg.theme_background_color()
-        text_color = sg.theme_text_color()
-
-        # main tab
-        # column for playlist menu
-        col1 = [[sg.Combo(values=self.pl_menu, size=(34, 1), key='pl_menu', enable_events=True)],
-                [sg.ProgressBar(max_value=100, size=(20, 5), key='m_bar')]]
-
-        # column for stream menu
-        col2 = [[sg.Combo(values=self.stream_menu, size=(34, 1), key='stream_menu', enable_events=True)],
-                [sg.ProgressBar(max_value=100, size=(20, 5), key='s_bar')]]
-
-        main_layout = [
-            [sg.Text(f'{config.APP_NAME}', font='any 20', justification='center', key='app_title')],
-
-            # url
-            [sg.T('', size=(50, 1), justification='center', key='update_note', enable_events=True)],
-            [sg.Text('URL:'), sg.Input(self.d.url, enable_events=True, key='url', size=(66, 1)),
-             sg.Button('Retry', key='Retry', tooltip=' retry ', font='any 9')],
-            [sg.Text('Status:', size=(70, 1), key='status')],
-
-            # spacer
-            [sg.T('', font='any 1')],
-
-            # youtube playlist ⚡
-            [sg.Frame('Playlist / videos:', key='youtube_frame', pad=(5, 5), layout=[
-                [sg.Column(col1, size=(300, 40), pad=(10, 5)),
-                 sg.Button('⚡', pad=(0, 0), size=(2, 1), tooltip='download this playlist', key='pl_download'),
-                 sg.Column(col2, size=(300, 40), pad=(2, 5))]]
-                      )
-             ],
-
-            # file info
-            [sg.T('-' * 300, key='file_properties')],
-
-            [sg.Text('File name:  '), sg.Input('', size=(65, 1), key='name', enable_events=True, background_color=bg_color, text_color=text_color)],
-
-            [sg.Text('Destination:'), sg.Input(config.download_folder, size=(55, 1), key='folder', enable_events=True, background_color=bg_color, text_color=text_color, ),
-             sg.FolderBrowse(key='browse', font='any 9')],
-
-            # download button
-
-            [sg.Column([[sg.B('', font='Helvetica 14', border_width=0, pad=(0, 0), size=(100, 30),
-                              tooltip='Main download Engine', image_filename=r'C:\Users\mea\Desktop\dm\d3.png', image_size=(200, 50), button_color=(bg_color, bg_color)),
-
-                         # sg.B('▼',  font='Helvetica 14', pad=(5, 0), border_width=0, key='ytdl_dl_btn', size=(2, 1),
-                         #      tooltip='Alternative Download with youtube-dl')
-                         ]],
-                       size=(200, 50), justification='center')],
-
-        ]
-
-        # downloads tab -----------------------------------------------------------------------------------------
-        table_right_click_menu = ['Table', ['!Options for selected file:', '---', 'Open File', 'Open File Location',
-                                            '▶ Watch while downloading', 'copy webpage url', 'copy download url',
-                                            '⏳ Schedule download', '⏳ Cancel schedule!', 'properties']]
-        headings = ['i', 'name', 'progress', 'speed', 'left', 'done', 'size', 'status']
-        spacing = [' ' * 4, ' ' * 30, ' ' * 3, ' ' * 6, ' ' * 7, ' ' * 6, ' ' * 6, ' ' * 10]
-
-        downloads_layout = [[sg.Button('Resume'), sg.Button('Cancel'), sg.Button('Refresh'),
-                             sg.Button('Folder'), sg.Button('D.Window'),
-                             sg.T(' ' * 5), sg.T('Item:'),
-                             sg.T('---', key='selected_row_num', text_color='white', background_color='red')],
-                            [sg.Table(values=[spacing], headings=headings, size=(70, 13), justification='left',
-                                      vertical_scroll_only=False, key='table', enable_events=True, font='any 9',
-                                      right_click_menu=table_right_click_menu)],
-                            [sg.Button('Resume All'), sg.Button('Stop All'), sg.B('Schedule All'),
-                             sg.Button('Delete', button_color=('white', 'red')),
-                             sg.Button('Delete All', button_color=('white', 'red'))],
-                            ]
-
-        # Settings tab -------------------------------------------------------------------------------------------
-        seg_size = config.segment_size // 1024  # kb
-        if seg_size >= 1024:
-            seg_size = seg_size // 1024
-            seg_size_unit = 'MB'
-        else:
-            seg_size_unit = 'KB'
-
-        proxy_tooltip = """proxy setting examples:
-        - http://proxy_address:port
-        - 157.245.224.29:3128
-        
-        or if authentication required: 
-        - http://username:password@proxyserveraddress:port  
-        
-        then choose proxy type i.e. "http, https, socks4, or socks5"  
-        """
-        setting_layout = [[sg.T('User Settings:'), sg.T(' ', size=(50, 1)), sg.Button(' about ', key='about')],
-                          [sg.Frame('General:', layout=[
-                              [sg.T('Settings Folder:'), sg.Combo(values=['Local', 'Global'],
-                                                                  default_value='Local' if config.sett_folder == config.current_directory else 'Global',
-                                                                  key='sett_folder', enable_events=True),
-                               sg.T(config.sett_folder, key='sett_folder_text', size=(60, 1), font='any 9')],
-                              [sg.Text('Select Theme:  '),
-                               sg.Combo(values=config.all_themes, default_value=config.current_theme, size=(15, 1),
-                                        enable_events=True, key='themes'),
-                               sg.Text(f' Total: {len(config.all_themes)} Themes')],
-                              [sg.Checkbox('Monitor copied urls in clipboard', default=config.monitor_clipboard,
-                                           key='monitor', enable_events=True)],
-                              [sg.Checkbox("Show download window", key='show_download_window',
-                                           default=config.show_download_window, enable_events=True)],
-                              [sg.Text('Segment size:  '), sg.Input(default_text=seg_size, size=(6, 1),
-                                                                  enable_events=True, key='segment_size'),
-                               sg.Combo(values=['KB', 'MB'], default_value=seg_size_unit, size=(4, 1),
-                                        key='seg_size_unit',
-                                        enable_events=True),
-                               sg.Text(f'current value: {size_format(config.segment_size)}', size=(30, 1),
-                                       key='seg_current_value')],
-                          ])],
-
-                          [sg.T('')],
-
-                          [sg.Frame('Connection / Network:', layout=[
-                              [sg.Checkbox('Speed Limit:', default=True if config.speed_limit else False,
-                                           key='speed_limit_switch', enable_events=True,
-                                           tooltip='examples: 50 k, 10kb, 2m, 3mb, 20, 10MB '),
-                               sg.Input(default_text=config.speed_limit if config.speed_limit else '', size=(10, 1),
-                                        key='speed_limit',
-                                        disabled=False if config.speed_limit else True, enable_events=True),
-                               sg.T('0', size=(30, 1), key='current_speed_limit')],
-                              [sg.Text('Max concurrent downloads:      '),
-                               sg.Combo(values=[x for x in range(1, 101)], size=(5, 1), enable_events=True,
-                                        key='max_concurrent_downloads', default_value=config.max_concurrent_downloads)],
-                               [sg.Text('Max connections per download:'),
-                               sg.Combo(values=[x for x in range(1, 101)], size=(5, 1), enable_events=True,
-                                        key='max_connections', default_value=config.max_connections)],
-                              [sg.Checkbox('Proxy:', default=config.enable_proxy, key='enable_proxy',
-                                           enable_events=True),
-                               sg.I(default_text=config.raw_proxy, size=(25, 1), font='any 9', key='raw_proxy',
-                                    enable_events=True, disabled=not config.enable_proxy),
-                               sg.T('?', tooltip=proxy_tooltip, pad=(3, 1)),
-                               sg.Combo(['http', 'https', 'socks4', 'socks5'], default_value=config.proxy_type,
-                                        font='any 9',
-                                        enable_events=True, key='proxy_type'),
-                               sg.T(config.proxy if config.proxy else '_no proxy_', key='current_proxy_value',
-                                    size=(37, 1), font='any 9'),
-                               ],
-                          ])],
-
-                          [sg.T('')],
-
-                          [sg.Frame('Update:', layout=[
-                              [sg.T('Check for update every:'),
-                               sg.Combo([1, 7, 30], default_value=config.update_frequency, size=(4, 1),
-                                        key='update_frequency', enable_events=True), sg.T('day(s).')],
-                              [sg.T('    '),
-                               sg.T(f'pyIDM version = {config.APP_VERSION}', size=(50, 1), key='pyIDM_version_note'),
-                               sg.Button('Check for update', key='update_pyIDM')],
-                              [sg.T('    '),
-                               sg.T('Youtube-dl version = 00.00.00', size=(50, 1), key='youtube_dl_update_note'),
-                               sg.Button('Check for update', key='update_youtube_dl')],
-                          ])],
-
-                          # [sg.T('')],
-                          # [sg.T('Website Auth:'), sg.T('user:'), sg.I(' ', size=(15, 1), key='username'), sg.T('    Pass:'), sg.I(' ', size=(15, 1),key='password')],
-
-                          [sg.T('')],
-
-                          ]
-        # put Settings layout in a scrollable column, to add more options
-        setting_layout = [[sg.Column(setting_layout, scrollable=True, vertical_scroll_only=True, size=(650, 370),
-                                     key='col')]]
-
-        # log tab ------------------------------------------------------------------------------------------------
-        log_layout = [[sg.T('Details events:')], [sg.Multiline(default_text='', size=(70, 21), key='log', font='any 8',
-                                                               autoscroll=True)],
-                      [sg.T('Log Level:'), sg.Combo([1, 2, 3], default_value=config.log_level, enable_events=True,
-                                                    size=(3, 1), key='log_level', tooltip='*(1=Standard, 2=Verbose, 3=Debugging)'),
-                       sg.T(f'*saved to {config.sett_folder}', font='any 8', size=(75, 1), tooltip=config.current_directory),
-                       sg.Button('Clear Log')]]
-
-        layout = [[sg.TabGroup(
-            [[sg.Tab('Main', main_layout), sg.Tab('Downloads', downloads_layout), sg.Tab('Settings', setting_layout),
-              sg.Tab('Log', log_layout)]],
-            key='tab_group')],
-            [sg.StatusBar('', size=(81, 1), font='Helvetica 11', key='status_bar')]
-        ]
-
-        # window
-        window = sg.Window(title=config.APP_TITLE, layout=layout, size=(700, 450), margins=(2, 2))
-        return window
-
     def start_window(self):
         self.window = self.create_window()
         self.window.Finalize()
 
         # expand elements to fit
-        elements = ['url', 'name', 'folder', 'youtube_frame', 'm_bar', 's_bar', 'pl_menu', 'update_note', 'app_title',
-                    'stream_menu', 'log', 'status_bar', 'file_properties']  # elements to be expanded
+        elements = ['url', 'name', 'folder', 'm_bar', 'pl_menu', 'file_properties', 'update_note',
+                    'stream_menu', 'log', 'status_bar', ]  # elements to be expanded , 'youtube_frame' 'app_title','s_bar',
         for e in elements:
             self.window[e].expand(expand_x=True)
 
@@ -598,7 +477,7 @@ class MainWindow:
             file_properties = f'Size: {size_format(self.d.total_size)} - Type: {self.d.type} ' \
                               f'{"fragments" if self.d.fragments else ""} - ' \
                               f'Protocol: {self.d.protocol} - Resumable: {"Yes" if self.d.resumable else "No"} ...'
-            self.window['file_properties'](file_properties)
+            self.window['file_properties'](file_properties)  # todo: uncomment here
 
             # download list / table
             table_values = [[self.format_cell_data(key, getattr(d, key, '')) for key in self.d_headers] for d in
@@ -1477,6 +1356,7 @@ class MainWindow:
 
     def youtube_func(self):
         """fetch metadata from youtube and other stream websites"""
+        # todo: parse youtube-dl log lines "[download] Downloading video 3 of 30" to get progress value and use one progress bar
 
         # getting videos from youtube is time consuming, if another thread starts, it should cancel the previous one
         # create unique identification for this thread
