@@ -62,8 +62,8 @@ class MainWindow:
         self.pl_quality = None
         self._pl_menu = []
         self._stream_menu = []
-        self.s_bar_lock = Lock()  # a lock to access a video quality progress bar from threads
-        self._s_bar = 0  # side progress bar for video quality loading
+        self.m_bar_lock = Lock()  # a lock to access a video quality progress bar from threads
+        # self._s_bar = 0  # side progress bar for video quality loading
         self._m_bar = 0  # main playlist progress par
         self.stream_menu_selection = ''
 
@@ -117,6 +117,28 @@ class MainWindow:
                     print(e)
 
                 self.set_status(v.strip('\n'))
+
+                # parse youtube output
+                if '[download]' in v:  # "[download] Downloading video 3 of 30"
+                    try:
+                        b = v.rsplit(maxsplit=3)  # ['[download] Downloading video', '3', 'of', '30']
+                        total_num = int(b[-1])
+                        num = int(b[-3])
+
+                        # get 80% of this value and the remaining 20% will be for other processing
+                        percent = int(num * 100 / total_num)
+                        percent = percent * 4 // 5
+
+                        # update media progress bar
+                        self.m_bar = percent
+
+                        # update playlist frame title
+                        self.window['playlist_frame'](
+                            value=f'Playlist ({num} of {total_num} {"videos" if num > 1 else "video"}):')
+                    except:
+                        pass
+
+
 
             elif k == 'url':
                 self.window.Element('url').Update(v)
@@ -250,7 +272,7 @@ class MainWindow:
             # file properties
             [sg.T('-' * 300, key='file_properties', font='any 9'),
 
-             sg.ProgressBar(max_value=100, size=(1, 1), key='s_bar')
+             # sg.ProgressBar(max_value=100, size=(1, 1), key='s_bar')
              ],
 
             # download button
@@ -1320,19 +1342,23 @@ class MainWindow:
         except:
             pass
 
-    @property
-    def s_bar(self):
-        """streams progress bar"""
-        return self._s_bar
+    # @property
+    # def s_bar(self):
+    #     """streams progress bar"""
+    #     return self._s_bar
+    #
+    # @s_bar.setter
+    # def s_bar(self, value):
+    #     """streams progress bar"""
+    #     self._s_bar = value if value <= 100 else 100
+    #
+    #     # the whole progress should fill the last 20% of m_bar
+    #     self.m_bar += self._s_bar // 5
 
-    @s_bar.setter
-    def s_bar(self, value):
-        """streams progress bar"""
-        self._s_bar = value if value <= 100 else 100
-        try:
-            self.window['s_bar'].UpdateBar(value)
-        except:
-            pass
+        # try:
+        #     self.window['s_bar'].UpdateBar(value)
+        # except:
+        #     pass
 
     @property
     def pl_menu(self):
@@ -1367,6 +1393,7 @@ class MainWindow:
             self.reset_progress_bar()
             self.pl_menu = ['Playlist']
             self.stream_menu = ['Video quality']
+            self.window['playlist_frame'](value='Playlist/video:')
         except:
             pass
 
@@ -1389,7 +1416,6 @@ class MainWindow:
 
     def youtube_func(self):
         """fetch metadata from youtube and other stream websites"""
-        # todo: parse youtube-dl log lines "[download] Downloading video 3 of 30" to get progress value and use one progress bar
 
         # getting videos from youtube is time consuming, if another thread starts, it should cancel the previous one
         # create unique identification for this thread
@@ -1406,7 +1432,7 @@ class MainWindow:
         self.change_cursor('busy')
 
         # main progress bar
-        self.m_bar = 10
+        self.m_bar = 2
 
         # reset playlist
         self.playlist = []
@@ -1431,7 +1457,7 @@ class MainWindow:
                 self.pl_title = info.get('title', '')
 
                 # main progress bar
-                self.m_bar = 30
+                # self.m_bar = 30
                 # check results if it's a playlist
                 if info.get('_type') == 'playlist' or 'entries' in info:
                     pl_info = list(info.get('entries'))
@@ -1439,16 +1465,16 @@ class MainWindow:
                     self.d.playlist_url = self.d.url
 
                     # progress bars
-                    self.m_bar = 50  # decide increment value in side bar based on number of threads
+                    # self.m_bar = 50  # decide increment value in side bar based on number of threads
 
-                    self.window['s_bar'].update_bar(0, max=len(pl_info))  # change maximum value
-                    s_bar_incr = 1  # 100 / len(pl_info) # 100 // len(pl_info) + 1 #
+                    # self.window['s_bar'].update_bar(0, max=len(pl_info))  # change maximum value
+                    m_bar_incr = 20 / len(pl_info)
 
                     self.playlist = [None for _ in range(len(pl_info))]  # fill list so we can store videos in order
                     v_threads = []
                     for num, item in enumerate(pl_info):
                         video_url = item.get('url', None) or item.get('webpage_url', None) or item.get('id', None)
-                        t = Thread(target=self.get_video, daemon=True, args=[num, video_url, yt_id, s_bar_incr])
+                        t = Thread(target=self.get_video, daemon=True, args=[num, video_url, yt_id, m_bar_incr])
                         v_threads.append(t)
                         t.start()
 
@@ -1504,7 +1530,7 @@ class MainWindow:
         finally:
             self.change_cursor('default')
 
-    def get_video(self, num, vid_url, yt_id, s_bar_incr):
+    def get_video(self, num, vid_url, yt_id, m_bar_incr):
         log('Main_window.get_video()> url:', vid_url)
         if not vid_url:
             return None
@@ -1521,20 +1547,19 @@ class MainWindow:
         except Exception as e:
             log('MainWindow.get_video:> ', e)
         finally:
-            with self.s_bar_lock:
-                self.s_bar += s_bar_incr
+            with self.m_bar_lock:
+                self.m_bar += m_bar_incr
 
     def update_pl_menu(self):
         try:
             # set playlist label
-            # self.set_status(f'{len(self.playlist)} videos in Playlist: {self.pl_title}')
             num = len(self.playlist)
-            self.window['playlist_frame'](value=f'Playlist ({num} {"video" if {num > 1} else "videos"}):')
+            self.window['playlist_frame'](value=f'Playlist ({num} {"videos" if num > 1 else "video"}):')
 
             # update playlist menu items
             self.pl_menu = [str(i + 1) + '- ' + video.title for i, video in enumerate(self.playlist)]
 
-            # choose current item
+            # choose first item in playlist
             self.video = self.playlist[0]
         except:
             pass
