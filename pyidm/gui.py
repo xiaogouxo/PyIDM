@@ -1250,7 +1250,7 @@ class MainWindow:
         # delete temp files
         for i in range(n):
             d = self.d_list[i]
-            d.delete_tempfiles()
+            Thread(target=d.delete_tempfiles, daemon=True).start()
 
         self.d_list.clear()
 
@@ -2044,6 +2044,10 @@ class DownloadWindow:
 
             if self.d.status in (Status.completed, Status.cancelled, Status.error) and config.auto_close_download_window:
                 self.close()
+
+            # change cancel button to done when completed
+            if self.d.status == Status.completed:
+                self.window['cancel'](text='Done', button_color=('black', 'green'))
 
             # log
             self.window['log2'](config.log_entry)
