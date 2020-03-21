@@ -1000,7 +1000,6 @@ class MainWindow:
                       'Overwrite ==> delete old downloads and overwrite existing item... \n' \
                       'note: "if you need fresh download, you have to change file name \n' \
                       'or target folder or delete same entry from download list'
-                # response = sg.PopupYesNo(msg)
                 window = sg.Window(title='', layout=[[sg.T(msg)], [sg.B('Resume'), sg.B('Overwrite'), sg.B('Cancel')]])
                 response, _ = window()
                 window.close()
@@ -1014,6 +1013,7 @@ class MainWindow:
                     log('resume is possible')
                     # get the same segment size
                     d.segment_size = d_from_list.segment_size
+                    d.downloaded = d_from_list.downloaded
                 else:
                     log('file: ', d.name, 'has different size and will be downloaded from beginning')
                     d.delete_tempfiles()
