@@ -6,7 +6,7 @@
     :copyright: (c) 2019-2020 by Mahmoud Elshahat.
     :license: GNU LGPLv3, see LICENSE for more details.
 """
-
+import base64
 import os
 import sys
 import io
@@ -23,8 +23,13 @@ import shlex
 import re
 import json
 import pyperclip as clipboard
+try:
+    from PIL import Image
+except:
+    print('pillow module is missing try to install it to display video thumbnails')
 
 from . import config
+from .iconsbase64 import thumbnail_icon
 
 
 def notify(msg, title='', timeout=5):
@@ -670,11 +675,67 @@ def natural_sort(my_list):
     return sorted(my_list, key=alphanum_key)
 
 
+def process_thumbnail(url):
+    """take url of thumbnail and return thumbnail overlayed ontop of baseplate"""
+
+    # check if pillow module installed and working
+    try:
+        # dummy operation will kick in error if module not PIL found
+        _ = Image.Image()
+    except:
+        log('pillow module is missing try to install it to display video thumbnails')
+        return None
+
+    try:
+        # load background image
+        if not config.thumbnail_bg:
+            bg = io.BytesIO(base64.b64decode(thumbnail_icon))
+            config.thumbnail_bg = Image.open(bg)
+
+        bg = config.thumbnail_bg
+
+        # downloading thumbnail
+        buffer = download(url)  # get BytesIO object
+        if not buffer:
+            return None
+
+        # read thumbnail image and call it fg "foreground"
+        fg = Image.open(buffer)
+
+        # create thumbnail less 10 pixels from background size
+        fg.thumbnail((bg.size[0]-10, bg.size[1] - 10))
+
+        # calculate centers
+        fg_center_x, fg_center_y = fg.size[0] // 2, fg.size[1] // 2
+        bg_center_x, bg_center_y = bg.size[0] // 2, bg.size[1] // 2
+
+        # calculate the box coordinates where we should paset our thumbnail
+        x = bg_center_x - fg_center_x
+        y = bg_center_y - fg_center_y
+        box = (x, y, x + fg.size[0], y + fg.size[1])
+
+        # paste foreground "thumbnail" on top of base plate "background"
+        bg.paste(fg, box)
+        # bg.show()
+
+        # encode final thumbnail into base64 string
+        buffered = io.BytesIO()
+        bg.save(buffered, format="PNG")
+        img_str = base64.b64encode(buffered.getvalue())
+        # print('img_str: ', img_str)
+
+        return img_str
+    except Exception as e:
+        log('process_thumbnail()> error', e)
+        return None
+
+
 __all__ = [
     'notify', 'handle_exceptions', 'get_headers', 'download', 'size_format', 'time_format', 'log',
     'validate_file_name', 'size_splitter', 'delete_folder', 'get_seg_size',
     'run_command', 'print_object', 'update_object', 'truncate', 'sort_dictionary', 'popup', 'compare_versions',
     'translate_server_code', 'validate_url', 'open_file', 'clipboard_read', 'clipboard_write', 'delete_file',
     'rename_file', 'load_json', 'save_json', 'echo_stdout', 'echo_stderr', 'log_recorder', 'natural_sort',
+    'process_thumbnail'
 
 ]
