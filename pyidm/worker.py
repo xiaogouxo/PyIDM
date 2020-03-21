@@ -258,7 +258,7 @@ class Worker:
 
         except Exception as e:
             if any(statement in repr(e) for statement in ('Failed writing body', 'Callback aborted')):
-                error = f'worker {self.tag} terminated by user'
+                error = f'terminated by user'
             else:
                 error = repr(e)
 
