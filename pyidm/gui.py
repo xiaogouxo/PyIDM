@@ -1,5 +1,5 @@
 """
-    pyIDM
+    PyIDM
 
     multi-connections internet download manager, based on "pyCuRL/curl", "youtube_dl", and "PySimpleGUI"
 
@@ -240,7 +240,8 @@ class MainWindow:
 
                 then choose proxy type i.e. "http, https, socks4, or socks5"  
                 """
-        layout = [[sg.T('User Settings:'), sg.T(' ', size=(50, 1)), sg.Button(' about ', key='about')],
+        layout = [[sg.T('User Settings:'), sg.T(' *scroll down to see all options', font='any 8', size=(75, 1)),
+                   sg.Button(' about ', key='about')],
 
                   # ---------------------------------------General settings------------------------------------------
                   [sg.Frame('General:', layout=[
@@ -250,7 +251,7 @@ class MainWindow:
                        sg.Combo(values=['Local', 'Global'],
                                 default_value='Local' if config.sett_folder == config.current_directory else 'Global',
                                 key='sett_folder', enable_events=True),
-                       sg.T(config.sett_folder, key='sett_folder_text', size=(60, 1), font='any 9')],
+                       sg.T(config.sett_folder, key='sett_folder_text', size=(100, 1), font='any 9')],
 
                       [sg.Text('Select Theme:  '),
                        sg.Combo(values=config.all_themes, default_value=config.current_theme, size=(15, 1),
@@ -262,6 +263,8 @@ class MainWindow:
 
                       [sg.Checkbox("Show download window", key='show_download_window',
                                    default=config.show_download_window, enable_events=True)],
+                      [sg.Checkbox("Auto close download window after finish downloading", key='auto_close_download_window',
+                                   default=config.auto_close_download_window, enable_events=True)],
 
                       [sg.Checkbox("Show video Thumbnail", key='show_thumbnail', default=config.show_thumbnail,
                                    enable_events=True)],
@@ -271,7 +274,7 @@ class MainWindow:
                        sg.Text(f'current value: {size_format(config.segment_size)}', size=(30, 1), key='seg_current_value')],
                   ])],
 
-                  [sg.T('')],
+                  [sg.T('', font='any 1')],
 
 
                   # --------------------------------------------connection / network-------------------------------
@@ -299,19 +302,19 @@ class MainWindow:
                                 font='any 9',
                                 enable_events=True, key='proxy_type'),
                        sg.T(config.proxy if config.proxy else '_no proxy_', key='current_proxy_value',
-                            size=(37, 1), font='any 9'),
+                            size=(100, 1), font='any 9'),
                        ],
                   ])],
 
                   [sg.T('')],
 
                   [sg.Frame('Update:', layout=[
-                      [sg.T('')],
+                      [sg.T(' ', size=(100, 1))],
                       [sg.T('Check for update every:'),
                        sg.Combo([1, 7, 30], default_value=config.update_frequency, size=(4, 1),
                                 key='update_frequency', enable_events=True), sg.T('day(s).')],
                       [sg.T('    '),
-                       sg.T(f'pyIDM version = {config.APP_VERSION}', size=(50, 1), key='pyIDM_version_note'),
+                       sg.T(f'PyIDM version = {config.APP_VERSION}', size=(50, 1), key='pyIDM_version_note'),
                        sg.Button('Check for update', key='update_pyIDM')],
                       [sg.T('    '),
                        sg.T('Youtube-dl version = 00.00.00', size=(50, 1), key='youtube_dl_update_note'),
@@ -319,7 +322,8 @@ class MainWindow:
                   ])],
 
                   # [sg.T('')],
-                  # [sg.T('Website Auth:'), sg.T('user:'), sg.I(' ', size=(15, 1), key='username'), sg.T('    Pass:'), sg.I(' ', size=(15, 1),key='password')],
+                  # [sg.T('Website Auth:'), sg.T('user:'), sg.I(' ', size=(15, 1), key='username'),
+                  # sg.T('    Pass:'), sg.I(' ', size=(15, 1),key='password')],
 
                   [sg.T('')],
 
@@ -479,7 +483,7 @@ class MainWindow:
             self.window['youtube_dl_update_note'](
                 f'Youtube-dl version = {config.ytdl_VERSION}, Latest version = {config.ytdl_LATEST_VERSION}')
             self.window['pyIDM_version_note'](
-                f'pyIDM version = {config.APP_VERSION}, Latest version = {config.APP_LATEST_VERSION}')
+                f'PyIDM version = {config.APP_VERSION}, Latest version = {config.APP_LATEST_VERSION}')
 
             # update total speed
             total_speed = 0
@@ -625,12 +629,16 @@ class MainWindow:
 
             elif event == 'D.Window':
                 # create download window
-                if self.selected_d and self.selected_d.status == Status.downloading:
-                    d = self.selected_d
-                    if d.id not in self.download_windows:
-                        self.download_windows[d.id] = DownloadWindow(d=d)
+                if self.selected_d:
+                    if config.auto_close_download_window and self.selected_d.status != Status.downloading:
+                        sg.Popup('To open download window offline \n'
+                                 'go to setting tab, then uncheck "auto close download window" option', title='info')
                     else:
-                        self.download_windows[d.id].focus()
+                        d = self.selected_d
+                        if d.id not in self.download_windows:
+                            self.download_windows[d.id] = DownloadWindow(d=d)
+                        else:
+                            self.download_windows[d.id].focus()
 
             elif event == 'Resume All':
                 self.resume_all_downloads()
@@ -728,6 +736,9 @@ class MainWindow:
 
             elif event == 'show_download_window':
                 config.show_download_window = values['show_download_window']
+
+            elif event == 'auto_close_download_window':
+                config.auto_close_download_window = values['auto_close_download_window']
 
             elif event in ('raw_proxy', 'http', 'https', 'socks4', 'socks5', 'proxy_type', 'enable_proxy'):
                 self.set_proxy()
@@ -1692,7 +1703,7 @@ class MainWindow:
             else:
                 sg.popup_error(
                     '"ffmpeg" is required to merge an audio stream with your video',
-                    'executable must be copied into pyIDM folder or add ffmpeg path to system PATH',
+                    'executable must be copied into PyIDM folder or add ffmpeg path to system PATH',
                     '',
                     'you can download it manually from https://www.ffmpeg.org/download.html',
                     title='ffmpeg is missing')
@@ -1998,11 +2009,12 @@ class DownloadWindow:
             [sg.ProgressBar(max_value=100, key='progress_bar', size=(42, 15), border_width=3)],
 
             # [sg.Column([[sg.Button('Hide', key='hide'), sg.Button('Cancel', key='cancel')]], justification='right')],
-            [sg.T(' ', key='status', size=(35, 1)), sg.Button('Hide', key='hide'), sg.Button('Cancel', key='cancel')],
-            [sg.T('', size=(100, 2),  font='any 8', key='log2')],
+            [sg.T(' ', key='status', size=(42, 1)), sg.Button('Hide', key='hide'), sg.Button('Cancel', key='cancel')],
+            [sg.T(' ', font='any 1')],
+            [sg.T('', size=(100, 1),  font='any 8', key='log2', relief=sg.RELIEF_RAISED)],
         ]
 
-        self.window = sg.Window(title=self.d.name, layout=layout, finalize=True, margins=(2, 2), size=(460, 220))
+        self.window = sg.Window(title=self.d.name, layout=layout, finalize=True, margins=(2, 2), size=(460, 205))
         self.window['progress_bar'].expand()
         self.window['percent'].expand()
 
@@ -2030,25 +2042,25 @@ class DownloadWindow:
                 self.progress_mode = 'indeterminate'
                 self.window['progress_bar'].Widget['value'] += 5
 
-            if self.d.status in (Status.completed, Status.cancelled, Status.error):
+            if self.d.status in (Status.completed, Status.cancelled, Status.error) and config.auto_close_download_window:
                 self.close()
 
             # log
-            self.window['log2']('Activity:\n' + config.log_entry)
+            self.window['log2'](config.log_entry)
 
             # percentage value to move with progress bar
             position = int(self.d.progress) - 5 if self.d.progress > 5 else 0
             self.window['percent'](f"{' ' * position} {self.d.progress}%")
 
             # status update
-            self.window['status'](f"{self.d.status}  {self.d.i} {'Please wait' if self.d.status==Status.merging_audio else ''}")
+            self.window['status'](f"{self.d.status}  {self.d.i}")
         except:
             pass
 
     def run(self):
         self.event, self.values = self.window.Read(timeout=self.timeout)
         if self.event in ('cancel', None):
-            if self.d.status != Status.error:
+            if self.d.status not in (Status.error, Status.completed):
                 self.d.status = Status.cancelled
             self.close()
 
