@@ -165,63 +165,6 @@ class MainWindow:
                 self.show_update_gui()
 
     # region gui design
-    def create_classic_main_tab(self):
-        """Create main tab layout, this is a classic method which use the old design without icons"""
-        # get current bg and text colors
-        bg_color = sg.theme_background_color()
-        text_color = sg.theme_text_color()
-
-        # main tab
-        # column for playlist menu
-        col1 = [[sg.Combo(values=self.pl_menu, size=(34, 1), key='pl_menu', enable_events=True)],
-                [sg.ProgressBar(max_value=100, size=(20, 5), key='m_bar')]]
-
-        # column for stream menu
-        col2 = [[sg.Combo(values=self.stream_menu, size=(34, 1), key='stream_menu', enable_events=True)],
-                [sg.ProgressBar(max_value=100, size=(20, 5), key='s_bar')]]
-
-        main_layout = [
-            [sg.Text(f'{config.APP_NAME}', font='any 20', justification='center', key='app_title')],
-
-            [sg.Text('URL:'), sg.T('', size=(50, 1), justification='center', key='update_note', enable_events=True)],
-            [sg.Input(self.d.url, enable_events=True, key='url', size=(66, 1), right_click_menu=['url', ['copy url', 'paste url']]),
-             sg.Button('Retry', key='Retry', tooltip=' retry ', font='any 9')],
-            [sg.Text('Status:', size=(70, 1), key='status')],
-
-            # spacer
-            [sg.T('', font='any 1')],
-
-            # youtube playlist ⚡
-            [sg.Frame('Playlist / videos:', key='youtube_frame', pad=(5, 5), layout=[
-                [sg.Column(col1, size=(300, 40), pad=(10, 5)),
-                 sg.Button('⚡', pad=(0, 0), size=(2, 1), tooltip='download this playlist', key='pl_download'),
-                 sg.Column(col2, size=(300, 40), pad=(2, 5))]]
-                      )
-             ],
-
-            # file info
-            [sg.T('-' * 300, key='file_properties')],
-
-            [sg.Text('File name:  '),
-             sg.Input('', size=(65, 1), key='name', enable_events=True, background_color=bg_color,
-                      text_color=text_color)],
-
-            [sg.Text('Destination:'),
-             sg.Input(config.download_folder, size=(55, 1), key='folder', enable_events=True, background_color=bg_color,
-                      text_color=text_color, ),
-             sg.FolderBrowse(' ... ', key='browse', font='any 9')],
-
-            # download button
-
-            [sg.Column([[sg.B('Download', font='Helvetica 14', border_width=0, pad=(0, 0), size=(10, 1),
-                              tooltip='Main download Engine'),
-                         sg.B('▼', font='Helvetica 14', pad=(5, 0), border_width=0, key='ytdl_dl_btn', size=(2, 1),
-                              tooltip='Alternative Download with youtube-dl')]],
-                       size=(150, 40), justification='center')],
-
-        ]
-
-        return  main_layout
 
     def create_main_tab(self):
         # get current bg and text colors
@@ -270,16 +213,119 @@ class MainWindow:
                       text_color=text_color), sg.Text('      ')],
 
             # file properties
-            [sg.T('-' * 300, key='file_properties', font='any 9'),
-
-             # sg.ProgressBar(max_value=100, size=(1, 1), key='s_bar')
-             ],
+            [sg.T('-' * 300, key='file_properties', font='any 9')],
 
             # download button
             [sg.Column([[sg.B('', tooltip='Main download Engine', image_data=download_icon, key='Download')]],
                        size=(200, 50), justification='center')],
 
         ]
+
+        return layout
+
+    def create_settings_tab(self):
+        seg_size = config.segment_size // 1024  # kb
+        if seg_size >= 1024:
+            seg_size = seg_size // 1024
+            seg_size_unit = 'MB'
+        else:
+            seg_size_unit = 'KB'
+
+        proxy_tooltip = """proxy setting examples:
+                - http://proxy_address:port
+                - 157.245.224.29:3128
+
+                or if authentication required: 
+                - http://username:password@proxyserveraddress:port  
+
+                then choose proxy type i.e. "http, https, socks4, or socks5"  
+                """
+        layout = [[sg.T('User Settings:'), sg.T(' ', size=(50, 1)), sg.Button(' about ', key='about')],
+
+                  # ---------------------------------------General settings------------------------------------------
+                  [sg.Frame('General:', layout=[
+                      [sg.T('')],
+
+                      [sg.T('Settings Folder:'),
+                       sg.Combo(values=['Local', 'Global'],
+                                default_value='Local' if config.sett_folder == config.current_directory else 'Global',
+                                key='sett_folder', enable_events=True),
+                       sg.T(config.sett_folder, key='sett_folder_text', size=(60, 1), font='any 9')],
+
+                      [sg.Text('Select Theme:  '),
+                       sg.Combo(values=config.all_themes, default_value=config.current_theme, size=(15, 1),
+                                enable_events=True, key='themes'),
+                       sg.Text(f' Total: {len(config.all_themes)} Themes')],
+
+                      [sg.Checkbox('Monitor copied urls in clipboard', default=config.monitor_clipboard,
+                                   key='monitor', enable_events=True)],
+
+                      [sg.Checkbox("Show download window", key='show_download_window',
+                                   default=config.show_download_window, enable_events=True)],
+
+                      [sg.Checkbox("Show video Thumbnail", key='show_thumbnail', default=config.show_thumbnail,
+                                   enable_events=True)],
+
+                      [sg.Text('Segment size:  '), sg.Input(default_text=seg_size, size=(6, 1), enable_events=True, key='segment_size'),
+                       sg.Combo(values=['KB', 'MB'], default_value=seg_size_unit, size=(4, 1), key='seg_size_unit', enable_events=True),
+                       sg.Text(f'current value: {size_format(config.segment_size)}', size=(30, 1), key='seg_current_value')],
+                  ])],
+
+                  [sg.T('')],
+
+
+                  # --------------------------------------------connection / network-------------------------------
+                  [sg.Frame('Connection / Network:', layout=[
+                      [sg.T('')],
+                      [sg.Checkbox('Speed Limit:', default=True if config.speed_limit else False,
+                                   key='speed_limit_switch', enable_events=True,
+                                   tooltip='examples: 50 k, 10kb, 2m, 3mb, 20, 10MB '),
+                       sg.Input(default_text=config.speed_limit if config.speed_limit else '', size=(10, 1),
+                                key='speed_limit',
+                                disabled=False if config.speed_limit else True, enable_events=True),
+                       sg.T('0', size=(30, 1), key='current_speed_limit')],
+                      [sg.Text('Max concurrent downloads:      '),
+                       sg.Combo(values=[x for x in range(1, 101)], size=(5, 1), enable_events=True,
+                                key='max_concurrent_downloads', default_value=config.max_concurrent_downloads)],
+                      [sg.Text('Max connections per download:'),
+                       sg.Combo(values=[x for x in range(1, 101)], size=(5, 1), enable_events=True,
+                                key='max_connections', default_value=config.max_connections)],
+                      [sg.Checkbox('Proxy:', default=config.enable_proxy, key='enable_proxy',
+                                   enable_events=True),
+                       sg.I(default_text=config.raw_proxy, size=(25, 1), font='any 9', key='raw_proxy',
+                            enable_events=True, disabled=not config.enable_proxy),
+                       sg.T('?', tooltip=proxy_tooltip, pad=(3, 1)),
+                       sg.Combo(['http', 'https', 'socks4', 'socks5'], default_value=config.proxy_type,
+                                font='any 9',
+                                enable_events=True, key='proxy_type'),
+                       sg.T(config.proxy if config.proxy else '_no proxy_', key='current_proxy_value',
+                            size=(37, 1), font='any 9'),
+                       ],
+                  ])],
+
+                  [sg.T('')],
+
+                  [sg.Frame('Update:', layout=[
+                      [sg.T('')],
+                      [sg.T('Check for update every:'),
+                       sg.Combo([1, 7, 30], default_value=config.update_frequency, size=(4, 1),
+                                key='update_frequency', enable_events=True), sg.T('day(s).')],
+                      [sg.T('    '),
+                       sg.T(f'pyIDM version = {config.APP_VERSION}', size=(50, 1), key='pyIDM_version_note'),
+                       sg.Button('Check for update', key='update_pyIDM')],
+                      [sg.T('    '),
+                       sg.T('Youtube-dl version = 00.00.00', size=(50, 1), key='youtube_dl_update_note'),
+                       sg.Button('Check for update', key='update_youtube_dl')],
+                  ])],
+
+                  # [sg.T('')],
+                  # [sg.T('Website Auth:'), sg.T('user:'), sg.I(' ', size=(15, 1), key='username'), sg.T('    Pass:'), sg.I(' ', size=(15, 1),key='password')],
+
+                  [sg.T('')],
+
+                  ]
+        # put Settings layout in a scrollable column, to add more options
+        layout = [[sg.Column(layout, scrollable=True, vertical_scroll_only=True, size=(650, 370), key='col')]]
 
         return layout
 
@@ -307,100 +353,7 @@ class MainWindow:
                             ]
 
         # Settings tab -------------------------------------------------------------------------------------------
-        seg_size = config.segment_size // 1024  # kb
-        if seg_size >= 1024:
-            seg_size = seg_size // 1024
-            seg_size_unit = 'MB'
-        else:
-            seg_size_unit = 'KB'
-
-        proxy_tooltip = """proxy setting examples:
-        - http://proxy_address:port
-        - 157.245.224.29:3128
-
-        or if authentication required: 
-        - http://username:password@proxyserveraddress:port  
-
-        then choose proxy type i.e. "http, https, socks4, or socks5"  
-        """
-        setting_layout = [[sg.T('User Settings:'), sg.T(' ', size=(50, 1)), sg.Button(' about ', key='about')],
-                          [sg.Frame('General:', layout=[
-                              [sg.T('')],
-                              [sg.T('Settings Folder:'), sg.Combo(values=['Local', 'Global'],
-                                                                  default_value='Local' if config.sett_folder == config.current_directory else 'Global',
-                                                                  key='sett_folder', enable_events=True),
-                               sg.T(config.sett_folder, key='sett_folder_text', size=(60, 1), font='any 9')],
-                              [sg.Text('Select Theme:  '),
-                               sg.Combo(values=config.all_themes, default_value=config.current_theme, size=(15, 1),
-                                        enable_events=True, key='themes'),
-                               sg.Text(f' Total: {len(config.all_themes)} Themes')],
-                              [sg.Checkbox('Monitor copied urls in clipboard', default=config.monitor_clipboard,
-                                           key='monitor', enable_events=True)],
-                              [sg.Checkbox("Show download window", key='show_download_window',
-                                           default=config.show_download_window, enable_events=True)],
-                              [sg.Text('Segment size:  '), sg.Input(default_text=seg_size, size=(6, 1),
-                                                                    enable_events=True, key='segment_size'),
-                               sg.Combo(values=['KB', 'MB'], default_value=seg_size_unit, size=(4, 1),
-                                        key='seg_size_unit',
-                                        enable_events=True),
-                               sg.Text(f'current value: {size_format(config.segment_size)}', size=(30, 1),
-                                       key='seg_current_value')],
-                          ])],
-
-                          [sg.T('')],
-
-                          [sg.Frame('Connection / Network:', layout=[
-                              [sg.T('')],
-                              [sg.Checkbox('Speed Limit:', default=True if config.speed_limit else False,
-                                           key='speed_limit_switch', enable_events=True,
-                                           tooltip='examples: 50 k, 10kb, 2m, 3mb, 20, 10MB '),
-                               sg.Input(default_text=config.speed_limit if config.speed_limit else '', size=(10, 1),
-                                        key='speed_limit',
-                                        disabled=False if config.speed_limit else True, enable_events=True),
-                               sg.T('0', size=(30, 1), key='current_speed_limit')],
-                              [sg.Text('Max concurrent downloads:      '),
-                               sg.Combo(values=[x for x in range(1, 101)], size=(5, 1), enable_events=True,
-                                        key='max_concurrent_downloads', default_value=config.max_concurrent_downloads)],
-                              [sg.Text('Max connections per download:'),
-                               sg.Combo(values=[x for x in range(1, 101)], size=(5, 1), enable_events=True,
-                                        key='max_connections', default_value=config.max_connections)],
-                              [sg.Checkbox('Proxy:', default=config.enable_proxy, key='enable_proxy',
-                                           enable_events=True),
-                               sg.I(default_text=config.raw_proxy, size=(25, 1), font='any 9', key='raw_proxy',
-                                    enable_events=True, disabled=not config.enable_proxy),
-                               sg.T('?', tooltip=proxy_tooltip, pad=(3, 1)),
-                               sg.Combo(['http', 'https', 'socks4', 'socks5'], default_value=config.proxy_type,
-                                        font='any 9',
-                                        enable_events=True, key='proxy_type'),
-                               sg.T(config.proxy if config.proxy else '_no proxy_', key='current_proxy_value',
-                                    size=(37, 1), font='any 9'),
-                               ],
-                          ])],
-
-                          [sg.T('')],
-
-                          [sg.Frame('Update:', layout=[
-                              [sg.T('')],
-                              [sg.T('Check for update every:'),
-                               sg.Combo([1, 7, 30], default_value=config.update_frequency, size=(4, 1),
-                                        key='update_frequency', enable_events=True), sg.T('day(s).')],
-                              [sg.T('    '),
-                               sg.T(f'pyIDM version = {config.APP_VERSION}', size=(50, 1), key='pyIDM_version_note'),
-                               sg.Button('Check for update', key='update_pyIDM')],
-                              [sg.T('    '),
-                               sg.T('Youtube-dl version = 00.00.00', size=(50, 1), key='youtube_dl_update_note'),
-                               sg.Button('Check for update', key='update_youtube_dl')],
-                          ])],
-
-                          # [sg.T('')],
-                          # [sg.T('Website Auth:'), sg.T('user:'), sg.I(' ', size=(15, 1), key='username'), sg.T('    Pass:'), sg.I(' ', size=(15, 1),key='password')],
-
-                          [sg.T('')],
-
-                          ]
-        # put Settings layout in a scrollable column, to add more options
-        setting_layout = [[sg.Column(setting_layout, scrollable=True, vertical_scroll_only=True, size=(650, 370),
-                                     key='col')]]
+        settings_layout = self.create_settings_tab()
 
         # log tab ------------------------------------------------------------------------------------------------
         log_layout = [[sg.T('Details events:')], [sg.Multiline(default_text='', size=(70, 21), key='log', font='any 8',
@@ -413,7 +366,7 @@ class MainWindow:
                        sg.Button('Clear Log')]]
 
         layout = [[sg.TabGroup(
-            [[sg.Tab('Main', main_layout), sg.Tab('Downloads', downloads_layout), sg.Tab('Settings', setting_layout),
+            [[sg.Tab('Main', main_layout), sg.Tab('Downloads', downloads_layout), sg.Tab('Settings', settings_layout),
               sg.Tab('Log', log_layout)]],
             key='tab_group')],
             [
@@ -434,7 +387,7 @@ class MainWindow:
 
         # expand elements to fit
         elements = ['url', 'name', 'folder', 'm_bar', 'pl_menu', 'file_properties', 'update_note',
-                    'stream_menu', 'log',  ]  # elements to be expanded , 'youtube_frame' 'app_title','s_bar', 'status_bar',
+                    'stream_menu', 'log']  # elements to be expanded
         for e in elements:
             self.window[e].expand(expand_x=True)
 
@@ -720,6 +673,9 @@ class MainWindow:
 
                 self.restart_window()
                 self.select_tab('Settings')
+
+            elif event == 'show_thumbnail':
+                config.show_thumbnail = values['show_thumbnail']
 
             elif event == 'speed_limit_switch':
                 switch = values['speed_limit_switch']
@@ -1342,24 +1298,6 @@ class MainWindow:
         except:
             pass
 
-    # @property
-    # def s_bar(self):
-    #     """streams progress bar"""
-    #     return self._s_bar
-    #
-    # @s_bar.setter
-    # def s_bar(self, value):
-    #     """streams progress bar"""
-    #     self._s_bar = value if value <= 100 else 100
-    #
-    #     # the whole progress should fill the last 20% of m_bar
-    #     self.m_bar += self._s_bar // 5
-
-        # try:
-        #     self.window['s_bar'].UpdateBar(value)
-        # except:
-        #     pass
-
     @property
     def pl_menu(self):
         """video playlist menu"""
@@ -1394,14 +1332,19 @@ class MainWindow:
             self.pl_menu = ['Playlist']
             self.stream_menu = ['Video quality']
             self.window['playlist_frame'](value='Playlist/video:')
+
+            # reset thumbnail
+            self.window['main_thumbnail'](data=thumbnail_icon)
         except:
             pass
 
     def reset_progress_bar(self):
         self.m_bar = 0
-        self.s_bar = 0
 
     def show_thumbnail(self, url):
+        if not config.show_thumbnail:
+            return
+
         if not self.video.thumbnail:
             thumbnail = process_thumbnail(url)
             self.video.thumbnail = thumbnail
@@ -1431,7 +1374,7 @@ class MainWindow:
         self.reset_video_controls()
         self.change_cursor('busy')
 
-        # main progress bar
+        # main progress bar initial indication
         self.m_bar = 2
 
         # reset playlist
@@ -1456,22 +1399,19 @@ class MainWindow:
                 # set playlist / video title
                 self.pl_title = info.get('title', '')
 
-                # main progress bar
-                # self.m_bar = 30
                 # check results if it's a playlist
                 if info.get('_type') == 'playlist' or 'entries' in info:
                     pl_info = list(info.get('entries'))
 
                     self.d.playlist_url = self.d.url
 
-                    # progress bars
-                    # self.m_bar = 50  # decide increment value in side bar based on number of threads
-
-                    # self.window['s_bar'].update_bar(0, max=len(pl_info))  # change maximum value
+                    # increment to media progressbar to complete last 20%
                     m_bar_incr = 20 / len(pl_info)
 
                     self.playlist = [None for _ in range(len(pl_info))]  # fill list so we can store videos in order
                     v_threads = []
+
+                    # getting video objects and update self.playlist
                     for num, item in enumerate(pl_info):
                         video_url = item.get('url', None) or item.get('webpage_url', None) or item.get('id', None)
                         t = Thread(target=self.get_video, daemon=True, args=[num, video_url, yt_id, m_bar_incr])
@@ -1486,7 +1426,6 @@ class MainWindow:
 
                 else:  # in case of single video
                     self.playlist = [Video(self.d.url, vid_info=info)]
-                    self.s_bar = 100
 
             # quit if main window terminated
             if config.terminate: return
@@ -1521,6 +1460,7 @@ class MainWindow:
             # self.enable_video_controls()
             self.enable()
 
+            # job completed
             self.m_bar = 100
 
         except Exception as e:
