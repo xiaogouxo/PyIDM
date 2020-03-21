@@ -32,13 +32,6 @@ def get_global_sett_folder():
     else:
         _sett_folder = config.current_directory
 
-    if not os.path.exists(_sett_folder):
-        try:
-            os.mkdir(_sett_folder)
-        except Exception as e:
-            _sett_folder = config.current_directory
-            print('setting folder error:', e)
-
     return _sett_folder
 
 
@@ -47,10 +40,14 @@ config.global_sett_folder = get_global_sett_folder()
 
 def locate_setting_folder():
     """check local folder and global setting folder for setting.cfg file"""
-    if 'setting.cfg' in os.listdir(config.current_directory):
-        return config.current_directory
-    elif 'setting.cfg' in os.listdir(config.global_sett_folder):
-        return config.global_sett_folder
+    # look for previous setting file
+    try:
+        if 'setting.cfg' in os.listdir(config.current_directory):
+            return config.current_directory
+        elif 'setting.cfg' in os.listdir(config.global_sett_folder):
+            return config.global_sett_folder
+    except:
+        pass
 
     # no setting file found will check local folder for writing permission, otherwise will return global sett folder
     try:
@@ -63,6 +60,11 @@ def locate_setting_folder():
     except PermissionError:
         log("No enough permission to store setting at local folder:", folder)
         log('Global setting folder will be selected:', config.global_sett_folder)
+
+        # create global setting folder if it doesn't exist
+        if not os.path.isdir(config.global_sett_folder):
+            os.mkdir(config.global_sett_folder)
+
         return config.global_sett_folder
 
 

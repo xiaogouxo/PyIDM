@@ -773,7 +773,27 @@ class MainWindow:
                     # remove setting.cfg from local folder
                     delete_file(os.path.join(config.current_directory, 'setting.cfg'))
 
-                # update display test
+                    # create global folder settings if it doesn't exist
+                    if not os.path.isdir(config.global_sett_folder):
+                        try:
+                            choice = sg.popup_ok_cancel(f'folder: {config.global_sett_folder}\n'
+                                                        f'will be created')
+                            if choice != 'OK':
+                                raise Exception('Operation Cancelled by User')
+                            else:
+                                os.mkdir(config.global_sett_folder)
+
+                        except Exception as e:
+                            log('global setting folder error:', e)
+                            config.sett_folder = config.current_directory
+                            sg.popup(f'Error while creating global settings folder\n'
+                                     f'"{config.global_sett_folder}"\n'
+                                     f'{str(e)}\n'
+                                     f'local folder will be used instead')
+                            self.window['sett_folder']('Local')
+                            self.window['sett_folder_text'](config.sett_folder)
+
+                # update display widget
                 try:
                     self.window['sett_folder_text'](config.sett_folder)
                 except:
@@ -1689,7 +1709,7 @@ class MainWindow:
             if config.operating_system == 'Windows':
                 layout = [[sg.T('"ffmpeg" is missing!! and need to be downloaded:\n')],
                           [sg.T('destination:')],
-                          [sg.Radio(f'recommended: {config.sett_folder}', group_id=0, key='radio1', default=True)],
+                          [sg.Radio(f'recommended: {config.global_sett_folder}', group_id=0, key='radio1', default=True)],
                           [sg.Radio(f'Local folder: {config.current_directory}', group_id=0, key='radio2')],
                           [sg.B('Download'), sg.Cancel()]]
 
@@ -1697,7 +1717,7 @@ class MainWindow:
 
                 event, values = window()
                 window.close()
-                selected_folder = config.sett_folder if values['radio1'] else config.current_directory
+                selected_folder = config.global_sett_folder if values['radio1'] else config.current_directory
                 if event == 'Download':
                     download_ffmpeg(destination=selected_folder)
             else:
