@@ -118,16 +118,16 @@ class MainWindow:
 
                 self.set_status(v.strip('\n'))
 
-                # parse youtube output
+                # parse youtube output while fetching playlist info with option "process=True"
                 if '[download]' in v:  # "[download] Downloading video 3 of 30"
                     try:
                         b = v.rsplit(maxsplit=3)  # ['[download] Downloading video', '3', 'of', '30']
                         total_num = int(b[-1])
                         num = int(b[-3])
 
-                        # get 80% of this value and the remaining 20% will be for other processing
+                        # get 50% of this value and the remaining 50% will be for other processing
                         percent = int(num * 100 / total_num)
-                        percent = percent * 4 // 5
+                        percent = percent // 2
 
                         # update media progress bar
                         self.m_bar = percent
@@ -137,8 +137,6 @@ class MainWindow:
                             value=f'Playlist ({num} of {total_num} {"videos" if num > 1 else "video"}):')
                     except:
                         pass
-
-
 
             elif k == 'url':
                 self.window.Element('url').Update(v)
@@ -1424,11 +1422,15 @@ class MainWindow:
             # youtube-dl process
             log(get_ytdl_options())
             with video.ytdl.YoutubeDL(get_ytdl_options()) as ydl:
-                info = ydl.extract_info(self.d.url, download=False, process=True)
+                # process=False is faster and youtube-dl will not download every videos webpage in the playlist
+                info = ydl.extract_info(self.d.url, download=False, process=False)
                 log('Media info:', info, log_level=3)
 
                 # set playlist / video title
                 self.pl_title = info.get('title', '')
+
+                # 50% done
+                self.m_bar = 50
 
                 # check results if it's a playlist
                 if info.get('_type') == 'playlist' or 'entries' in info:
@@ -1436,8 +1438,8 @@ class MainWindow:
 
                     self.d.playlist_url = self.d.url
 
-                    # increment to media progressbar to complete last 20%
-                    m_bar_incr = 20 / len(pl_info)
+                    # increment to media progressbar to complete last 50%
+                    m_bar_incr = 50 / len(pl_info)
 
                     self.playlist = [None for _ in range(len(pl_info))]  # fill list so we can store videos in order
                     v_threads = []
@@ -1455,8 +1457,8 @@ class MainWindow:
                     # clean playlist in case a slot left with 'None' value
                     self.playlist = [v for v in self.playlist if v]
 
-                else:  # in case of single video
-                    self.playlist = [Video(self.d.url, vid_info=info)]
+                else:  # in case of single video, will fetch video_info within Video object with process flag = True
+                    self.playlist = [Video(self.d.url, vid_info=None)]
 
             # quit if main window terminated
             if config.terminate: return
@@ -1496,6 +1498,7 @@ class MainWindow:
 
         except Exception as e:
             log('youtube_func()> error:', e)
+            raise e
             self.reset_video_controls()
 
         finally:
