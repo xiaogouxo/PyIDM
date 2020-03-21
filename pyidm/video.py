@@ -47,7 +47,11 @@ def get_ytdl_options():
     if config.proxy:
         ydl_opts['proxy'] = config.proxy
 
-    # if config.log_level >= 3:
+    # website authentication
+    # ydl_opts['username'] = ''
+    # ydl_opts['password'] = ''
+
+        # if config.log_level >= 3:
     #     ydl_opts['verbose'] = True  # it make problem with Frozen PyIDM, extractor doesn't work
     # elif config.log_level <= 1:
     #     ydl_opts['quiet'] = True  # it doesn't work
@@ -64,6 +68,7 @@ class Video(DownloadItem):
         self.resumable = True
         self.vid_info = vid_info  # a youtube-dl dictionary contains video information
 
+        # let youtube-dl fetch video info
         if self.vid_info is None:
             with ytdl.YoutubeDL(get_ytdl_options()) as ydl:
                 self.vid_info = ydl.extract_info(self.url, download=False)
@@ -86,6 +91,9 @@ class Video(DownloadItem):
         self.stream_menu = []  # it will be shown in video quality combo box != self.stream.names
         self.raw_stream_menu = [] # same as self.stream_menu but without size
         self._selected_stream = None
+
+        self.thumbnail_url = self.vid_info.get('thumbnail', '')
+        self.thumbnail = None  # base64 string
 
         # self.audio_url = None  # None for non dash videos
         # self.audio_size = 0
@@ -634,6 +642,8 @@ def pre_process_hls(d):
                 return buffer
 
         log('pre_process_hls()> received invalid m3u8 file from server')
+        if config.log_level >= 3:
+            log('---------------------------------------\n', buffer, '---------------------------------------\n')
         return None
 
     # download m3u8 files
@@ -676,7 +686,7 @@ def pre_process_hls(d):
 
     # build video segments
     d.segments = [Segment(name=os.path.join(d.temp_folder, str(i) + '.ts'), num=i, range=None, size=0,
-                          url=seg_url, tempfile=d.temp_file, merge=False)
+                          url=seg_url, tempfile=d.temp_file, merge=True)
                   for i, seg_url in enumerate(video_url_list)]
 
     # add video crypt keys
