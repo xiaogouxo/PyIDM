@@ -121,72 +121,32 @@ def save_d_list(d_list):
 
 
 def load_setting():
-    setting = {}
+    settings = {}
     try:
         log('Load Application setting from', config.sett_folder)
         file = os.path.join(config.sett_folder, 'setting.cfg')
         with open(file, 'r') as f:
-            setting = json.load(f)
+            settings = json.load(f)
 
     except FileNotFoundError:
         log('setting.cfg not found')
     except Exception as e:
         handle_exceptions(e)
     finally:
-        if not isinstance(setting, dict):
-            setting = {}
+        if not isinstance(settings, dict):
+            settings = {}
 
-        # download folder
-        folder = setting.get('download_folder', None)
-        if folder and os.path.isdir(folder):
-            config.download_folder = folder
-        else:
-            config.download_folder = os.path.join(os.path.expanduser("~"), 'Downloads')
-
-        config.current_theme = setting.get('current_theme', config.DEFAULT_THEME)
-        config.speed_limit = setting.get('speed_limit', 0)
-        config.monitor_clipboard = setting.get('monitor_clipboard', True)
-        config.show_download_window = setting.get('show_download_window', True)
-        config.max_concurrent_downloads = setting.get('max_concurrent_downloads', config.DEFAULT_CONCURRENT_CONNECTIONS)
-        config.max_connections = setting.get('max_connections', config.DEFAULT_CONNECTIONS)
-
-        config.raw_proxy = setting.get('raw_proxy', '')
-        config.proxy = setting.get('proxy', '')
-        config.proxy_type = setting.get('proxy_type', 'http')
-        config.enable_proxy = setting.get('enable_proxy', False)
-
-        config.segment_size = setting.get('segment_size', config.DEFAULT_SEGMENT_SIZE)
-        config.last_update_check = setting.get('last_update_check', 0)
-        config.update_frequency = setting.get('update_frequency', 1)
-
-        config.log_level = setting.get('log_level', config.DEFAULT_LOG_LEVEL)
+        # update config module
+        config.__dict__.update(settings)
 
 
 def save_setting():
-    setting = dict()
-    setting['download_folder'] = config.download_folder
-    setting['current_theme'] = config.current_theme
-    setting['speed_limit'] = config.speed_limit
-    setting['monitor_clipboard'] = config.monitor_clipboard
-    setting['show_download_window'] = config.show_download_window
-    setting['max_concurrent_downloads'] = config.max_concurrent_downloads
-    setting['max_connections'] = config.max_connections
-
-    setting['raw_proxy'] = config.raw_proxy
-    setting['proxy'] = config.proxy
-    setting['proxy_type'] = config.proxy_type
-    setting['enable_proxy'] = config.enable_proxy
-
-    setting['segment_size'] = config.segment_size
-    setting['last_update_check'] = config.last_update_check
-    setting['update_frequency'] = config.update_frequency
-
-    setting['log_level'] = config.log_level
+    settings = {key: config.__dict__.get(key) for key in config.settings_keys}
 
     try:
         file = os.path.join(config.sett_folder, 'setting.cfg')
         with open(file, 'w') as f:
-            json.dump(setting, f)
+            json.dump(settings, f)
             log('setting saved')
     except Exception as e:
         handle_exceptions(e)
