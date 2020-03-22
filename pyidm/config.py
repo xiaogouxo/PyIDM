@@ -101,9 +101,6 @@ d_list = []
 # queues
 main_window_q = Queue()  # queue for Main application window
 
-# icons
-thumbnail_bg = None  # a PIL image object for thumbnail background image
-
 # settings parameters to be saved on disk
 settings_keys = ['current_theme', 'monitor_clipboard', 'show_download_window', 'auto_close_download_window',
                  'segment_size', 'show_thumbnail', 'speed_limit', 'max_concurrent_downloads', 'max_connections',

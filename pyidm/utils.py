@@ -688,11 +688,8 @@ def process_thumbnail(url):
 
     try:
         # load background image
-        if not config.thumbnail_bg:
-            bg = io.BytesIO(base64.b64decode(thumbnail_icon))
-            config.thumbnail_bg = Image.open(bg)
-
-        bg = config.thumbnail_bg
+        bg = io.BytesIO(base64.b64decode(thumbnail_icon))
+        bg = Image.open(bg)
 
         # downloading thumbnail
         buffer = download(url)  # get BytesIO object
@@ -722,7 +719,6 @@ def process_thumbnail(url):
         buffered = io.BytesIO()
         bg.save(buffered, format="PNG")
         img_str = base64.b64encode(buffered.getvalue())
-        # print('img_str: ', img_str)
 
         return img_str
     except Exception as e:
