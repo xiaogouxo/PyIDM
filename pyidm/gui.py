@@ -1511,7 +1511,6 @@ class MainWindow:
 
         except Exception as e:
             log('youtube_func()> error:', e)
-            raise e
             self.reset_video_controls()
 
         finally:
