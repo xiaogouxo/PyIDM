@@ -1824,7 +1824,7 @@ class MainWindow:
         c_t = (t.tm_hour, t.tm_min)
         for d in self.d_list:
             if d.sched and d.sched[0] <= c_t[0] and d.sched[1] <= c_t[1]:
-                self.start_download(d)  # send for download
+                self.start_download(d, silent=True)  # send for download
                 d.sched = None  # cancel schedule time
 
     def ask_for_sched_time(self, msg=''):
