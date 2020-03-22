@@ -259,10 +259,11 @@ class Worker:
         except Exception as e:
             if any(statement in repr(e) for statement in ('Failed writing body', 'Callback aborted')):
                 error = f'terminated by user'
+                log('worker', self.tag, error, log_level=2)
             else:
                 error = repr(e)
+                log('worker', self.tag, ': quitting ...', error, self.seg.url, log_level=2)
 
-            self.debug('worker', self.tag, ': quitting ...', error, self.seg.url)
             self.report_not_completed()
 
     def write(self, data):
