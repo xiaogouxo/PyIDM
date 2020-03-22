@@ -34,13 +34,13 @@ else:
 
 try:
     with open(file_name) as fh:
-    	ext_pkgs = [x.strip() for x in fh.readlines()]
+        ext_pkgs = [x.strip() for x in fh.readlines()]
 except Exception as e:
     # no need to print output as an error since requirements.txt won't be available in pypi release and requirements 
     # will be installed automatically 
     # print('error loading requirements.txt', e)
     # print('falling back to requirements listed in dependency.py')
-    ext_pkgs = ['PySimpleGUI', 'pyperclip', 'plyer', 'certifi', 'youtube_dl', 'pycurl']
+    ext_pkgs = ['PySimpleGUI', 'pyperclip', 'plyer', 'certifi', 'youtube_dl', 'pycurl', 'pillow']
 
 # list of dependency
 missing_pkgs = [pkg for pkg in ext_pkgs if importlib.util.find_spec(pkg) is None]
