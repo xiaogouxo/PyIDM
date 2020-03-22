@@ -20,7 +20,7 @@ from urllib.parse import urljoin
 from . import config
 from .downloaditem import DownloadItem, Segment
 from .utils import log, validate_file_name, get_headers, size_format, run_command, size_splitter, get_seg_size, \
-    delete_file, download
+    delete_file, download, process_thumbnail
 
 # youtube-dl
 ytdl = None  # youtube-dl will be imported in a separate thread to save loading time
@@ -71,7 +71,7 @@ class Video(DownloadItem):
         # let youtube-dl fetch video info
         if self.vid_info is None:
             with ytdl.YoutubeDL(get_ytdl_options()) as ydl:
-                self.vid_info = ydl.extract_info(self.url, download=False)
+                self.vid_info = ydl.extract_info(self.url, download=False, process=True)
 
         self.webpage_url = url  # self.vid_info.get('webpage_url')
         self.title = validate_file_name(self.vid_info.get('title', f'video{int(time.time())}'))
@@ -171,6 +171,10 @@ class Video(DownloadItem):
         self._selected_stream = stream
 
         self.update_param()
+
+    def get_thumbnail(self):
+        if self.thumbnail_url and not self.thumbnail:
+            self.thumbnail = process_thumbnail(self.thumbnail_url)
 
     def update_param(self):
         # do some parameter updates
@@ -341,16 +345,19 @@ def check_ffmpeg():
     log('check ffmpeg availability?')
     found = False
 
-    # search in current directory then default setting folder
-    for folder in [config.current_directory, config.global_sett_folder]:
-        for file in os.listdir(folder):
-            # print(file)
-            if file == 'ffmpeg.exe':
-                found = True
-                config.ffmpeg_actual_path = os.path.join(folder, file)
+    # search in current app directory then default setting folder
+    try:
+        for folder in [config.current_directory, config.global_sett_folder]:
+            for file in os.listdir(folder):
+                # print(file)
+                if file == 'ffmpeg.exe':
+                    found = True
+                    config.ffmpeg_actual_path = os.path.join(folder, file)
+                    break
+            if found:  # break outer loop
                 break
-        if found:  # break outer loop
-            break
+    except:
+        pass
 
     # Search in the system
     if not found:

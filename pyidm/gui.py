@@ -81,6 +81,9 @@ class MainWindow:
         self.new_version_available = False
         self.new_version_description = None
 
+        # thumbnail
+        self.current_thumbnail = None
+
         # initial setup
         self.setup()
 
@@ -489,6 +492,14 @@ class MainWindow:
                 d = self.d_list[i]
                 total_speed += d.speed
             self.window['total_speed'](f'⬇ {size_format(total_speed, "/s")}')
+
+            # thumbnail
+            if self.video:
+                if self.video.thumbnail:
+                    self.show_thumbnail(thumbnail=self.video.thumbnail)
+                else:
+                    self.reset_thumbnail()
+
 
         except Exception as e:
             log('MainWindow.update_gui() error:', e)
@@ -1081,7 +1092,9 @@ class MainWindow:
                         'check your link or click "Retry"')
             return
 
+        # get copy of current download item
         d = copy.copy(self.d)
+
         d.folder = config.download_folder
 
         r = self.start_download(d, downloader=downloader)
@@ -1363,28 +1376,30 @@ class MainWindow:
             self.window['playlist_frame'](value='Playlist/video:')
 
             # reset thumbnail
-            self.window['main_thumbnail'](data=thumbnail_icon)
+            self.reset_thumbnail()
         except:
             pass
 
     def reset_progress_bar(self):
         self.m_bar = 0
 
-    def show_thumbnail(self, url):
-        if not config.show_thumbnail:
-            return
+    def reset_thumbnail(self):
+        """show a blank thumbnail background"""
+        self.show_thumbnail()
 
-        if not self.video.thumbnail:
-            thumbnail = process_thumbnail(url)
-            self.video.thumbnail = thumbnail
-        else:
-            thumbnail = self.video.thumbnail
+    def show_thumbnail(self, thumbnail=None):
+        """show video thumbnail in thumbnail image widget in main tab, call without parameter reset thumbnail"""
 
         try:
-            if thumbnail:
+            if thumbnail is None:
+                self.window['main_thumbnail'](data=thumbnail_icon)
+            elif thumbnail != self.current_thumbnail:
+                self.current_thumbnail = thumbnail
+
+                # new thumbnail
                 self.window['main_thumbnail'](data=thumbnail)
         except Exception as e:
-            log('show thumbnail()> error:', e)
+            log('show_thumbnai()>', e)
 
     def youtube_func(self):
         """fetch metadata from youtube and other stream websites"""
@@ -1404,7 +1419,7 @@ class MainWindow:
         self.change_cursor('busy')
 
         # main progress bar initial indication
-        self.m_bar = 2
+        self.m_bar = 10
 
         # reset playlist
         self.playlist = []
@@ -1487,8 +1502,6 @@ class MainWindow:
 
             # update playlist menu
             self.update_pl_menu()
-            self.update_stream_menu()  # uses the current self.video
-            self.update_video_param()  # take stream number as an argument, default 0
 
             # self.enable_video_controls()
             self.enable()
@@ -1533,17 +1546,10 @@ class MainWindow:
             # update playlist menu items
             self.pl_menu = [str(i + 1) + '- ' + video.title for i, video in enumerate(self.playlist)]
 
-            # choose first item in playlist
-            self.video = self.playlist[0]
+            # choose first item in playlist by triggering playlist_onchoice
+            self.playlist_OnChoice(self.pl_menu[0])
         except:
             pass
-
-    def update_video_param(self):
-        self.d = self.video
-
-        thumbnail_url = self.video.thumbnail_url
-        if thumbnail_url:
-            self.show_thumbnail(thumbnail_url)
 
     def update_stream_menu(self):
         try:
@@ -1563,8 +1569,17 @@ class MainWindow:
         index = self.pl_menu.index(selected_text)
         self.video = self.playlist[index]
 
+        # set current download item as self.video
+        self.d = self.video
+
         self.update_stream_menu()
-        self.update_video_param()
+
+        # get video thumbnail
+        if config.show_thumbnail:
+            Thread(target=self.video.get_thumbnail).start()
+
+        # instant widgets update
+        self.update_gui()
 
     def stream_OnChoice(self, selected_text):
         if selected_text not in self.stream_menu:
@@ -1575,7 +1590,6 @@ class MainWindow:
 
         self.stream_menu_selection = selected_text
         self.video.selected_stream = self.video.streams[selected_text]
-        self.update_video_param()
 
     def download_playlist(self):
 
