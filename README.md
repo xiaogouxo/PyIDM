@@ -10,7 +10,7 @@ with multi-connections, high speed engine,
 it downloads general files and videos from youtube and tons of other streaming websites . <br>
 Developed in Python, based on "pyCuRL/libcurl", "youtube_dl", and "PySimpleGUI"
 
-![main window](https://user-images.githubusercontent.com/58998813/74996093-4edbb480-545b-11ea-9b3c-a5b12740d21f.gif)
+![main animation](https://user-images.githubusercontent.com/58998813/77242050-2d5d1c80-6c03-11ea-8151-b85a897ff9fb.gif)
 
 ---
 **Features**:
@@ -18,6 +18,7 @@ Developed in Python, based on "pyCuRL/libcurl", "youtube_dl", and "PySimpleGUI"
 * Multi-connection downloading "Multithreading"
 * Scan and resume uncompleted downloads.
 * Support for Youtube, and a lot of stream websites "using youtube-dl to fetch info and libcurl to download data".
+* download entire video playlist or selected videos.
 * support for fragmented video streams.
 * support for encrypted/nonencrypted HLS media streams.
 * watch videos while downloading*   "some videos will have no audio until finish downloading"
@@ -95,10 +96,13 @@ python -m pip install --user --upgrade certifi PySimpleGUI pyperclip plyer youtu
 
 **more snapshots**
 
-![downloads_tab](https://user-images.githubusercontent.com/37757246/71418538-a0daa680-2673-11ea-82a8-e10e0ca673bd.PNG)
-![playlist_window](https://user-images.githubusercontent.com/58998813/71775076-22d7a300-2f83-11ea-8011-b45f2f2605f4.png)
-![setting_tab](https://user-images.githubusercontent.com/58998813/74783222-e4d1dc80-52ad-11ea-80b9-26741fe97a17.png)
-![d_window](https://user-images.githubusercontent.com/37757246/71418539-a0daa680-2673-11ea-8073-0c217fff7e9a.png)
+![Main_tab](https://user-images.githubusercontent.com/58998813/77241027-b40afd00-6bf5-11ea-8854-c181d1f9c957.PNG)
+![Main_tab2](https://user-images.githubusercontent.com/58998813/77240732-e155ac00-6bf1-11ea-8cd0-edc5facaa46a.PNG)
+![d_window](https://user-images.githubusercontent.com/58998813/77240959-ec5e0b80-6bf4-11ea-819e-83bd7bd13249.PNG)
+![downloads_tab](https://user-images.githubusercontent.com/58998813/77240740-f16d8b80-6bf1-11ea-8579-1705dd750bfd.PNG)
+![playlist_window](https://user-images.githubusercontent.com/58998813/77242155-12d77300-6c04-11ea-9e57-e781e67aaa3b.PNG)
+![setting_tab1](https://user-images.githubusercontent.com/58998813/77240742-f9c5c680-6bf1-11ea-860a-a434dcba599e.PNG)
+![setting_tab2](https://user-images.githubusercontent.com/58998813/77240744-fdf1e400-6bf1-11ea-92c6-bf2297524a80.PNG)
 ![Multi_window](https://user-images.githubusercontent.com/37757246/71418548-a2a46a00-2673-11ea-8101-c95d29b6a0e4.png)
 
 
