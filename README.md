@@ -47,7 +47,7 @@ Latest Windows portable version available [here](https://github.com/pyIDM/pyIDM/
 unzip, and run from pyidm.exe, no installation required.
 
 2. **pip**:<br>
-    `python -m pip install pyidm --upgrade`
+    `python -m pip install pyidm --upgrade --no-cache`
     
     then you can run application from Terminal by:<br>
     `python -m pyidm`          note pyidm name in small letters 
