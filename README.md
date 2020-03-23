@@ -87,7 +87,7 @@ pip install -r requirements.txt
 ```
 or
 ```
-python -m pip install --user --upgrade certifi PySimpleGUI pyperclip plyer youtube_dl pycurl
+python -m pip install --user --upgrade certifi PySimpleGUI pyperclip plyer youtube_dl pycurl pillow
 ```
 
 
