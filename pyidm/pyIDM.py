@@ -26,12 +26,9 @@ if __package__ is None:
     __package__ = 'pyidm'
     import pyidm
 
-# check and auto install external modules defined in requirements.txt
+# check and auto install external modules
 from .dependency import install_missing_pkgs
-done = install_missing_pkgs()  
-if not done:
-    print('Missing dependencies, quit application')
-    sys.exit(1)  # will exit application if failed to install
+install_missing_pkgs()
 
 
 # local modules
@@ -59,12 +56,6 @@ def clipboard_listener():
                 config.main_window_q.put(('url', new_data))
 
             old_data = new_data
-
-        # if config.clipboard_q.qsize() > 0:
-        #     k, v = config.clipboard_q.get()
-        #     if k == 'status' and v == config.Status.cancelled: break
-            # elif k == 'monitor':
-            #     monitor = v
 
         # monitor global termination flag
         if config.terminate:
