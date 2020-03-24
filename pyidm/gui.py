@@ -1392,12 +1392,15 @@ class MainWindow:
 
         try:
             if thumbnail is None:
+                # reset thumbnail
                 self.window['main_thumbnail'](data=thumbnail_icon)
+
             elif thumbnail != self.current_thumbnail:
-                self.current_thumbnail = thumbnail
 
                 # new thumbnail
                 self.window['main_thumbnail'](data=thumbnail)
+
+            self.current_thumbnail = thumbnail
         except Exception as e:
             log('show_thumbnai()>', e)
 
@@ -1472,7 +1475,9 @@ class MainWindow:
                     # clean playlist in case a slot left with 'None' value
                     self.playlist = [v for v in self.playlist if v]
 
-                else:  # in case of single video, will fetch video_info within Video object with process flag = True
+                else:
+                    # always there is something missing if process=False, i.e. no formats, or thumbnail link
+                    # will fetch video_info within Video object with process flag = True
                     self.playlist = [Video(self.d.url, vid_info=None)]
 
             # quit if main window terminated
