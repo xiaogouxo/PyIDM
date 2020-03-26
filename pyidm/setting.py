@@ -74,10 +74,12 @@ config.sett_folder = locate_setting_folder()
 def load_d_list():
     """create and return a list of 'DownloadItem objects' based on data extracted from 'downloads.cfg' file"""
     d_list = []
+
     try:
         log('Load previous download items from', config.sett_folder)
-        file = os.path.join(config.sett_folder, 'downloads.cfg')
 
+        # get d_list
+        file = os.path.join(config.sett_folder, 'downloads.cfg')
         with open(file, 'r') as f:
             # expecting a list of dictionaries
             data = json.load(f)
@@ -88,11 +90,19 @@ def load_d_list():
             if d:  # if update_object() returned an updated object not None
                 d_list.append(d)
 
-        # clean d_list
+        # get thumbnails
+        file = os.path.join(config.sett_folder, 'thumbnails.cfg')
+        with open(file, 'r') as f:
+            # expecting a list of dictionaries
+            thumbnails = json.load(f)
+
+        # clean d_list and load thumbnails
         for d in d_list:
-            status = config.Status.completed if d.progress >= 100 else config.Status.cancelled
-            d.status = status
+            d.status = config.Status.completed if d.progress >= 100 else config.Status.cancelled
             d.live_connections = 0
+
+            # use encode() to convert base64 string to byte, however it does work without it, will keep it to be safe
+            d.thumbnail = thumbnails.get(str(d.id), '').encode()
 
     except FileNotFoundError:
         log('downloads.cfg file not found')
@@ -107,16 +117,31 @@ def load_d_list():
 def save_d_list(d_list):
     try:
         data = []
+        thumbnails = {}  # dictionary, key=d.id, value=base64 binary string of thumbnail
         for d in d_list:
             data.append(d.get_persistent_properties())
 
-        file = os.path.join(config.sett_folder, 'downloads.cfg')
+            # thumbnails
+            if d.thumbnail:
+                # convert base64 byte to string is required because json can't handle byte objects
+                thumbnails[d.id] = d.thumbnail.decode("utf-8")
 
+        # store d_list in downloads.cfg file
+        file = os.path.join(config.sett_folder, 'downloads.cfg')
         with open(file, 'w') as f:
             try:
                 json.dump(data, f)
             except Exception as e:
                 print('error save d_list:', e)
+
+        # store thumbnails in thumbnails.cfg file
+        file = os.path.join(config.sett_folder, 'thumbnails.cfg')
+        with open(file, 'w') as f:
+            try:
+                json.dump(thumbnails, f)
+            except Exception as e:
+                print('error save thumbnails file:', e)
+
         log('list saved')
     except Exception as e:
         handle_exceptions(e)
