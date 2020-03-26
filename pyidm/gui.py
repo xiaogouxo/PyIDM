@@ -209,7 +209,7 @@ class MainWindow:
                   button_type=sg.BUTTON_TYPE_BROWSE_FOLDER, target='folder')],
 
             # file name
-            [sg.Text('file:', pad=(5, 0)),
+            [sg.Text('File:', pad=(6, 0)),
              sg.Input('', size=(65, 1), key='name', enable_events=True, background_color=bg_color,
                       text_color=text_color), sg.Text('      ')],
 
@@ -218,9 +218,50 @@ class MainWindow:
 
             # download button
             [sg.Column([[sg.B('', tooltip='Main download Engine', image_data=download_icon, key='Download')]],
-                       size=(200, 50), justification='center')],
+                       size=(165, 50), justification='center')],
 
         ]
+
+        return layout
+
+    def creat_downloads_tab(self):
+        # get current bg and text colors
+        bg_color = sg.theme_background_color()
+        transparent = ('black', bg_color)
+
+        d_layout = [sg.Image(data=thumbnail_icon, key='si_thumbnail'),
+                    sg.Col([[sg.T('', size=(100, 5), key='si_out')],
+                            [sg.ProgressBar(100, size=(20, 10), key='si_bar'), sg.T(' ', size=(10,1), key='si_percent')]])]
+
+        table_right_click_menu = ['Table', ['!Options for selected file:', '---', 'Open File', 'Open File Location',
+                                            '▶ Watch while downloading', 'copy webpage url', 'copy download url',
+                                            '⏳ Schedule download', '⏳ Cancel schedule!', 'properties']]
+        headings = ['i', 'name', '%', 'speed', 'left', 'done', 'size', 'status']
+        spacing = [' ' * 4, ' ' * 20, ' ' * 5, ' ' * 6, ' ' * 7, ' ' * 6, ' ' * 6, ' ' * 6]
+
+        layout = [[sg.Button('', key='Resume', tooltip=' Resume download ', image_data=resume_icon, button_color=transparent, border_width=0),
+                   sg.Button('', key='Cancel', tooltip=' Cancel download ', image_data=stop_icon, button_color=transparent, border_width=0),
+                   sg.Button('', key='Refresh', tooltip=' Refresh link ', image_data=refresh_icon, button_color=transparent, border_width=0),
+                   sg.Button('', key='Folder', tooltip=' open file location ', image_data=folder_icon, button_color=transparent, border_width=0),
+                   sg.Button('', key='D.Window', tooltip=' Show download window ', image_data=dwindow_icon, button_color=transparent, border_width=0),
+                   sg.Button('', key='Delete', tooltip=' Delete item from list ', image_data=delete_icon, button_color=transparent, border_width=0),
+
+                   sg.T(' ' * 53), sg.T(''), sg.T('', key='selected_row_num'),
+
+                   sg.Button('', key='Resume All', tooltip=' Resume All ', image_data=resumeall_icon, button_color=transparent, border_width=0),
+                   sg.Button('', key='Stop All', tooltip=' Stop All ', image_data=stopall_icon, button_color=transparent, border_width=0),
+                   sg.B('', key='Schedule All', tooltip=' Schedule All ', image_data=sched_icon, button_color=transparent, border_width=0),
+                   sg.Button('', key='Delete All', tooltip=' Delete All items from list ', image_data=delete_icon, button_color=transparent, border_width=0),
+
+                   ],
+
+                  # table
+                  [sg.Table(values=[spacing], headings=headings, size=(60, 10), justification='left',
+                            vertical_scroll_only=False, key='table', enable_events=True, font='any 9',
+                            right_click_menu=table_right_click_menu)],
+
+                  d_layout
+                  ]
 
         return layout
 
@@ -339,23 +380,7 @@ class MainWindow:
         main_layout = self.create_main_tab()
 
         # downloads tab -----------------------------------------------------------------------------------------
-        table_right_click_menu = ['Table', ['!Options for selected file:', '---', 'Open File', 'Open File Location',
-                                            '▶ Watch while downloading', 'copy webpage url', 'copy download url',
-                                            '⏳ Schedule download', '⏳ Cancel schedule!', 'properties']]
-        headings = ['i', 'name', 'progress', 'speed', 'left', 'done', 'size', 'status']
-        spacing = [' ' * 4, ' ' * 30, ' ' * 3, ' ' * 6, ' ' * 7, ' ' * 6, ' ' * 6, ' ' * 10]
-
-        downloads_layout = [[sg.Button('Resume'), sg.Button('Cancel'), sg.Button('Refresh'),
-                             sg.Button('Folder'), sg.Button('D.Window'),
-                             sg.T(' ' * 5), sg.T('Item:'),
-                             sg.T('---', key='selected_row_num', text_color='white', background_color='red')],
-                            [sg.Table(values=[spacing], headings=headings, size=(70, 13), justification='left',
-                                      vertical_scroll_only=False, key='table', enable_events=True, font='any 9',
-                                      right_click_menu=table_right_click_menu)],
-                            [sg.Button('Resume All'), sg.Button('Stop All'), sg.B('Schedule All'),
-                             sg.Button('Delete', button_color=('white', 'red')),
-                             sg.Button('Delete All', button_color=('white', 'red'))],
-                            ]
+        downloads_layout = self.creat_downloads_tab()
 
         # Settings tab -------------------------------------------------------------------------------------------
         settings_layout = self.create_settings_tab()
@@ -460,7 +485,7 @@ class MainWindow:
             file_properties = f'Size: {size_format(self.d.total_size)} - Type: {self.d.type} ' \
                               f'{"fragments" if self.d.fragments else ""} - ' \
                               f'Protocol: {self.d.protocol} - Resumable: {"Yes" if self.d.resumable else "No"} ...'
-            self.window['file_properties'](file_properties)  # todo: uncomment here
+            self.window['file_properties'](file_properties)
 
             # download list / table
             table_values = [[self.format_cell_data(key, getattr(d, key, '')) for key in self.d_headers] for d in
@@ -500,6 +525,25 @@ class MainWindow:
                 else:
                     self.reset_thumbnail()
 
+            # update selected item preview panel
+            d = self.selected_d
+
+            if d:
+                speed = f"speed: {size_format(d.speed, '/s') }  {time_format(d.time_left)} left" if d.speed else ''
+                out = f"{d.name}\n" \
+                      f"done: {size_format(d.downloaded)} out of {size_format(d.total_size)}\n" \
+                      f"{speed} \n" \
+                      f"live connections: {d.live_connections} - remaining parts: {d.remaining_parts}\n" \
+                      f"{d.status}  {d.i}"
+
+                self.window['si_thumbnail'](data=d.thumbnail if d.thumbnail else thumbnail_icon)
+            else:
+                out = '\n\n\n\n'
+                self.window['si_thumbnail'](data=thumbnail_icon)
+
+            self.window['si_out'](out)
+            self.window['si_bar'].update_bar(d.progress if d else 0)
+            self.window['si_percent'](f'{d.progress}%' if d else '')
 
         except Exception as e:
             log('MainWindow.update_gui() error:', e)
@@ -1450,7 +1494,10 @@ class MainWindow:
                 # 50% done
                 self.m_bar = 50
 
-                # check results if it's a playlist
+                # _type "url" indicates that video must be extracted from another location, or by a different extractor.
+                # _type "url_transparent" entities have the same specification as "url"
+
+                # check results if _type is a playlist / multi_video
                 if info.get('_type') == 'playlist' or 'entries' in info:
                     pl_info = list(info.get('entries'))
 
@@ -2067,10 +2114,10 @@ class DownloadWindow:
         name = truncate(self.d.name, 50)
         # folder = truncate(self.d.folder, 50)
 
-        out =  f"File: {name}\n" \
-               f"downloaded: {size_format(self.d.downloaded)} out of {size_format(self.d.total_size)}\n" \
-               f"speed: {size_format(self.d.speed, '/s') }  {time_format(self.d.time_left)} left \n" \
-               f"live connections: {self.d.live_connections} - remaining parts: {self.d.remaining_parts}\n" \
+        out = f"File: {name}\n" \
+              f"downloaded: {size_format(self.d.downloaded)} out of {size_format(self.d.total_size)}\n" \
+              f"speed: {size_format(self.d.speed, '/s') }  {time_format(self.d.time_left)} left \n" \
+              f"live connections: {self.d.live_connections} - remaining parts: {self.d.remaining_parts}\n"
 
         try:
             self.window.Element('out').Update(value=out)
