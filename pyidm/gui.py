@@ -40,7 +40,7 @@ sg.SetOptions(icon=APP_ICON, font='Helvetica 10', auto_size_buttons=True, progre
 sg.ChangeLookAndFeel(config.current_theme)
 
 # transparent color for button which mimic current background, will be use as a parameter, ex. **transparent
-transparent2 = dict(button_color=('black', sg.theme_background_color()), border_width=0)
+transparent = dict(button_color=('black', sg.theme_background_color()), border_width=0)
 
 
 class MainWindow:
@@ -182,8 +182,7 @@ class MainWindow:
                               [sg.Combo(values=self.stream_menu, size=(34, 1), key='stream_menu', enable_events=True)],
                               [sg.ProgressBar(max_value=100, size=(20, 9), key='m_bar', pad=(5, 9))]], size=(290, 80))
 
-        pl_button = sg.Button('', tooltip=' download playlist ', key='pl_download',
-                              image_data=playlist_icon, button_color=('black', bg_color), border_width=0)
+        pl_button = sg.Button('', tooltip=' download playlist ', key='pl_download', image_data=playlist_icon, **transparent)
 
         layout = [
             # spacer
@@ -196,7 +195,7 @@ class MainWindow:
             # url entry
             [sg.T('Link:  '),
             sg.Input(self.d.url, enable_events=True, key='url', size=(49, 1),  right_click_menu=['url', ['copy url', 'paste url']]),
-            sg.Button('', key='Retry', tooltip=' retry ', image_data=refresh_icon, button_color=('black', bg_color), border_width=0)],
+            sg.Button('', key='Retry', tooltip=' retry ', image_data=refresh_icon, **transparent)],
 
             # playlist/video block
             [sg.Col([[sg.T('       '), sg.Image(data=thumbnail_icon, key='main_thumbnail')]], size=(320, 110)),
@@ -209,7 +208,7 @@ class MainWindow:
             [sg.Image(data=folder_icon),
              sg.Input(config.download_folder, size=(55, 1), key='folder', enable_events=True, background_color=bg_color,
                       text_color=text_color, ),
-             sg.B('', image_data=browse_icon, button_color=(text_color, bg_color), border_width=0, key='browse',
+             sg.B('', image_data=browse_icon, **transparent, key='browse',
                   button_type=sg.BUTTON_TYPE_BROWSE_FOLDER, target='folder')],
 
             # file name
@@ -229,9 +228,6 @@ class MainWindow:
         return layout
 
     def creat_downloads_tab(self):
-        # get current bg and text colors
-        bg_color = sg.theme_background_color()
-        transparent =('black', sg.theme_background_color())
 
         # selected download item's preview panel, "si" = selected item
         si_layout = [sg.Image(data=thumbnail_icon, key='si_thumbnail'),
@@ -244,19 +240,19 @@ class MainWindow:
         headings = ['i', 'name', '%', 'speed', 'left', 'done', 'size', 'status']
         col_widths = [6, 30, 10, 10, 10, 10, 10, 10]
 
-        layout = [[sg.Button('', key='Resume', tooltip=' Resume download ', image_data=resume_icon, button_color=transparent, border_width=0),
-                   sg.Button('', key='Cancel', tooltip=' Cancel download ', image_data=stop_icon, button_color=transparent, border_width=0),
-                   sg.Button('', key='Refresh', tooltip=' Refresh link ', image_data=refresh_icon, button_color=transparent, border_width=0),
-                   sg.Button('', key='Folder', tooltip=' open file location ', image_data=folder_icon, button_color=transparent, border_width=0),
-                   sg.Button('', key='D.Window', tooltip=' Show download window ', image_data=dwindow_icon, button_color=transparent, border_width=0),
-                   sg.Button('', key='Delete', tooltip=' Delete item from list ', image_data=delete_icon, button_color=transparent, border_width=0),
+        layout = [[sg.Button('', key='Resume', tooltip=' Resume download ', image_data=resume_icon, **transparent),
+                   sg.Button('', key='Cancel', tooltip=' Cancel download ', image_data=stop_icon, **transparent),
+                   sg.Button('', key='Refresh', tooltip=' Refresh link ', image_data=refresh_icon, **transparent),
+                   sg.Button('', key='Folder', tooltip=' open file location ', image_data=folder_icon, **transparent),
+                   sg.Button('', key='D.Window', tooltip=' Show download window ', image_data=dwindow_icon, **transparent),
+                   sg.Button('', key='Delete', tooltip=' Delete item from list ', image_data=delete_icon, **transparent),
 
                    sg.T(' ' * 60), sg.T(''), sg.T('', key='selected_row_num', visible=False),
 
-                   sg.Button('', key='Resume All', tooltip=' Resume All ', image_data=resumeall_icon, button_color=transparent, border_width=0),
-                   sg.Button('', key='Stop All', tooltip=' Stop All ', image_data=stopall_icon, button_color=transparent, border_width=0),
-                   sg.B('', key='Schedule All', tooltip=' Schedule All ', image_data=sched_icon, button_color=transparent, border_width=0),
-                   sg.Button('', key='Delete All', tooltip=' Delete All items from list ', image_data=delete_icon, button_color=transparent, border_width=0),
+                   sg.Button('', key='Resume All', tooltip=' Resume All ', image_data=resumeall_icon, **transparent),
+                   sg.Button('', key='Stop All', tooltip=' Stop All ', image_data=stopall_icon, **transparent),
+                   sg.B('', key='Schedule All', tooltip=' Schedule All ', image_data=sched_icon, **transparent),
+                   sg.Button('', key='Delete All', tooltip=' Delete All items from list ', image_data=delete_icon, **transparent),
 
                    ],
 
@@ -461,10 +457,12 @@ class MainWindow:
     def select_row(self, row_num):
         try:
             self.selected_row_num = int(row_num)
-            # self.selected_d = self.d_list[self.selected_row_num]
 
-            # update text widget that display selected row number
-            self.window['selected_row_num']('---' if row_num is None else row_num + 1)
+            # get instant gui update, don't wait for scheduled update
+            self.update_gui()
+
+            # # update text widget that display selected row number
+            # self.window['selected_row_num']('---' if row_num is None else row_num + 1)
 
         except Exception as e:
             log('MainWindow.select_row(): ', e)
@@ -1140,67 +1138,7 @@ class MainWindow:
 
         if r not in ('error', 'cancelled', False):
             self.select_tab('Downloads')
-
-    def ytdl_downloader(self):
-        """launch youtube-dl in terminal with proper command args.
-        This method is very limited, basically mimic running youtube-dl from command line"""
-
-        # since windows firewall sometimes gives false positive for youtube-dl.exe file and think it is a malware,
-        # it will not be included with portable version, and will be downloaded by user
-
-        # check for youtube-dl executable in current folder if app is FROZEN
-        if config.FROZEN:
-            cmd = 'where youtube-dl' if config.operating_system == 'Windows' else 'which youtube-dl'
-            error, output = run_command(cmd, verbose=True)
-            if not error:
-                ytdl_executable = output.strip()
-            else:
-                msg = 'Alternative Download with youtube-dl, \nyoutube-dl executable is required To use this option, \n' \
-                      'please download the right version into PyIDM folder \n' \
-                      'i.e. "youtube-dl.exe" for windows or "youtube-dl" for other os'
-                window = sg.Window('Youtube-dl missing', [[sg.T(msg)], [sg.B('Open website'), sg.Cancel()]])
-                event, values = window()
-                window.close()
-                if event == 'Open website':
-                    webbrowser.open_new('https://github.com/ytdl-org/youtube-dl/releases/latest')
-
-                return  # exit
-        else:
-            ytdl_executable = f'"{sys.executable}" -m youtube_dl'
-
-        d = self.d
-        verbose = '-v' if config.log_level >= 3 else ''
-
-        if not self.video:
-            requested_format = 'best'
-            name = config.download_folder.replace("\\", "/") + '/%(title)s.%(ext)s'
-            # cmd = f'{ytdl_executable} {self.d.url} {verbose} --ffmpeg-location {config.ffmpeg_actual_path}'
-        else:
-            name = d.target_file.replace("\\", "/")
-            if d.type == 'dash':
-                # default format: bestvideo+bestaudio/best
-                requested_format = f'"{d.format_id}"+"{d.audio_format_id}"/"{d.format_id}"+bestaudio/best'
-            else:
-                requested_format = f'"{d.format_id}"/best'
-
-        # creating command
-        cmd = f'{ytdl_executable} -f {requested_format} {d.url} -o "{name}" {verbose} --hls-use-mpegts --ffmpeg-location {config.ffmpeg_actual_path} --proxy "{config.proxy}"'
-        log('cmd:', cmd)
-
-        # executing command
-        if config.operating_system == 'Windows':
-            # write a batch file to start anew cmd terminal
-            batch_file = os.path.join(config.current_directory, 'ytdl_cmd.bat')
-            with open(batch_file, 'w') as f:
-                f.write(cmd + '\npause')
-
-            # execute batch file
-            os.startfile(batch_file)
-        else:
-            # not tested yet
-            subprocess.Popen([os.getenv('SHELL'), '-i', '-c', cmd])
-
-        # self.download_btn(downloader='ytdl')
+            self.select_row(d.id)
 
     # endregion
 
