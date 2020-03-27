@@ -176,9 +176,9 @@ class MainWindow:
         video_block = sg.Col([
                               [sg.Combo(values=self.pl_menu, size=(34, 1), key='pl_menu', enable_events=True)],
                               [sg.Combo(values=self.stream_menu, size=(34, 1), key='stream_menu', enable_events=True)],
-                              [sg.ProgressBar(max_value=100, size=(20, 9), key='m_bar', pad=(5, 9))]], size=(278, 80))
+                              [sg.ProgressBar(max_value=100, size=(20, 9), key='m_bar', pad=(5, 9))]], size=(290, 80))
 
-        pl_button = sg.Button('', size=(2, 1), tooltip='download this playlist', key='pl_download',
+        pl_button = sg.Button('', tooltip=' download playlist ', key='pl_download',
                               image_data=playlist_icon, button_color=('black', bg_color), border_width=0)
 
         layout = [
@@ -229,15 +229,16 @@ class MainWindow:
         bg_color = sg.theme_background_color()
         transparent = ('black', bg_color)
 
-        d_layout = [sg.Image(data=thumbnail_icon, key='si_thumbnail'),
-                    sg.Col([[sg.T('', size=(100, 5), key='si_out')],
-                            [sg.ProgressBar(100, size=(20, 10), key='si_bar'), sg.T(' ', size=(10,1), key='si_percent')]])]
+        # selected download item's preview panel, "si" = selected item
+        si_layout = [sg.Image(data=thumbnail_icon, key='si_thumbnail'),
+                     sg.Col([[sg.T('', size=(100, 5), key='si_out')],
+                            [sg.ProgressBar(100, size=(20, 10), key='si_bar'), sg.T(' ', size=(10, 1), key='si_percent')]])]
 
         table_right_click_menu = ['Table', ['!Options for selected file:', '---', 'Open File', 'Open File Location',
                                             '▶ Watch while downloading', 'copy webpage url', 'copy download url',
                                             '⏳ Schedule download', '⏳ Cancel schedule!', 'properties']]
         headings = ['i', 'name', '%', 'speed', 'left', 'done', 'size', 'status']
-        spacing = [' ' * 4, ' ' * 20, ' ' * 5, ' ' * 6, ' ' * 7, ' ' * 6, ' ' * 6, ' ' * 6]
+        col_widths = [6, 30, 10, 10, 10, 10, 10, 10]
 
         layout = [[sg.Button('', key='Resume', tooltip=' Resume download ', image_data=resume_icon, button_color=transparent, border_width=0),
                    sg.Button('', key='Cancel', tooltip=' Cancel download ', image_data=stop_icon, button_color=transparent, border_width=0),
@@ -246,7 +247,7 @@ class MainWindow:
                    sg.Button('', key='D.Window', tooltip=' Show download window ', image_data=dwindow_icon, button_color=transparent, border_width=0),
                    sg.Button('', key='Delete', tooltip=' Delete item from list ', image_data=delete_icon, button_color=transparent, border_width=0),
 
-                   sg.T(' ' * 53), sg.T(''), sg.T('', key='selected_row_num'),
+                   sg.T(' ' * 60), sg.T(''), sg.T('', key='selected_row_num', visible=False),
 
                    sg.Button('', key='Resume All', tooltip=' Resume All ', image_data=resumeall_icon, button_color=transparent, border_width=0),
                    sg.Button('', key='Stop All', tooltip=' Stop All ', image_data=stopall_icon, button_color=transparent, border_width=0),
@@ -256,11 +257,11 @@ class MainWindow:
                    ],
 
                   # table
-                  [sg.Table(values=[spacing], headings=headings, size=(60, 10), justification='left',
+                  [sg.Table(values=headings, headings=headings, num_rows=12, justification='left', auto_size_columns=False,
                             vertical_scroll_only=False, key='table', enable_events=True, font='any 9',
-                            right_click_menu=table_right_click_menu)],
+                            right_click_menu=table_right_click_menu, max_col_width=100, col_widths=col_widths)],
 
-                  d_layout
+                  si_layout
                   ]
 
         return layout
@@ -525,20 +526,24 @@ class MainWindow:
                 else:
                     self.reset_thumbnail()
 
-            # update selected item preview panel
+            # update selected download item's preview panel
             d = self.selected_d
 
             if d:
-                speed = f"speed: {size_format(d.speed, '/s') }  {time_format(d.time_left)} left" if d.speed else ''
-                out = f"{d.name}\n" \
-                      f"done: {size_format(d.downloaded)} out of {size_format(d.total_size)}\n" \
+                speed = f"Speed: {size_format(d.speed, '/s') }  {time_format(d.time_left)} left" if d.speed else ''
+                out = f"File: {d.name}\n" \
+                      f"Downloaded: {size_format(d.downloaded)} of {size_format(d.total_size)}\n" \
                       f"{speed} \n" \
-                      f"live connections: {d.live_connections} - remaining parts: {d.remaining_parts}\n" \
+                      f"Live connections: {d.live_connections} - Remaining parts: {d.remaining_parts}\n" \
                       f"{d.status}  {d.i}"
 
                 self.window['si_thumbnail'](data=d.thumbnail if d.thumbnail else thumbnail_icon)
             else:
-                out = '\n\n\n\n'
+                out = f"File:\n" \
+                      f"Downloaded:\n" \
+                      f"Speed: \n" \
+                      f"Live connections: \n" \
+                      f"Status:"
                 self.window['si_thumbnail'](data=thumbnail_icon)
 
             self.window['si_out'](out)
@@ -1494,9 +1499,6 @@ class MainWindow:
                 # 50% done
                 self.m_bar = 50
 
-                # _type "url" indicates that video must be extracted from another location, or by a different extractor.
-                # _type "url_transparent" entities have the same specification as "url"
-
                 # check results if _type is a playlist / multi_video
                 if info.get('_type') == 'playlist' or 'entries' in info:
                     pl_info = list(info.get('entries'))
@@ -1523,8 +1525,6 @@ class MainWindow:
                     self.playlist = [v for v in self.playlist if v]
 
                 else:
-                    # always there is something missing if process=False, i.e. no formats, or thumbnail link
-                    # will fetch video_info within Video object with process flag = True
                     self.playlist = [Video(self.d.url, vid_info=None)]
 
             # quit if main window terminated
