@@ -36,6 +36,12 @@ config.all_themes = natural_sort(sg.ListOfLookAndFeelValues())
 sg.SetOptions(icon=APP_ICON, font='Helvetica 10', auto_size_buttons=True, progress_meter_border_depth=0,
               border_width=1)  # Helvetica font is guaranteed to work on all operating systems
 
+# theme
+sg.ChangeLookAndFeel(config.current_theme)
+
+# transparent color for button which mimic current background, will be use as a parameter, ex. **transparent
+transparent2 = dict(button_color=('black', sg.theme_background_color()), border_width=0)
+
 
 class MainWindow:
     def __init__(self, d_list):
@@ -89,8 +95,6 @@ class MainWindow:
 
     def setup(self):
         """initial setup"""
-        # theme
-        sg.ChangeLookAndFeel(config.current_theme)
 
         # download folder
         if not self.d.folder:
@@ -227,7 +231,7 @@ class MainWindow:
     def creat_downloads_tab(self):
         # get current bg and text colors
         bg_color = sg.theme_background_color()
-        transparent = ('black', bg_color)
+        transparent =('black', sg.theme_background_color())
 
         # selected download item's preview panel, "si" = selected item
         si_layout = [sg.Image(data=thumbnail_icon, key='si_thumbnail'),
@@ -267,12 +271,6 @@ class MainWindow:
         return layout
 
     def create_settings_tab(self):
-        seg_size = config.segment_size // 1024  # kb
-        if seg_size >= 1024:
-            seg_size = seg_size // 1024
-            seg_size_unit = 'MB'
-        else:
-            seg_size_unit = 'KB'
 
         proxy_tooltip = """proxy setting examples:
                 - http://proxy_address:port
@@ -312,9 +310,10 @@ class MainWindow:
                       [sg.Checkbox("Show video Thumbnail", key='show_thumbnail', default=config.show_thumbnail,
                                    enable_events=True)],
 
-                      [sg.Text('Segment size:  '), sg.Input(default_text=seg_size, size=(6, 1), enable_events=True, key='segment_size'),
-                       sg.Combo(values=['KB', 'MB'], default_value=seg_size_unit, size=(4, 1), key='seg_size_unit', enable_events=True),
-                       sg.Text(f'current value: {size_format(config.segment_size)}', size=(30, 1), key='seg_current_value')],
+                      [sg.Text('Segment size:  '), sg.Input(default_text=size_format(config.segment_size), size=(10, 1),
+                                                            enable_events=True, key='segment_size'),
+                       sg.Text(f'Current value: {size_format(config.segment_size)}', size=(30, 1), key='seg_current_value'),
+                       sg.T('*ex: 512 KB or 5 MB', font='any 8')],
                   ])],
 
                   [sg.T('', font='any 1')],
@@ -325,11 +324,12 @@ class MainWindow:
                       [sg.T('')],
                       [sg.Checkbox('Speed Limit:', default=True if config.speed_limit else False,
                                    key='speed_limit_switch', enable_events=True,
-                                   tooltip='examples: 50 k, 10kb, 2m, 3mb, 20, 10MB '),
-                       sg.Input(default_text=config.speed_limit if config.speed_limit else '', size=(10, 1),
-                                key='speed_limit',
+                                   ),
+                       sg.Input(default_text=size_format(config.speed_limit) if config.speed_limit else '',
+                                size=(10, 1), key='speed_limit',
                                 disabled=False if config.speed_limit else True, enable_events=True),
-                       sg.T('0', size=(30, 1), key='current_speed_limit')],
+                       sg.T('0', size=(30, 1), key='current_speed_limit'),
+                       sg.T('*ex: 512 KB or 5 MB', font='any 8')],
                       [sg.Text('Max concurrent downloads:      '),
                        sg.Combo(values=[x for x in range(1, 101)], size=(5, 1), enable_events=True,
                                 key='max_concurrent_downloads', default_value=config.max_concurrent_downloads)],
@@ -504,8 +504,8 @@ class MainWindow:
             self.window['active_downloads'](f' {len(self.active_downloads)} ▼  |  {len(self.pending)} ⏳')
 
             # Settings
-            speed_limit = size_format(config.speed_limit * 1024) if config.speed_limit > 0 else "_no limit_"
-            self.window['current_speed_limit'](f'{speed_limit}')
+            speed_limit = size_format(config.speed_limit) if config.speed_limit > 0 else "_no limit_"
+            self.window['current_speed_limit'](f'Current value: {speed_limit}')
 
             self.window['youtube_dl_update_note'](
                 f'Youtube-dl version = {config.ytdl_VERSION}, Latest version = {config.ytdl_LATEST_VERSION}')
@@ -753,32 +753,17 @@ class MainWindow:
                     self.window['speed_limit']('', disabled=True)  # clear and disable
 
             elif event == 'speed_limit':
-                sl = values['speed_limit'].replace(' ', '')  # if values['speed_limit'] else 0
+                sl = values['speed_limit']
 
-                # validate speed limit,  expecting formats: number + (k, kb, m, mb) final value should be in kb
-                # pattern \d*[mk]b?
+                # if no units entered will assume it KB
+                try:
+                    _ = int(sl)  # will succeed if it has no string
+                    sl = f'{sl} KB'
+                except:
+                    pass
 
-                match = re.fullmatch(r'\d+([mk]b?)?', sl, re.I)
-                if match:
-                    # print(match.group())
-
-                    digits = re.match(r"[0-9]+", sl, re.I).group()
-                    digits = int(digits)
-
-                    letters = re.search(r"[a-z]+", sl, re.I)
-                    letters = letters.group().lower() if letters else None
-
-                    # print(digits, letters)
-
-                    if letters in ('k', 'kb', None):
-                        sl = digits
-                    elif letters in ('m', 'mb'):
-                        sl = digits * 1024
-                else:
-                    sl = 0
-
+                sl = parse_bytes(sl)
                 config.speed_limit = sl
-                # print('speed limit:', config.speed_limit)
 
             elif event == 'max_concurrent_downloads':
                 config.max_concurrent_downloads = int(values['max_concurrent_downloads'])
@@ -801,20 +786,25 @@ class MainWindow:
             elif event in ('raw_proxy', 'http', 'https', 'socks4', 'socks5', 'proxy_type', 'enable_proxy'):
                 self.set_proxy()
 
-            elif event in ('segment_size', 'seg_size_unit'):
+            elif event == 'segment_size':
+                user_input = values['segment_size']
+
+                # if no units entered will assume it KB
                 try:
-                    seg_size_unit = values['seg_size_unit']
-                    if seg_size_unit == 'KB':
-                        seg_size = int(values['segment_size']) * 1024  # convert from kb to bytes
-                    else:
-                        seg_size = int(values['segment_size']) * 1024 * 1024  # convert from mb to bytes
-
-                    config.segment_size = seg_size
-                    self.window['seg_current_value'](f'current value: {size_format(config.segment_size)}')
-                    self.d.segment_size = seg_size
-
+                    _ = int(user_input)  # will succeed if it has no string
+                    user_input = f'{user_input} KB'
                 except:
                     pass
+
+                seg_size = parse_bytes(user_input)
+
+                # set non valid values or zero to default
+                if not seg_size:
+                    seg_size = config.DEFAULT_SEGMENT_SIZE
+
+                config.segment_size = seg_size
+                self.window['seg_current_value'](f'current value: {size_format(config.segment_size)}')
+                self.d.segment_size = seg_size
 
             elif event == 'sett_folder':
                 selected = values['sett_folder']
