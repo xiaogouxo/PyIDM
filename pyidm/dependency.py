@@ -13,15 +13,17 @@ import sys
 import subprocess
 import importlib.util
 
+# add the required packages here without any version numbers
+requirements = ['PySimpleGUI', 'pyperclip', 'plyer', 'certifi', 'youtube_dl', 'pycurl', 'PIL']
+
 
 def install_missing_pkgs():
-    ext_pkgs = ['PySimpleGUI', 'pyperclip', 'plyer', 'certifi', 'youtube_dl', 'pycurl', 'PIL']
 
     # list of dependency
-    missing_pkgs = [pkg for pkg in ext_pkgs if importlib.util.find_spec(pkg) is None]
+    missing_pkgs = [pkg for pkg in requirements if importlib.util.find_spec(pkg) is None]
 
     if missing_pkgs:
-        print('required pkgs: ', ext_pkgs)
+        print('required pkgs: ', requirements)
         print('missing pkgs: ', missing_pkgs)
 
         for pkg in missing_pkgs:
