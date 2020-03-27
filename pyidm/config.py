@@ -23,7 +23,7 @@ APP_TITLE = f'{APP_NAME} version {APP_VERSION} .. an open source download manage
 DEFAULT_DOWNLOAD_FOLDER = os.path.join(os.path.expanduser("~"), 'Downloads')
 DEFAULT_THEME = 'DarkGrey2'
 DEFAULT_CONNECTIONS = 10
-DEFAULT_SEGMENT_SIZE = 524288  # 1048576  in bytes
+DEFAULT_SEGMENT_SIZE = 524288  # in bytes  = 512 KB
 DEFAULT_CONCURRENT_CONNECTIONS = 3
 APP_URL = 'https://github.com/pyIDM/pyIDM'
 LATEST_RELEASE_URL = 'https://github.com/pyIDM/pyIDM/releases/latest'
@@ -55,7 +55,7 @@ segment_size = DEFAULT_SEGMENT_SIZE  # in bytes
 show_thumbnail = True  # auto preview video thumbnail at main tab
 
 # connection / network
-speed_limit = 0  # in kbytes, zero == no limit  todo: make it in bytes instead of kb
+speed_limit = 0  # in bytes, zero == no limit
 max_concurrent_downloads = DEFAULT_CONCURRENT_CONNECTIONS
 max_connections = DEFAULT_CONNECTIONS
 

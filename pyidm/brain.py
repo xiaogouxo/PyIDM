@@ -10,7 +10,7 @@ import io
 import os
 import time
 from threading import Thread
-from .video import merge_video_audio, youtube_dl_downloader, unzip_ffmpeg, pre_process_hls, post_process_hls  # unzip_ffmpeg required here for ffmpeg callback
+from .video import merge_video_audio, unzip_ffmpeg, pre_process_hls, post_process_hls  # unzip_ffmpeg required here for ffmpeg callback
 from . import config
 from .config import Status, active_downloads, APP_NAME
 from .utils import (log, size_format, popup, notify, delete_folder, delete_file, rename_file, load_json, save_json)
@@ -35,9 +35,6 @@ def brain(d=None, downloader=None):
         return
     else:
         d.status = Status.downloading
-
-    # # add item index to active download set
-    # active_downloads.add(d.id)
 
     log('-' * 100)
     log(f'start downloading file: "{d.name}", size: {size_format(d.size)}, to: {d.folder}')
@@ -118,7 +115,7 @@ def thread_manager(d):
         # speed limit
         allowable_connections = min(config.max_connections, d.remaining_parts)
         if allowable_connections:
-            worker_sl = config.speed_limit * 1024 // allowable_connections
+            worker_sl = config.speed_limit // allowable_connections
         else:
             worker_sl = 0
 
