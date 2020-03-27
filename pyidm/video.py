@@ -414,7 +414,7 @@ def import_ytdl():
     config.ytdl_VERSION = ytdl.version.__version__
 
     load_time = time.time() - start
-    log(f'youtube-dl load_time= {load_time}')
+    log(f'youtube-dl load_time= {int(load_time)} seconds')
 
 
 def parse_bytes(bytestr):
