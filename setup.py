@@ -23,12 +23,11 @@ with open(f"{current_directory}/pyidm/version.py") as f:
 with open(f"{current_directory}/README.md", "r") as fh:
     long_description = fh.read()
 
-# get requirements
 try:
     with open(f"{current_directory}/requirements.txt", "r") as fh:
         requirements = fh.readlines()
 except:
-    requirements = ['PySimpleGUI', 'pyperclip', 'plyer', 'certifi', 'youtube_dl', 'pycurl', 'pillow']
+    requirements = ['PySimpleGUI>=4.18', 'pyperclip', 'plyer', 'certifi', 'youtube_dl', 'pycurl', 'pillow']
 
 setuptools.setup(
     name="pyIDM",
