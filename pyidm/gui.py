@@ -1525,7 +1525,10 @@ class MainWindow:
                     self.playlist = [v for v in self.playlist if v]
 
                 else:
-                    self.playlist = [Video(self.d.url, vid_info=None)]
+                    # if it's one video, let youtube-dl process "info" without re-downloading webpage
+                    info = ydl.process_ie_result(info, download=False)
+
+                    self.playlist = [Video(self.d.url, vid_info=info)]
 
             # quit if main window terminated
             if config.terminate: return
