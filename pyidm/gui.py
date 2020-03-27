@@ -1434,7 +1434,14 @@ class MainWindow:
                     self.d.playlist_url = self.d.url
 
                     # increment to media progressbar to complete last 50%
-                    m_bar_incr = 50 / len(pl_info)
+                    num = len(pl_info)
+                    m_bar_incr = 50 / num
+
+                    # update playlist title widget: show how many videos
+                    try:
+                        self.window['playlist_frame'](value=f'Playlist ({num} {"videos" if num > 1 else "video"}):')
+                    except:
+                        pass
 
                     self.playlist = [None for _ in range(len(pl_info))]  # fill list so we can store videos in order
                     v_threads = []
