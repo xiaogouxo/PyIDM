@@ -46,6 +46,8 @@ operating_system_info = f'{platform.platform()} - {platform.machine()}'   # i.e.
 terminate = False 
 
 # settings parameters
+
+# General
 current_theme = DEFAULT_THEME
 all_themes = []
 monitor_clipboard = True
@@ -53,6 +55,8 @@ show_download_window = True
 auto_close_download_window = True
 segment_size = DEFAULT_SEGMENT_SIZE  # in bytes
 show_thumbnail = True  # auto preview video thumbnail at main tab
+process_big_playlist_on_demand = True  # fetch videos info only if selected, since big playlist consume time/resources.
+big_playlist_length = 50  # define minimum number of videos in big playlist
 
 # connection / network
 speed_limit = 0  # in bytes, zero == no limit
@@ -105,7 +109,7 @@ main_window_q = Queue()  # queue for Main application window
 settings_keys = ['current_theme', 'monitor_clipboard', 'show_download_window', 'auto_close_download_window',
                  'segment_size', 'show_thumbnail', 'speed_limit', 'max_concurrent_downloads', 'max_connections',
                  'update_frequency', 'last_update_check', 'proxy', 'proxy_type', 'raw_proxy', 'enable_proxy',
-                 'log_level', 'download_folder']
+                 'log_level', 'download_folder', 'process_big_playlist_on_demand']
 
 # -------------------------------------------------------------------------------------
 
