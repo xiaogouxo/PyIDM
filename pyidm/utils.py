@@ -157,7 +157,7 @@ def download(url, file_name=None):
         log('download()> url not valid:', url)
         return None
 
-    log('download()> downloading', url, '\n')
+    log('download()> downloading', url)
 
     def set_options():
         # set general curl options
@@ -191,7 +191,7 @@ def download(url, file_name=None):
         if file:
             file.close()
 
-    log('download(): done downloading')
+    # log('download(): done downloading')
 
     return buffer
 
@@ -241,7 +241,7 @@ def time_format(t, tail=''):
         return t
 
 
-def log(*args, log_level=1):
+def log(*args, log_level=1, start='>> ', end='\n'):
     if log_level > config.log_level:
         return
 
@@ -250,13 +250,13 @@ def log(*args, log_level=1):
         text += str(arg)
         text += ' '
     text = text[:-1]  # remove last space
-    text = '>> ' + text
+    text = start + text
 
     try:
-        print(text)
+        print(text, end=end)
         config.log_entry = text
-        config.log_recorder_q.put(text + '\n')
-        config.main_window_q.put(('log', text + '\n'))
+        config.log_recorder_q.put(text + end)
+        config.main_window_q.put(('log', text + end))
     except Exception as e:
         print(e)
 
@@ -688,8 +688,8 @@ def process_thumbnail(url):
 
     try:
         # load background image
-        bg = io.BytesIO(base64.b64decode(thumbnail_icon))
-        bg = Image.open(bg)
+        bg_buffer = io.BytesIO(base64.b64decode(thumbnail_icon))
+        bg = Image.open(bg_buffer)
 
         # downloading thumbnail
         buffer = download(url)  # get BytesIO object
@@ -719,6 +719,13 @@ def process_thumbnail(url):
         buffered = io.BytesIO()
         bg.save(buffered, format="PNG")
         img_str = base64.b64encode(buffered.getvalue())
+
+        # free memory
+        bg_buffer.close()
+        buffer.close()
+        buffered.close()
+        del fg
+        del bg
 
         return img_str
     except Exception as e:
