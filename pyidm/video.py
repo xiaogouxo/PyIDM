@@ -43,7 +43,7 @@ class Logger(object):
 
 
 def get_ytdl_options():
-    ydl_opts = {'prefer_insecure': True, 'no_warnings': False, 'logger': Logger()}
+    ydl_opts = {'ignore_errors': True, 'prefer_insecure': True, 'no_warnings': False, 'logger': Logger()}
     if config.proxy:
         ydl_opts['proxy'] = config.proxy
 
@@ -62,7 +62,7 @@ def get_ytdl_options():
 class Video(DownloadItem):
     """represent a youtube video object, interface for youtube-dl"""
 
-    def __init__(self, url, vid_info=None, get_size=True):
+    def __init__(self, url, vid_info=None):
         super().__init__(folder=config.download_folder)
         self.url = url
         self.resumable = True
@@ -79,7 +79,7 @@ class Video(DownloadItem):
 
         # streams
         self.stream_names = []  # names in a list
-        self.raw_stream_names = [] # names but without size
+        self.raw_stream_names = []  # names but without size
         self.stream_list = []  # streams in a list
         self.video_streams = {}
         self.mp4_videos = {}
@@ -89,18 +89,29 @@ class Video(DownloadItem):
         self.raw_streams = {}
 
         self.stream_menu = []  # it will be shown in video quality combo box != self.stream.names
-        self.raw_stream_menu = [] # same as self.stream_menu but without size
+        self.raw_stream_menu = []  # same as self.stream_menu but without size
         self._selected_stream = None
 
-        self.thumbnail_url = self.vid_info.get('thumbnail', '')
-        self.thumbnail = None  # base64 string
+        # thumbnail
+        self.thumbnail_url = ''
 
-        # self.audio_url = None  # None for non dash videos
-        # self.audio_size = 0
+        # flag for processing raw video info by youtube-dl
+        self.processed = False
 
         self.setup()
 
     def setup(self):
+        url = self.vid_info.get('url', None) or self.vid_info.get('webpage_url', None) or self.vid_info.get('id', None)
+        if url:
+            self.url = url
+
+        self.webpage_url = url  # self.vid_info.get('webpage_url')
+        self.name = self.title = validate_file_name(self.vid_info.get('title', f'video{int(time.time())}'))
+
+        # thumbnail
+        self.thumbnail_url = self.vid_info.get('thumbnail', '')
+
+        # build streams
         self._process_streams()
 
     def _process_streams(self):
@@ -166,9 +177,10 @@ class Video(DownloadItem):
     @selected_stream.setter
     def selected_stream(self, stream):
         if type(stream) is not Stream:
-            raise TypeError
+            raise TypeError('value must be a Stream object')
 
         self._selected_stream = stream
+        self.selected_quality = stream.raw_name
 
         self.update_param()
 
@@ -203,6 +215,25 @@ class Video(DownloadItem):
             self.audio_url = None
             self.audio_fragment_base_url = None
             self.audio_fragments = None
+
+    def refresh(self):
+        # update properties
+        self.setup()
+
+
+def process_video_info(vid, getthumbnail=True):
+    try:
+        with ytdl.YoutubeDL(get_ytdl_options()) as ydl:
+            vid.vid_info = ydl.process_ie_result(vid.vid_info, download=False)
+            vid.refresh()
+            vid.processed = True
+
+        if getthumbnail:
+            vid.get_thumbnail()
+
+        log('process_video_info()> processed url:', vid.url, log_level=3)
+    except Exception as e:
+        log('process_video_info()> error:', e)
 
 
 class Stream:
@@ -410,11 +441,14 @@ def import_ytdl():
     # import youtube_dl using thread because it takes sometimes 20 seconds to get imported and impact app startup time
     start = time.time()
     global ytdl, ytdl_version
-    import youtube_dl as ytdl
-    config.ytdl_VERSION = ytdl.version.__version__
+    try:
+        import youtube_dl as ytdl
+        config.ytdl_VERSION = ytdl.version.__version__
 
-    load_time = time.time() - start
-    log(f'youtube-dl load_time= {int(load_time)} seconds')
+        load_time = time.time() - start
+        log(f'youtube-dl load_time= {int(load_time)} seconds')
+    except Exception as e:
+        log('import_ytdl()> error', e)
 
 
 def pre_process_hls(d):
