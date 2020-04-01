@@ -6,16 +6,12 @@
     :copyright: (c) 2019-2020 by Mahmoud Elshahat.
     :license: GNU LGPLv3, see LICENSE for more details.
 """
-import sys
-import webbrowser
-
+import gc
 import PySimpleGUI as sg
 import os
-import re
 import time
 import copy
-import subprocess
-from threading import Thread, Barrier, Timer, Lock
+from threading import Thread, Timer, Lock
 from collections import deque
 
 from .utils import *
@@ -24,7 +20,7 @@ from .config import Status
 from . import update
 from .brain import brain
 from . import video
-from .video import Video, check_ffmpeg, download_ffmpeg, unzip_ffmpeg, get_ytdl_options
+from .video import Video, check_ffmpeg, download_ffmpeg, unzip_ffmpeg, get_ytdl_options, process_video_info
 from .about import about_notes
 from .downloaditem import DownloadItem
 from .iconsbase64 import *
@@ -57,6 +53,7 @@ class MainWindow:
         self.download_windows = {}  # dict that holds Download_Window() objects --> {d.id: Download_Window()}
 
         # url
+        self.url = ''  # current url in url input widget
         self.url_timer = None  # usage: Timer(0.5, self.refresh_headers, args=[self.d.url])
         self.bad_headers = [0, range(400, 404), range(405, 418), range(500, 506)]  # response codes
 
@@ -69,8 +66,8 @@ class MainWindow:
         self._pl_menu = []
         self._stream_menu = []
         self.m_bar_lock = Lock()  # a lock to access a video quality progress bar from threads
-        # self._s_bar = 0  # side progress bar for video quality loading
-        self._m_bar = 0  # main playlist progress par
+        self._m_bar = 0  # main playlist progress par value
+        self._s_bar = 0  # individual video streams progress bar value
         self.stream_menu_selection = ''
 
         # download
@@ -89,6 +86,12 @@ class MainWindow:
 
         # thumbnail
         self.current_thumbnail = None
+
+        # timers
+        self.statusbar_timer = 0
+
+        # side bar
+        self.animate_bar = True
 
         # initial setup
         self.setup()
@@ -146,7 +149,7 @@ class MainWindow:
                         pass
 
             elif k == 'url':
-                self.window.Element('url').Update(v)
+                self.window['url'](v.strip())
                 self.url_text_change()
 
             elif k == 'monitor':
@@ -178,9 +181,10 @@ class MainWindow:
 
         # column for playlist menu
         video_block = sg.Col([
-                              [sg.Combo(values=self.pl_menu, size=(34, 1), key='pl_menu', enable_events=True)],
-                              [sg.Combo(values=self.stream_menu, size=(34, 1), key='stream_menu', enable_events=True)],
-                              [sg.ProgressBar(max_value=100, size=(20, 9), key='m_bar', pad=(5, 9))]], size=(290, 80))
+                              [sg.Combo(values=self.pl_menu, size=(36, 1), key='pl_menu', enable_events=True, pad=(0, 5))],
+                              [sg.Combo(values=self.stream_menu, size=(36, 1), key='stream_menu', enable_events=True, pad=(0, 5))],
+                              [sg.ProgressBar(max_value=100, size=(15, 9), key='m_bar', pad=(0, 5)),
+                               sg.ProgressBar(max_value=100, size=(5, 9), key='s_bar', pad=(0, 5))]], size=(290, 80))
 
         pl_button = sg.Button('', tooltip=' download playlist ', key='pl_download', image_data=playlist_icon, **transparent)
 
@@ -199,7 +203,10 @@ class MainWindow:
 
             # playlist/video block
             [sg.Col([[sg.T('       '), sg.Image(data=thumbnail_icon, key='main_thumbnail')]], size=(320, 110)),
-             sg.Frame('Playlist/video:', [[video_block]], relief=sg.RELIEF_SUNKEN, key='playlist_frame'), pl_button],
+             sg.Frame('Playlist/video:',
+                      [[video_block]],
+                      relief=sg.RELIEF_SUNKEN, key='playlist_frame'),
+             pl_button],
 
             # spacer
             [sg.T('', font='any 1')],
@@ -221,7 +228,7 @@ class MainWindow:
 
             # download button
             [sg.Column([[sg.B('', tooltip='Main download Engine', image_data=download_icon, key='Download')]],
-                       size=(165, 50), justification='center')],
+                       size=(166, 50), justification='center')],
 
         ]
 
@@ -247,7 +254,7 @@ class MainWindow:
                    sg.Button('', key='D.Window', tooltip=' Show download window ', image_data=dwindow_icon, **transparent),
                    sg.Button('', key='Delete', tooltip=' Delete item from list ', image_data=delete_icon, **transparent),
 
-                   sg.T(' ' * 60), sg.T(''), sg.T('', key='selected_row_num', visible=False),
+                   sg.T(' ' * 60), sg.T(''),
 
                    sg.Button('', key='Resume All', tooltip=' Resume All ', image_data=resumeall_icon, **transparent),
                    sg.Button('', key='Stop All', tooltip=' Stop All ', image_data=stopall_icon, **transparent),
@@ -259,7 +266,8 @@ class MainWindow:
                   # table
                   [sg.Table(values=headings, headings=headings, num_rows=12, justification='left', auto_size_columns=False,
                             vertical_scroll_only=False, key='table', enable_events=True, font='any 9',
-                            right_click_menu=table_right_click_menu, max_col_width=100, col_widths=col_widths)],
+                            right_click_menu=table_right_click_menu, max_col_width=100, col_widths=col_widths,
+                            )],
 
                   si_layout
                   ]
@@ -310,6 +318,9 @@ class MainWindow:
                                                             enable_events=True, key='segment_size'),
                        sg.Text(f'Current value: {size_format(config.segment_size)}', size=(30, 1), key='seg_current_value'),
                        sg.T('*ex: 512 KB or 5 MB', font='any 8')],
+
+                      [sg.Checkbox('process big playlist info on demand', default=config.process_big_playlist_on_demand,
+                                   enable_events=True, key='process_big_playlist_on_demand'),]
                   ])],
 
                   [sg.T('', font='any 1')],
@@ -352,12 +363,17 @@ class MainWindow:
                       [sg.T('Check for update every:'),
                        sg.Combo([1, 7, 30], default_value=config.update_frequency, size=(4, 1),
                                 key='update_frequency', enable_events=True), sg.T('day(s).')],
-                      [sg.T('    '),
+                      [
+                       sg.B('', key='update_pyIDM', image_data=refresh_icon, **transparent, tooltip='check for update'),
                        sg.T(f'PyIDM version = {config.APP_VERSION}', size=(50, 1), key='pyIDM_version_note'),
-                       sg.Button('Check for update', key='update_pyIDM')],
-                      [sg.T('    '),
+                      ],
+                      [
+                       sg.B('', key='update_youtube_dl', image_data=refresh_icon, **transparent,
+                            tooltip=' check for update '),
                        sg.T('Youtube-dl version = 00.00.00', size=(50, 1), key='youtube_dl_update_note'),
-                       sg.Button('Check for update', key='update_youtube_dl')],
+                          sg.B('', key='rollback_ytdl_update', image_data=delete_icon, **transparent,
+                               tooltip=' rollback update '),
+                      ],
                   ])],
 
                   # [sg.T('')],
@@ -397,7 +413,7 @@ class MainWindow:
               sg.Tab('Log', log_layout)]],
             key='tab_group')],
             [
-             sg.T(r'', size=(73, 1), relief=sg.RELIEF_SUNKEN, font='any 8', key='status_bar'),
+             sg.T('', size=(73, 1), relief=sg.RELIEF_SUNKEN, font='any 8', key='status_bar'),
              sg.Text('', size=(10, 1), key='status_code', relief=sg.RELIEF_SUNKEN, font='any 8'),
              sg.T('5 ▼  |  6 ⏳', size=(12, 1), key='active_downloads', relief=sg.RELIEF_SUNKEN, font='any 8', tooltip=' active downloads | pending downloads '),
              sg.T('⬇350 bytes/s', font='any 8', relief=sg.RELIEF_SUNKEN, size=(12, 1), key='total_speed'),
@@ -405,7 +421,8 @@ class MainWindow:
         ]
 
         # window
-        window = sg.Window(title=config.APP_TITLE, layout=layout, size=(700, 450), margins=(2, 2))
+        window = sg.Window(title=config.APP_TITLE, layout=layout, size=(700, 450), margins=(2, 2),
+                           return_keyboard_events=True)
         return window
 
     def start_window(self):
@@ -461,9 +478,6 @@ class MainWindow:
             # get instant gui update, don't wait for scheduled update
             self.update_gui()
 
-            # # update text widget that display selected row number
-            # self.window['selected_row_num']('---' if row_num is None else row_num + 1)
-
         except Exception as e:
             log('MainWindow.select_row(): ', e)
 
@@ -493,10 +507,7 @@ class MainWindow:
 
             # re-select the previously selected row in the table
             if self.selected_row_num is not None:
-                self.window.Element('table').Update(select_rows=(self.selected_row_num,))
-            else:
-                # update selected item number
-                self.window.Element('selected_row_num').Update('---')
+                self.window['table'](select_rows=(self.selected_row_num,))
 
             # update active and pending downloads
             self.window['active_downloads'](f' {len(self.active_downloads)} ▼  |  {len(self.pending)} ⏳')
@@ -524,7 +535,7 @@ class MainWindow:
                 else:
                     self.reset_thumbnail()
 
-            # update selected download item's preview panel
+            # update selected download item's preview panel in downloads tab
             d = self.selected_d
 
             if d:
@@ -535,7 +546,7 @@ class MainWindow:
                       f"Live connections: {d.live_connections} - Remaining parts: {d.remaining_parts}\n" \
                       f"{d.status}  {d.i}"
 
-                self.window['si_thumbnail'](data=d.thumbnail if d.thumbnail else thumbnail_icon)
+                self.window['si_thumbnail'](data=d.thumbnail if (d.thumbnail) else thumbnail_icon)
             else:
                 out = f"File:\n" \
                       f"Downloaded:\n" \
@@ -547,6 +558,20 @@ class MainWindow:
             self.window['si_out'](out)
             self.window['si_bar'].update_bar(d.progress if d else 0)
             self.window['si_percent'](f'{d.progress}%' if d else '')
+
+            # animate side bar
+            if self.animate_bar and self.s_bar < 90:
+                self.s_bar += 10
+
+            # stop animate side bar
+            if self.video and self.video.processed:
+                self.s_bar = 100
+                self.animate_bar = False
+
+            # update stream menu
+            if self.video and self.stream_menu != self.video.stream_menu:
+                self.update_stream_menu()
+
 
         except Exception as e:
             log('MainWindow.update_gui() error:', e)
@@ -561,6 +586,9 @@ class MainWindow:
         """update status bar text widget"""
         try:
             self.window['status_bar'](text)
+
+            # reset timer, used to clear status bar
+            self.statusbar_timer = time.time()
         except:
             pass
 
@@ -570,7 +598,6 @@ class MainWindow:
         """main loop"""
         timer1 = 0
         timer2 = 0
-        statusbar_timer = 0
         one_time = True
         while True:
             event, values = self.window.Read(timeout=50)
@@ -581,6 +608,30 @@ class MainWindow:
                 self.main_frameOnClose()
                 break
 
+            # keyboard events ---------------------------------------------------
+            if event.startswith('Up:'): # up arrow example "Up:38"
+                # get current element with focus
+                focused_elem = self.window.find_element_with_focus()
+
+                # for table, change selected row
+                if self.window['table'] == focused_elem and self.selected_row_num > 0:
+                    self.select_row(self.selected_row_num - 1)
+
+            if event.startswith('Down:'):  # down arrow example "Down:40"
+                # get current element with focus
+                focused_elem = self.window.find_element_with_focus()
+
+                # for table, change selected row
+                if self.window['table'] == focused_elem and self.selected_row_num < len(self.window['table'].Values)-1:
+                    self.select_row(self.selected_row_num + 1)
+
+            # Mouse events MouseWheel:Up, MouseWheel:Down -----------------------
+            if event == 'MouseWheel:Up':
+                pass
+            if event == 'MouseWheel:Down':
+                pass
+
+            # Main Tab ----------------------------------------------------------------------------------------
             elif event == 'update_note':
                 # if clicked on update notification text
                 if self.new_version_available:
@@ -595,14 +646,11 @@ class MainWindow:
                     clipboard_write(url)
 
             elif event == 'paste url':
-                self.window['url'](clipboard_read())
+                self.window['url'](clipboard_read().strip())
                 self.url_text_change()
 
             elif event == 'Download':
                 self.download_btn()
-
-            elif event == 'ytdl_dl_btn':
-                self.ytdl_downloader()
 
             elif event == 'folder':
                 if values['folder']:
@@ -618,9 +666,13 @@ class MainWindow:
 
             # downloads tab events -----------------------------------------------------------------------------------
             elif event == 'table':
+                # todo: investigate this event keeps triggering
+                # I think because update_gui() keeps updating table contents, it will trigger 'table' event continuously
+
                 try:
                     row_num = values['table'][0]
-                    self.select_row(row_num)
+                    if row_num != self.selected_row_num:  # this is a must here otherwise application will freeze [bug]
+                        self.select_row(row_num)
                 except Exception as e:
                     # log("MainWindow.run:if event == 'table': ", e)
                     pass
@@ -664,6 +716,7 @@ class MainWindow:
                     log('gui> properties>', e)
 
             elif event == '⏳ Schedule download':
+                print('schedule clicked')
                 response = self.ask_for_sched_time(msg=self.selected_d.name)
                 if response:
                     self.selected_d.sched = response
@@ -740,6 +793,9 @@ class MainWindow:
 
             elif event == 'show_thumbnail':
                 config.show_thumbnail = values['show_thumbnail']
+
+            elif event == 'process_big_playlist_on_demand':
+                config.process_big_playlist_on_demand = values['process_big_playlist_on_demand']
 
             elif event == 'speed_limit_switch':
                 switch = values['speed_limit_switch']
@@ -852,6 +908,10 @@ class MainWindow:
             elif event == 'update_youtube_dl':
                 self.update_ytdl()
 
+            elif event == 'rollback_ytdl_update':
+                Thread(target=update.rollback_ytdl_update).start()
+                self.select_tab('Log')
+
             elif event in ['update_pyIDM']:
                 Thread(target=self.update_app, daemon=True).start()
 
@@ -900,6 +960,7 @@ class MainWindow:
             # run one time, reason this is here not in setup, is to minimize gui loading time
             if one_time:
                 one_time = False
+                
                 # check availability of ffmpeg in the system or in same folder with this script
                 self.ffmpeg_check()
 
@@ -927,8 +988,8 @@ class MainWindow:
                     self.window['update_note']('')
 
             # reset statusbar periodically
-            if time.time() - statusbar_timer >= 3:
-                statusbar_timer = time.time()
+            if time.time() - self.statusbar_timer >= 10:
+                self.statusbar_timer = time.time()
                 self.set_status('')
 
     # region headers
@@ -1052,16 +1113,16 @@ class MainWindow:
 
             #
             if response == 'Resume':
-                log('resuming')
+                log('check resuming?')
 
                 # to resume, size must match, otherwise it will just overwrite
-                if d.size == d_from_list.size:
+                if d.size == d_from_list.size and d.selected_quality == d_from_list.selected_quality:
                     log('resume is possible')
                     # get the same segment size
                     d.segment_size = d_from_list.segment_size
                     d.downloaded = d_from_list.downloaded
                 else:
-                    log('file: ', d.name, 'has different size and will be downloaded from beginning')
+                    log('file:', d.name, 'has different properties and will be downloaded from beginning')
                     d.delete_tempfiles()
 
                 # replace old item in download list
@@ -1077,7 +1138,7 @@ class MainWindow:
             else:
                 log('Download cancelled by user')
                 d.status = Status.cancelled
-                return
+                return 'cancelled'
 
         # ------------------------------------------------------------------
 
@@ -1102,6 +1163,9 @@ class MainWindow:
 
         # create and start brain in a separate thread
         Thread(target=brain, daemon=True, args=(d, downloader)).start()
+
+        # select row in downloads table
+        self.select_row(d.id)
 
     def stop_all_downloads(self):
         # change status of pending items to cancelled
@@ -1129,6 +1193,16 @@ class MainWindow:
                         'check your link or click "Retry"')
             return
 
+        # make sure video streams loaded successfully before start downloading
+        if self.video and not self.video.stream_list:
+            if 0 < self.m_bar < 100:
+                msg = 'Video still loading streams, \nplease wait until loading and select a proper video quality'
+            else:
+                msg = 'Video does not have any streams, and can not be downloaded'
+
+            sg.PopupOK(msg)
+            return
+
         # get copy of current download item
         d = copy.copy(self.d)
 
@@ -1138,7 +1212,6 @@ class MainWindow:
 
         if r not in ('error', 'cancelled', False):
             self.select_tab('Downloads')
-            self.select_row(d.id)
 
     # endregion
 
@@ -1318,6 +1391,20 @@ class MainWindow:
             pass
 
     @property
+    def s_bar(self):
+        """playlist progress bar"""
+        return self._s_bar
+
+    @s_bar.setter
+    def s_bar(self, value):
+        """playlist progress bar"""
+        self._s_bar = value if value <= 100 else 100
+        try:
+            self.window['s_bar'].UpdateBar(value)
+        except:
+            pass
+
+    @property
     def pl_menu(self):
         """video playlist menu"""
         return self._pl_menu
@@ -1354,15 +1441,20 @@ class MainWindow:
 
             # reset thumbnail
             self.reset_thumbnail()
+
+            # animate bar
+            self.animate_bar = False
         except:
             pass
 
     def reset_progress_bar(self):
         self.m_bar = 0
+        self.animate_bar = False
+        self.s_bar = 0
 
     def reset_thumbnail(self):
         """show a blank thumbnail background"""
-        self.show_thumbnail()
+        self.show_thumbnail(thumbnail=None)
 
     def show_thumbnail(self, thumbnail=None):
         """show video thumbnail in thumbnail image widget in main tab, call without parameter reset thumbnail"""
@@ -1372,17 +1464,36 @@ class MainWindow:
                 # reset thumbnail
                 self.window['main_thumbnail'](data=thumbnail_icon)
 
-            elif thumbnail != self.current_thumbnail:
-
+            elif thumbnail != self.current_thumbnail and config.show_thumbnail:
                 # new thumbnail
                 self.window['main_thumbnail'](data=thumbnail)
 
             self.current_thumbnail = thumbnail
         except Exception as e:
-            log('show_thumbnai()>', e)
+            log('show_thumbnail()>', e)
 
     def youtube_func(self):
         """fetch metadata from youtube and other stream websites"""
+
+        def cancel_flag():
+            # quit if main window terminated
+            if config.terminate:
+                return True
+
+            # quit if url changed by user
+            if url != self.url:
+                self.reset_video_controls()
+                self.reset()
+                log('youtube func: quitting, url changed by user')
+                return True
+
+            # quit if new youtube func thread started
+            if yt_id != self.yt_id:
+                log('youtube func: quitting, new instance has started')
+                return True
+
+            else:
+                return False
 
         # getting videos from youtube is time consuming, if another thread starts, it should cancel the previous one
         # create unique identification for this thread
@@ -1396,16 +1507,16 @@ class MainWindow:
 
         # reset video controls
         self.reset_video_controls()
-        self.change_cursor('busy')
 
         # main progress bar initial indication
         self.m_bar = 10
+        self.change_cursor('busy')
 
         # reset playlist
         self.playlist = []
 
-        # quit if main window terminated
-        if config.terminate: return
+        # check cancel flag
+        if cancel_flag(): return
 
         try:
             # we import youtube-dl in separate thread to minimize startup time, will wait in loop until it gets imported
@@ -1415,6 +1526,7 @@ class MainWindow:
                     time.sleep(0.1)  # wait until module gets imported
 
             # youtube-dl process
+            timer1 = time.time()
             log(get_ytdl_options())
             with video.ytdl.YoutubeDL(get_ytdl_options()) as ydl:
                 # process=False is faster and youtube-dl will not download every videos webpage in the playlist
@@ -1429,75 +1541,101 @@ class MainWindow:
 
                 # check results if _type is a playlist / multi_video
                 if info.get('_type') == 'playlist' or 'entries' in info:
+                    log('youtube-func()> start processing playlist')
+
+                    # videos info
                     pl_info = list(info.get('entries'))
 
-                    self.d.playlist_url = self.d.url
+                    # create initial playlist with un-processed video objects
+                    for num, item in enumerate(pl_info):
+                        item['formats'] = []
+                        vid = Video(item.get(url, ''), item)
+                        vid.playlist_title = info.get('title', '')
+                        vid.playlist_url = self.url
+                        self.playlist.append(vid)
 
                     # increment to media progressbar to complete last 50%
-                    num = len(pl_info)
-                    m_bar_incr = 50 / num
+                    playlist_length = len(self.playlist)
+                    m_bar_incr = 50 / playlist_length
 
                     # update playlist title widget: show how many videos
-                    try:
-                        self.window['playlist_frame'](value=f'Playlist ({num} {"videos" if num > 1 else "video"}):')
-                    except:
-                        pass
+                    self.window['playlist_frame'](
+                        value=f'Playlist ({playlist_length} {"videos" if playlist_length > 1 else "video"}):')
 
-                    self.playlist = [None for _ in range(len(pl_info))]  # fill list so we can store videos in order
+                    # update playlist menu, only videos names, there is no videos qualities yet
+                    self.update_pl_menu()
+
+                    # user notification for big playlists
+                    if playlist_length > config.big_playlist_length and config.process_big_playlist_on_demand:
+                        popup(f'Big playlist detected with {playlist_length} videos \n'
+                              f'To avoid wasting time and resources, videos info will be processed only when \n'
+                              f'selected in main Tab or playlist window\n\n'
+                              f'You can override this behaviour and fetch all videos information in advance by \n'
+                              f'disabling "process big playlist info on demand" option in settings\n',
+                              title='big playlist detected')
+
+                    # process videos info
+                    num = 0
                     v_threads = []
+                    processed_videos = 0
 
-                    # getting video objects and update self.playlist
-                    for num, item in enumerate(pl_info):
-                        video_url = item.get('url', None) or item.get('webpage_url', None) or item.get('id', None)
-                        t = Thread(target=self.get_video, daemon=True, args=[num, video_url, yt_id, m_bar_incr])
-                        v_threads.append(t)
-                        t.start()
+                    if self.playlist:
+                        while True:
+                            # big playlist
+                            if config.process_big_playlist_on_demand and playlist_length > config.big_playlist_length:
+                                break
 
-                    for t in v_threads:
-                        t.join()
+                            time.sleep(0.01)
 
-                    # clean playlist in case a slot left with 'None' value
-                    self.playlist = [v for v in self.playlist if v]
+                            # create threads
+                            if processed_videos < playlist_length:
+                                t = Thread(target=process_video_info, daemon=True, args=(self.playlist[num],))
+                                v_threads.append(t)
+                                t.start()
+                                print('processed video:', num + 1)
+                                processed_videos += 1
+
+                            # check for finished threads
+                            for t in v_threads[:]:
+                                if not t.is_alive():
+                                    v_threads.pop()
+                                    self.m_bar += m_bar_incr
+
+                            # check cancel flag
+                            if cancel_flag():
+                                return
+
+                            # check if done
+                            if processed_videos == playlist_length and not v_threads:
+                                break
+
+                            if num < playlist_length - 1:
+                                num += 1
 
                 else:
-                    # if it's one video, let youtube-dl process "info" without re-downloading webpage
-                    info = ydl.process_ie_result(info, download=False)
+                    # one video, not a playlist, processing info
+                    vid = Video(self.d.url, vid_info=info)
+                    process_video_info(vid)
+                    self.playlist = [vid]
 
-                    self.playlist = [Video(self.d.url, vid_info=info)]
-
-            # quit if main window terminated
-            if config.terminate: return
+                    # update playlist menu
+                    self.update_pl_menu()
 
             # quit if we couldn't extract any videos info (playlist or single video)
             if not self.playlist:
-                self.reset_video_controls()
-                self.disable()
-                # self.set_status('')
-                self.change_cursor('default')
                 self.reset()
                 log('youtube func: quitting, can not extract videos')
                 return
 
-            # quit if url changed by user
-            if url != self.d.url:
-                self.reset_video_controls()
-                self.change_cursor('default')
-                log('youtube func: quitting, url changed by user')
-                return
+            # check cancel flag
+            if cancel_flag(): return
 
-            # quit if new youtube func thread started
-            if yt_id != self.yt_id:
-                log('youtube func: quitting, new instance has started')
-                return
-
-            # update playlist menu
-            self.update_pl_menu()
-
-            # self.enable_video_controls()
+            # enable download button
             self.enable()
 
             # job completed
             self.m_bar = 100
+            log(f'youtube_func()> done fetching information in {round(time.time() - timer1, 1)} seconds .............')
 
         except Exception as e:
             log('youtube_func()> error:', e)
@@ -1506,30 +1644,11 @@ class MainWindow:
         finally:
             self.change_cursor('default')
 
-    def get_video(self, num, vid_url, yt_id, m_bar_incr):
-        log('Main_window.get_video()> url:', vid_url)
-        if not vid_url:
-            return None
-        try:
-            video = Video(vid_url)
-
-            # make sure no other youtube func thread started
-            if yt_id != self.yt_id:
-                log('get_video:> operation cancelled')
-                return
-
-            self.playlist[num] = video
-
-        except Exception as e:
-            log('MainWindow.get_video:> ', e)
-        finally:
-            with self.m_bar_lock:
-                self.m_bar += m_bar_incr
-
     def update_pl_menu(self):
         try:
             # set playlist label
             num = len(self.playlist)
+
             self.window['playlist_frame'](value=f'Playlist ({num} {"videos" if num > 1 else "video"}):')
 
             # update playlist menu items
@@ -1537,8 +1656,8 @@ class MainWindow:
 
             # choose first item in playlist by triggering playlist_onchoice
             self.playlist_OnChoice(self.pl_menu[0])
-        except:
-            pass
+        except Exception as e:
+            log('update_pl_menu()> error', e)
 
     def update_stream_menu(self):
         try:
@@ -1555,20 +1674,31 @@ class MainWindow:
         if selected_text not in self.pl_menu:
             return
 
-        index = self.pl_menu.index(selected_text)
-        self.video = self.playlist[index]
+        try:
+            index = self.pl_menu.index(selected_text)
+            self.video = self.playlist[index]
 
-        # set current download item as self.video
-        self.d = self.video
+            # set current download item as self.video
+            self.d = self.video
 
-        self.update_stream_menu()
+            self.update_stream_menu()
 
-        # get video thumbnail
-        if config.show_thumbnail:
-            Thread(target=self.video.get_thumbnail).start()
+            # instant widgets update
+            self.update_gui()
 
-        # instant widgets update
-        self.update_gui()
+            # fetch video info if not available and animate side bar
+            if not self.video.processed:
+                self.s_bar = 0
+                self.animate_bar = True  # let update_gui() start a fake progress
+
+                # process video
+                Thread(target=process_video_info, daemon=True, args=(self.video, )).start()
+            else:
+                self.s_bar = 100
+                self.animate_bar = False
+
+        except Exception as e:
+            log('playlist_OnChoice()> error', e)
 
     def stream_OnChoice(self, selected_text):
         if selected_text not in self.stream_menu:
@@ -1582,34 +1712,44 @@ class MainWindow:
 
     def download_playlist(self):
 
-        # check if there is a video file or quit
-        if not self.video:
-            sg.popup_ok('Playlist is empty, nothing to download :)', title='Playlist download')
+        # check if playlist is ready
+        if not self.playlist:
+            sg.popup_ok('Playlist is empty, nothing to download :(', title='Playlist download')
             return
 
-        # prepare a list for master stream menu
+        # fix repeated video names in playlist --------------------------------------------------------------------
+        vid_names = []
+        for num, vid in enumerate(self.playlist):
+            if vid.name in vid_names:
+                name, ext = os.path.splitext(vid.name)
+                name = f'{name}_{num}{ext}'
+                vid.name = name
+
+            vid_names.append(vid.name)
+        del vid_names  # no longer needed, free memory
+
+        # prepare a list for master stream menu, --------------------------------------------------------------------
         mp4_videos = {}
         other_videos = {}
         audio_streams = {}
 
-        # will use raw stream names which doesn't include size
+        # will use raw stream names which doesn't include size ex: {quality: raw_name}
         for video in self.playlist:
-            mp4_videos.update({stream.raw_name: stream for stream in video.mp4_videos.values()})
-            other_videos.update({stream.raw_name: stream for stream in video.other_videos.values()})
-            audio_streams.update({stream.raw_name: stream for stream in video.audio_streams.values()})
+            mp4_videos.update({stream.quality: stream.raw_name for stream in video.mp4_videos.values()})
+            other_videos.update({stream.quality: stream.raw_name for stream in video.other_videos.values()})
+            audio_streams.update({stream.quality: stream.raw_name for stream in video.audio_streams.values()})
 
-        # sort streams based on quality
-        mp4_videos = {k: v for k, v in sorted(mp4_videos.items(), key=lambda item: item[1].quality, reverse=True)}
-        other_videos = {k: v for k, v in sorted(other_videos.items(), key=lambda item: item[1].quality, reverse=True)}
-        audio_streams = {k: v for k, v in sorted(audio_streams.items(), key=lambda item: item[1].quality, reverse=True)}
+        # make lists of raw names,  sorted list of "stream qualities" starting with higher values
+        mp4_list = [mp4_videos[x] for x in sorted(mp4_videos.keys(), reverse=True)]
+        other_list = [other_videos[x] for x in sorted(other_videos.keys(), reverse=True)]
+        audio_list = [audio_streams[x] for x in sorted(audio_streams.keys(), reverse=True)]
 
-        raw_streams = {**mp4_videos, **other_videos, **audio_streams}
-        master_stream_menu = ['● Video streams:                     '] + list(mp4_videos.keys()) + list(
-            other_videos.keys()) + \
-                             ['', '● Audio streams:                 '] + list(audio_streams.keys())
-        master_stream_combo_selection = ''
+        master_stream_menu = ['● Video streams:                     '] + mp4_list + other_list + \
+                             ['', '● Audio streams:                 '] + audio_list
 
+        # gui layout ------------------------------------------------------------------------------------------------
         video_checkboxes = []
+        progress_bars = []
         stream_combos = []
 
         general_options_layout = [sg.Checkbox('Select All', enable_events=True, key='Select All'),
@@ -1620,95 +1760,201 @@ class MainWindow:
 
         video_layout = []
 
+        # build layout widgets
         for num, video in enumerate(self.playlist):
             # set selected stream
-            video.selected_stream = video.stream_list[0]
+            if video.stream_list:
+                video.selected_stream = video.stream_list[0]
 
-            video_checkbox = sg.Checkbox(truncate(video.title, 40), size=(40, 1), tooltip=video.title,
-                                         key=f'video {num}')
+            # video names with check boxes
+            video_checkbox = sg.Checkbox(truncate(video.title, 65), size=(65, 1), tooltip=video.title, font='any 8',
+                                         key=f'video {num}', enable_events=True)
             video_checkboxes.append(video_checkbox)
 
+            # hidden progress bars works only while loading streams
+            progress_bar = sg.ProgressBar(100, size=(10, 5), pad=(5, 1), key=f'bar {num}')
+            progress_bars.append(progress_bar)
+
+            # streams / quality menu
             stream_combo = sg.Combo(values=video.raw_stream_menu, default_value=video.raw_stream_menu[1], font='any 8',
-                                    size=(26, 1), key=f'stream {num}', enable_events=True)
+                                    size=(22, 1), key=f'stream {num}', enable_events=True, pad=(5, 0))
             stream_combos.append(stream_combo)
 
-            row = [video_checkbox, stream_combo,
+            # build one row from the above
+            row = [video_checkbox, sg.Col([[stream_combo], [progress_bar]]),
                    sg.T(size_format(video.total_size), size=(10, 1), font='any 8', key=f'size_text {num}')]
+
+            # add row to video_layout
             video_layout.append(row)
 
         video_layout = [sg.Column(video_layout, scrollable=True, vertical_scroll_only=True, size=(650, 250), key='col')]
 
-        layout = [[sg.T(f'Total Videos: {len(self.playlist)}')]]
-        layout.append(general_options_layout)
-        layout.append([sg.T('')])
-        layout.append([sg.Frame(title='select videos to download:', layout=[video_layout])])
-        layout.append([sg.Col([[sg.OK(), sg.Cancel()]], justification='right')])
+        layout = [
+            [sg.T(f'Total Videos: {len(self.playlist)}')],
+            general_options_layout,
+            [sg.T('*note: select videos first to load streams menu if not available!!', font='any 8')],
+            [sg.Frame(title='Videos:', layout=[video_layout])],
+            [sg.Col([[sg.OK(), sg.Cancel()]], justification='right')]
+        ]
 
+        # create window ---------------------------------------------------------------------------------------------
         window = sg.Window(title='Playlist download window', layout=layout, finalize=True, margins=(2, 2))
 
-        chosen_videos = []
+        # set progress bar properties
+        for bar in progress_bars:
+            bar.Widget.config(mode='indeterminate')
+            bar.expand(expand_x=True)
 
+        chosen_videos = []
+        active_threads = {}  # {video.name: thread}
+
+        def update_video(num):
+            # update some parameters for a selected video
+            video = self.playlist[num]
+            stream_widget = window[f'stream {num}']
+            video_checkbox = window[f'video {num}']
+            size_widget = window[f'size_text {num}']
+
+            selected = video_checkbox.get()
+            stream_text = stream_widget.get()
+
+            # process video
+            if selected and not video.processed and not active_threads.get(video.name, None):
+                t = Thread(target=process_video_info, daemon=True, args=(video,))
+                active_threads[video.name] = t
+                t.start()
+
+            # first check if video has streams
+            if not video.stream_list:
+                return
+
+            # correct chosen stream values
+            if stream_text not in video.raw_stream_names:
+                stream_widget(video.selected_stream.raw_name)
+            else:
+                video.selected_stream = video.raw_streams[stream_text]
+
+            size_widget(size_format(video.size))
+
+        # event loop -------------------------------------------------------------------------------------------------
         while True:
-            event, values = window()
+            event, values = window.read(timeout=100)
             if event in (None, 'Cancel'):
                 window.close()
                 return
 
             if event == 'OK':
                 chosen_videos.clear()
+                null_videos = []
                 for num, video in enumerate(self.playlist):
-                    selected_text = values[f'stream {num}']
-                    video.selected_stream = video.raw_streams[selected_text]
-
+                    # check if video is selected
                     if values[f'video {num}'] is True:
-                        chosen_videos.append(video)
-                        # print('video.selected_stream:', video.selected_stream)
 
-                window.close()
-                break
+                        # get selected text from stream menu
+                        selected_text = values[f'stream {num}']
+
+                        # get selected stream
+                        selected_stream = video.raw_streams.get(selected_text, None)
+
+                        # check if video has streams or not
+                        if not selected_stream:
+                            null_videos.append(video.name)
+                        else:
+                            video.selected_stream = selected_stream
+
+                            # append to chosen videos list
+                            chosen_videos.append(video)
+                            # print('video.selected_stream:', video.selected_stream)
+                if null_videos:
+                    vid_names = "\n".join(null_videos)
+                    sg.popup_ok(f'videos: \n'
+                                f'{vid_names}\n'
+                                f'have no streams, please wait until finish loading '
+                                f'or un-select this video and try again')
+                else:
+                    window.close()
+                    break
 
             elif event == 'Select All':
-                checked = window['Select All'].get()
-                for checkbox in video_checkboxes:
+                checked = values['Select All']
+
+                # process all other check boxes
+                for num, checkbox in enumerate(video_checkboxes):
                     checkbox(checked)
+                    update_video(num)
 
             elif event == 'master_stream_combo':
                 selected_text = values['master_stream_combo']
-                if selected_text in raw_streams:
-                    # update all videos stream menus from master stream menu
-                    for num, stream_combo in enumerate(stream_combos):
-                        video = self.playlist[num]
+                # if True:  # selected_text in raw_streams:
 
-                        if selected_text in video.raw_streams:
-                            stream_combo(selected_text)
-                            video.selected_stream = video.raw_streams[selected_text]
-                            window[f'size_text {num}'](size_format(video.size))
+                # update all videos stream menus from master stream menu
+                for num, stream_combo in enumerate(stream_combos):
+                    video = self.playlist[num]
+                    if selected_text in video.raw_streams:
+                        stream_combo(selected_text)
+                        update_video(num)
+                        # video.selected_stream = video.raw_streams[selected_text]
+                        # window[f'size_text {num}'](size_format(video.size))
 
-            elif event.startswith('stream'):
+            elif event.startswith('stream') or event.startswith('video'):
                 num = int(event.split()[-1])
+                update_video(num)
 
-                video = self.playlist[num]
-                selected_text = window[event].get()
-                # print(f'"{selected_text}", {video.raw_streams}')
-                if selected_text in video.raw_streams:
-                    video.selected_stream = video.raw_streams[selected_text]
-
-                else:
-                    window[event](video.selected_stream.raw_name)
-
-                window[f'size_text {num}'](size_format(video.size))
+                # video = self.playlist[num]
+                # selected_text = window[event].get()
+                # # print(f'"{selected_text}", {video.raw_streams}')
+                #
+                # selected_stream = video.raw_streams.get(selected_text, None)
+                # if selected_stream:
+                #     video.selected_stream = selected_stream
+                #
+                # else:
+                #     if video.selected_stream:
+                #         window[event](video.selected_stream.raw_name)
+                #
+                # window[f'size_text {num}'](size_format(video.size))
                 # log('download playlist fn>', 'stream', repr(video.selected_stream))
 
+            # update stream menu for processed videos
+            for num, video in enumerate(self.playlist):
+                stream_combo = window[f'stream {num}']
+                if video.stream_list:
+                    if stream_combo.Values != video.raw_stream_menu:
+                        stream_combo(values=video.raw_stream_menu)
+                        master_stream_text = values['master_stream_combo']
+                        stream_text = master_stream_text if master_stream_text in video.raw_stream_names else video.selected_stream.raw_name
+                        stream_combo(stream_text)
+                        update_video(num)
+
+            # animate progress bars while loading streams
+            for num, bar in enumerate(progress_bars):
+                video = self.playlist[num]
+                if video.name in active_threads and not video.processed:
+                    bar(visible=True)
+                    bar.expand(expand_x=True)
+                    bar.Widget['value'] += 10
+                else:
+                    bar(visible=False)
+
+        # After closing playlist window, select downloads tab -------------------------------------------------------
         self.select_tab('Downloads')
 
-        for video in chosen_videos:
-            # resume_support = True if video.size else False
+        # start downloading chosen videos ---------------------------------------------------------------------------
+        def download_selected_videos():
+            # will send videos to self.download() with paused intervals to prevent cpu surge
 
-            log(f'download playlist fn> {repr(video.selected_stream)}, title: {video.name}')
+            for video in chosen_videos:
+                log(f'download playlist fn> {repr(video.selected_stream)}, title: {video.name}')
+                video.folder = config.download_folder
 
-            video.folder = config.download_folder
+                # send video to download method
+                self.start_download(video, silent=True)
 
-            self.start_download(video, silent=True)
+                # give a small pause
+                time.sleep(0.5)
+
+        # create a separate thread to prevent gui freeze
+        Thread(target=download_selected_videos).start()
 
     def ffmpeg_check(self):
         if not check_ffmpeg():
@@ -1742,9 +1988,12 @@ class MainWindow:
 
     # region General
     def url_text_change(self):
-        url = self.window.Element('url').Get().strip()
-        if url == self.d.url:
+        url = self.window.Element('url').get().strip()
+
+        if url == self.url:
             return
+
+        self.url = url
 
         # Focus and select main app page in case text changed from script
         self.window.BringToFront()
@@ -1773,7 +2022,7 @@ class MainWindow:
         self.d = DownloadItem()
 
         # reset some values
-        self.set_status('')
+        self.set_status('')  # status bar
         self.playlist = []
         self.video = None
 
@@ -1782,7 +2031,11 @@ class MainWindow:
         self.reset_video_controls()
         self.window['status_code']('')
 
+        # Force python garbage collector to free up memory
+        gc.collect()
+
     def change_cursor(self, cursor='default'):
+        # return
         # todo: check if we can set cursor  for window not individual tabs
         if cursor == 'busy':
             cursor_name = 'watch'
