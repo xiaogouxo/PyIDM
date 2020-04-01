@@ -36,7 +36,7 @@ sg.SetOptions(icon=APP_ICON, font='Helvetica 10', auto_size_buttons=True, progre
 sg.ChangeLookAndFeel(config.current_theme)
 
 # transparent color for button which mimic current background, will be use as a parameter, ex. **transparent
-transparent = dict(button_color=('black', sg.theme_background_color()), border_width=0)
+transparent = dict(button_color=(sg.theme_text_color(), sg.theme_background_color()), border_width=0)
 
 
 class MainWindow:
@@ -193,8 +193,10 @@ class MainWindow:
             [sg.T('', font='any 2')],
 
             # app icon and app name
-            [ sg.Image(data=APP_ICON), sg.Text(f'{config.APP_NAME}', font='any 20', justification='center', key='app_title'),
-            sg.T('', size=(50, 1), justification='center', key='update_note', enable_events=True, font='any 9'),],
+            [sg.Image(data=APP_ICON), sg.Text(f'{config.APP_NAME}', font='any 20', justification='center', key='app_title'),
+             sg.T('', size=(30, 1), justification='center', key='update_note', enable_events=True, font='any 9'),
+             # sg.T('  !    ', key='about', font='any 8 bold', enable_events=True, tooltip=' about! ')
+             ],
 
             # url entry
             [sg.T('Link:  '),
@@ -238,7 +240,7 @@ class MainWindow:
 
         # selected download item's preview panel, "si" = selected item
         si_layout = [sg.Image(data=thumbnail_icon, key='si_thumbnail'),
-                     sg.Col([[sg.T('', size=(100, 5), key='si_out')],
+                     sg.Col([[sg.T('', size=(100, 5), key='si_out', font='any 8')],
                             [sg.ProgressBar(100, size=(20, 10), key='si_bar'), sg.T(' ', size=(10, 1), key='si_percent')]])]
 
         table_right_click_menu = ['Table', ['!Options for selected file:', '---', 'Open File', 'Open File Location',
@@ -264,9 +266,10 @@ class MainWindow:
                    ],
 
                   # table
-                  [sg.Table(values=headings, headings=headings, num_rows=12, justification='left', auto_size_columns=False,
+                  [sg.Table(values=headings, headings=headings, num_rows=9, justification='left', auto_size_columns=False,
                             vertical_scroll_only=False, key='table', enable_events=True, font='any 9',
                             right_click_menu=table_right_click_menu, max_col_width=100, col_widths=col_widths,
+                            row_height=20
                             )],
 
                   si_layout
@@ -274,7 +277,8 @@ class MainWindow:
 
         return layout
 
-    def create_settings_tab(self):
+    def create_settings_tab_old(self):
+        """setting tab with scrollable columns, can not use mousewheel to scroll"""
 
         proxy_tooltip = """proxy setting examples:
                 - http://proxy_address:port
@@ -388,6 +392,108 @@ class MainWindow:
 
         return layout
 
+    def create_settings_tab(self):
+        """settings tab with TabGroup"""
+
+        proxy_tooltip = """proxy setting examples:
+                - http://proxy_address:port
+                - 157.245.224.29:3128
+
+                or if authentication required: 
+                - http://username:password@proxyserveraddress:port  
+
+                then choose proxy type i.e. "http, https, socks4, or socks5"  
+                """
+
+        general = [
+            [sg.T('', size=(60, 1)), sg.Button(' about ', key='about')],
+
+            [sg.T('Settings Folder:'),
+             sg.Combo(values=['Local', 'Global'],
+                      default_value='Local' if config.sett_folder == config.current_directory else 'Global',
+                      key='sett_folder', enable_events=True),
+             sg.T(config.sett_folder, key='sett_folder_text', size=(100, 1), font='any 9')],
+
+            [sg.Text('Select Theme:  '),
+             sg.Combo(values=config.all_themes, default_value=config.current_theme, size=(15, 1),
+                      enable_events=True, key='themes'),
+             sg.Text(f' Total: {len(config.all_themes)} Themes')],
+
+            [sg.Checkbox('Monitor copied urls in clipboard', default=config.monitor_clipboard,
+                         key='monitor', enable_events=True)],
+
+            [sg.Checkbox("Show download window", key='show_download_window',
+                         default=config.show_download_window, enable_events=True)],
+            [sg.Checkbox("Auto close download window after finish downloading", key='auto_close_download_window',
+                         default=config.auto_close_download_window, enable_events=True)],
+
+            [sg.Checkbox("Show video Thumbnail", key='show_thumbnail', default=config.show_thumbnail,
+                         enable_events=True)],
+
+            [sg.Text('Segment size:  '), sg.Input(default_text=size_format(config.segment_size), size=(10, 1),
+                                                  enable_events=True, key='segment_size'),
+             sg.Text(f'Current value: {size_format(config.segment_size)}', size=(30, 1), key='seg_current_value'),
+             sg.T('*ex: 512 KB or 5 MB', font='any 8')],
+
+            [sg.Checkbox('process big playlist info on demand', default=config.process_big_playlist_on_demand,
+                         enable_events=True, key='process_big_playlist_on_demand'), ]
+        ]
+
+        network = [
+            [sg.T('')],
+            [sg.Checkbox('Speed Limit:', default=True if config.speed_limit else False,
+                         key='speed_limit_switch', enable_events=True,
+                         ),
+             sg.Input(default_text=size_format(config.speed_limit) if config.speed_limit else '',
+                      size=(10, 1), key='speed_limit',
+                      disabled=False if config.speed_limit else True, enable_events=True),
+             sg.T('0', size=(30, 1), key='current_speed_limit'),
+             sg.T('*ex: 512 KB or 5 MB', font='any 8')],
+            [sg.Text('Max concurrent downloads:      '),
+             sg.Combo(values=[x for x in range(1, 101)], size=(5, 1), enable_events=True,
+                      key='max_concurrent_downloads', default_value=config.max_concurrent_downloads)],
+            [sg.Text('Max connections per download:'),
+             sg.Combo(values=[x for x in range(1, 101)], size=(5, 1), enable_events=True,
+                      key='max_connections', default_value=config.max_connections)],
+            [sg.Checkbox('Proxy:', default=config.enable_proxy, key='enable_proxy',
+                         enable_events=True),
+             sg.I(default_text=config.raw_proxy, size=(25, 1), font='any 9', key='raw_proxy',
+                  enable_events=True, disabled=not config.enable_proxy),
+             sg.T('?', tooltip=proxy_tooltip, pad=(3, 1)),
+             sg.Combo(['http', 'https', 'socks4', 'socks5'], default_value=config.proxy_type,
+                      font='any 9',
+                      enable_events=True, key='proxy_type'),
+             sg.T(config.proxy if config.proxy else '_no proxy_', key='current_proxy_value',
+                  size=(100, 1), font='any 9'),
+             ],
+        ]
+
+        update = [
+            [sg.T(' ', size=(100, 1))],
+            [sg.T('Check for update every:'),
+             sg.Combo([1, 7, 30], default_value=config.update_frequency, size=(4, 1),
+                      key='update_frequency', enable_events=True), sg.T('day(s).')],
+            [
+                sg.B('', key='update_pyIDM', image_data=refresh_icon, **transparent, tooltip='check for update'),
+                sg.T(f'PyIDM version = {config.APP_VERSION}', size=(50, 1), key='pyIDM_version_note'),
+            ],
+            [
+                sg.B('', key='update_youtube_dl', image_data=refresh_icon, **transparent,
+                     tooltip=' check for update '),
+                sg.T('Youtube-dl version = 00.00.00', size=(50, 1), key='youtube_dl_update_note'),
+                sg.B('', key='rollback_ytdl_update', image_data=delete_icon, **transparent,
+                     tooltip=' rollback update '),
+            ],
+            [sg.T('', size=(1, 12))]
+        ]
+
+        layout = [[sg.T('')],
+                  [sg.TabGroup([[sg.Tab('General ', general), sg.Tab('Network', network), sg.Tab('Update  ', update)]],
+                               tab_location='lefttop')]
+                  ]
+
+        return layout
+
     def create_window(self):
         # main tab layout
         main_layout = self.create_main_tab()
@@ -399,8 +505,9 @@ class MainWindow:
         settings_layout = self.create_settings_tab()
 
         # log tab ------------------------------------------------------------------------------------------------
-        log_layout = [[sg.T('Details events:')], [sg.Multiline(default_text='', size=(70, 21), key='log', font='any 8',
-                                                               autoscroll=True)],
+        log_layout = [[sg.T('Details events:')],
+                      [sg.Multiline(default_text='', size=(70, 22), key='log', font='any 8', autoscroll=True)],
+
                       [sg.T('Log Level:'), sg.Combo([1, 2, 3], default_value=config.log_level, enable_events=True,
                                                     size=(3, 1), key='log_level',
                                                     tooltip='*(1=Standard, 2=Verbose, 3=Debugging)'),
@@ -540,7 +647,7 @@ class MainWindow:
 
             if d:
                 speed = f"Speed: {size_format(d.speed, '/s') }  {time_format(d.time_left)} left" if d.speed else ''
-                out = f"File: {d.name}\n" \
+                out = f"#{self.selected_row_num + 1}: {d.name}\n" \
                       f"Downloaded: {size_format(d.downloaded)} of {size_format(d.total_size)}\n" \
                       f"{speed} \n" \
                       f"Live connections: {d.live_connections} - Remaining parts: {d.remaining_parts}\n" \
@@ -2014,7 +2121,7 @@ class MainWindow:
             pass
 
     def retry(self):
-        self.d.url = ''
+        self.url = ''
         self.url_text_change()
 
     def reset(self):
