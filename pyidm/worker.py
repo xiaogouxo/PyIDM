@@ -235,12 +235,12 @@ class Worker:
 
         self.set_options()
 
-        # make sure target directory exist
-        target_directory = os.path.dirname(self.seg.name)
-        if not os.path.isdir(target_directory):
-            os.makedirs(target_directory)  # it will also create any intermediate folders in the given path
-
         try:
+            # make sure target directory exist
+            target_directory = os.path.dirname(self.seg.name)
+            if not os.path.isdir(target_directory):
+                os.makedirs(target_directory)  # it will also create any intermediate folders in the given path
+
             with open(self.seg.name, self.mode) as self.file:
                 self.c.perform()
 
