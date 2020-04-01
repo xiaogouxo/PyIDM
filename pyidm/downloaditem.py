@@ -466,7 +466,7 @@ class DownloadItem:
 
         self.url = url
         headers = get_headers(url)
-        print('update d parameters:', headers)
+        # print('update d parameters:', headers)
 
         # update headers only if no other update thread created with different url
         if url == self.url:
