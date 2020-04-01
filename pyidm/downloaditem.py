@@ -122,7 +122,6 @@ class DownloadItem:
 
         self.url = url
         self.eff_url = ''
-        self.playlist_url = ''
 
         self.size = 0
         self.resumable = False
@@ -183,7 +182,7 @@ class DownloadItem:
 
         # some downloads will have their progress and total size calculated and we can't store these values in self.size
         # since it will affect self.segments, workaround: use self.last_known_size, and self.last_known_progress so it
-        # will be showed when loading self.d_list from disk, other solution is to load progress info
+        # will be shown when loading self.d_list from disk, other solution is to load progress info
         # from setting.load_d_list()
         self.last_known_size = 0
         self.last_known_progress = 0
@@ -192,10 +191,28 @@ class DownloadItem:
 
         self.manifest_url = ''
 
+        # thumbnails
+        self.thumbnail_url = None
+        self.thumbnail = None  # base64 string
+
+        # playlist info
+        self.playlist_url = ''
+        self.playlist_title = ''
+
+        # selected raw stream name for video objects
+        self.selected_quality = None
+
+    # def __getattr__(self, attrib):  # commented out as it makes problem with copy.copy module
+    #     """this method will be called if no attribute found"""
+    #
+    #     # will return empty string instead of raising error
+    #     return ''
+
     def get_persistent_properties(self):
         """return a dict of important parameters to be saved in file"""
         a = dict(id=self.id, _name=self._name, folder=self.folder, url=self.url, eff_url=self.eff_url,
-                 playlist_url=self.playlist_url, size=self.size, resumable=self.resumable,
+                 playlist_url=self.playlist_url, playlist_title=self.playlist_title, size=self.size,
+                 resumable=self.resumable, selected_quality=self.selected_quality,
                  _segment_size=self._segment_size, _downloaded=self._downloaded, _status=self._status,
                  remaining_parts=self.remaining_parts, audio_url=self.audio_url, audio_size=self.audio_size,
                  type=self.type, fragments=self.fragments, fragment_base_url=self.fragment_base_url,
@@ -499,7 +516,7 @@ class DownloadItem:
             self.size = size
             self.type = content_type
             self.resumable = resumable
-        print('done', url)
+        # print('done', url)
 
     def __repr__(self):
         """used with functions like print, it will return all properties in this object"""
