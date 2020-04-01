@@ -653,7 +653,12 @@ class MainWindow:
                       f"Live connections: {d.live_connections} - Remaining parts: {d.remaining_parts}\n" \
                       f"{d.status}  {d.i}"
 
-                self.window['si_thumbnail'](data=d.thumbnail if (d.thumbnail) else thumbnail_icon)
+                # thumbnail
+                if config.show_thumbnail and d.thumbnail:
+                    self.window['si_thumbnail'](data=d.thumbnail)
+                else:
+                    self.window['si_thumbnail'](data=thumbnail_icon)
+
             else:
                 out = f"File:\n" \
                       f"Downloaded:\n" \
@@ -900,6 +905,8 @@ class MainWindow:
 
             elif event == 'show_thumbnail':
                 config.show_thumbnail = values['show_thumbnail']
+
+                self.reset_thumbnail()
 
             elif event == 'process_big_playlist_on_demand':
                 config.process_big_playlist_on_demand = values['process_big_playlist_on_demand']
@@ -2343,7 +2350,8 @@ class MainWindow:
                 self.select_tab('Log')
 
                 response = sg.popup_ok_cancel(
-                    f'Found new version of youtube-dl on github {latest_version}\n'
+                    f'Found new version of youtube-dl on github \n'
+                    f'new version     =  {latest_version}\n'
                     f'current version =  {current_version} \n'
                     'Install new version?',
                     title='youtube-dl module update')
