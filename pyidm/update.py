@@ -13,6 +13,9 @@ import py_compile
 import shutil
 import sys
 import zipfile
+import queue
+import time
+from threading import Thread
 
 from . import config
 import os
@@ -106,18 +109,15 @@ def check_for_ytdl_update():
 
 def update_youtube_dl():
     """This block for updating youtube-dl module in the freezed application folder in windows"""
-    # check if the application runs from a windows cx_freeze executable "folder contains lib sub folder"
-    # if run from source code, we will update system installed package and exit
     current_directory = config.current_directory
-    if 'lib' not in os.listdir(current_directory):
-        # log('running command: python -m pip install youtube_dl --upgrade')
+
+    # check if the application runs from a windows cx_freeze executable
+    # if run from source code, we will update system installed package and exit
+    if not config.FROZEN:
         cmd = f'"{sys.executable}" -m pip install youtube_dl --upgrade'
         success, output = run_command(cmd)
         if success:
             log('successfully updated youtube_dl')
-        return
-
-    if not config.FROZEN:
         return
 
     # make temp folder
@@ -126,62 +126,161 @@ def update_youtube_dl():
         os.mkdir(os.path.join(current_directory, 'temp'))
 
     # paths
-    old_module = os.path.join(current_directory, 'lib/youtube_dl')
+    target_module = os.path.join(current_directory, 'lib/youtube_dl')
+    bkup_module = os.path.join(current_directory, 'lib/youtube_dl_bkup')
     new_module = os.path.join(current_directory, 'temp/youtube-dl-master/youtube_dl')
 
-    def compile_file(file):
-        if file.endswith('.py'):
-            log('compiling file:', file)
-            py_compile.compile(file, cfile=file + 'c')
+    def bkup():
+        # backup current youtube-dl module folder
 
-            os.remove(file)
-        else:
-            print(file, 'not .py file')
+        log('delete previous backup')
+        delete_folder(bkup_module)
+
+        log('backup current youtube-dl module')
+        shutil.copytree(target_module, bkup_module)
+
+    def unzip():
+        # extract zipped module
+        with zipfile.ZipFile('temp/youtube-dl.zip', 'r') as zip_ref:
+            zip_ref.extractall(path=os.path.join(current_directory, 'temp'))
+
+    def compile_file(q):
+        while q.qsize():
+            file = q.get()
+
+            if file.endswith('.py'):
+                try:
+                    py_compile.compile(file, cfile=file + 'c')
+                    os.remove(file)
+                except Exception as e:
+                    log('compile_file()> error', e)
+            else:
+                print(file, 'not .py file')
 
     def compile_all():
+        q = queue.Queue()
+
+        # get files list and add it to queue
         for item in os.listdir(new_module):
             item = os.path.join(new_module, item)
 
             if os.path.isfile(item):
                 file = item
-                compile_file(file)
+                # compile_file(file)
+                q.put(file)
             else:
                 folder = item
                 for file in os.listdir(folder):
                     file = os.path.join(folder, file)
-                    compile_file(file)
-        log('new youtube-dl module compiled to .pyc files')
+                    # compile_file(file)
+                    q.put(file)
+
+        tot_files_count = q.qsize()
+        last_percent_value = 0
+
+        # create 10 worker threads
+        threads = []
+        for _ in range(10):
+            t = Thread(target=compile_file, args=(q,), daemon=True)
+            threads.append(t)
+            t.start()
+
+        # watch threads until finished
+        while True:
+            live_threads = [t for t in threads if t.is_alive()]
+            processed_files_count = tot_files_count - q.qsize()
+            percent = processed_files_count * 100 // tot_files_count
+            if percent != last_percent_value:
+                last_percent_value = percent
+                log('#', start='', end='' if percent < 100 else '\n')
+
+            if not live_threads and not q.qsize():
+                break
+
+            time.sleep(0.1) 
+        log('Finished compiling to .pyc files')
 
     def overwrite_module():
-        delete_folder(old_module)
-        shutil.move(new_module, old_module)
-        log('new module copied to:', new_module)
+        delete_folder(target_module)
+        shutil.move(new_module, target_module)
+        log('new module copied to:', target_module)
 
-    # download from github
-    log('start downloading youtube-dl module from github')
-    url = 'https://github.com/ytdl-org/youtube-dl/archive/master.zip'
-    response = download(url, 'temp/youtube-dl.zip')
-    if response is False:
-        log('failed to download youtube-dl, abort update')
+    # start processing -------------------------------------------------------
+    log('start updating youtube-dl please wait ...')
+
+    try:
+        # backup
+        bkup()
+
+        # download from github
+        log('step 1 of 4: downloading youtube-dl raw files')
+        url = 'https://github.com/ytdl-org/youtube-dl/archive/master.zip'
+        response = download(url, 'temp/youtube-dl.zip')
+        if response is False:
+            log('failed to download youtube-dl, abort update')
+            return
+
+        # extract zip file
+        log('step 2 of 4: extracting youtube-dl.zip')
+
+        # use a thread to show some progress while unzipping
+        t = Thread(target=unzip)
+        t.start()
+        while t.is_alive():
+            log('#', start='', end='')
+            time.sleep(0.5)
+
+        log('\n', start='')
+        log('youtube-dl.zip extracted to: ', current_directory + '/temp')
+
+        # compile files from py to pyc
+        log('step 3 of 4: compiling files, please wait')
+        compile_all()
+
+        # delete old youtube-dl module and replace it with new one
+        log('step 4 of 4: overwrite old youtube-dl module')
+        overwrite_module()
+
+        # clean old files
+        delete_folder('temp')
+        log('delete temp folder')
+        log('youtube_dl module ..... done updating')
+        log('please restart Application now .................................')
+    except Exception as e:
+        log('update_youtube_dl()> error', e)
+
+
+def rollback_ytdl_update():
+    """rollback last youtube-dl update"""
+    if not config.FROZEN:
         return
 
-    # extract zip file
-    with zipfile.ZipFile('temp/youtube-dl.zip', 'r') as zip_ref:
-        zip_ref.extractall(path=os.path.join(current_directory, 'temp'))
+    log('rollback last youtube-dl update ................................')
 
-    log('youtube-dl.zip extracted to: ', current_directory + '/temp')
+    # paths
+    current_directory = config.current_directory
+    target_module = os.path.join(current_directory, 'lib/youtube_dl')
+    bkup_module = os.path.join(current_directory, 'lib/youtube_dl_bkup')
 
-    # compile files from py to pyc
-    log('compiling files, please wait')
-    compile_all()
+    try:
+        # find a backup first
+        if os.path.isdir(bkup_module):
+            log('delete active youtube-dl module')
+            delete_folder(target_module)
 
-    # delete old youtube-dl module and replace it with new one
-    log('overwrite old youtube-dl module')
-    overwrite_module()
+            log('copy backup youtube-dl module')
+            shutil.copytree(bkup_module, target_module)
 
-    # clean old files
-    delete_folder('temp')
-    log('delete temp folder')
-    log('youtube_dl module ..... done updating')
+            log('done restoring youtube-dl module')
+            log('please restart Application now .................................')
+        else:
+            log('No backup youtube-dl modules found')
+
+    except Exception as e:
+        log('rollback_ytdl_update()> error', e)
+
+
+
+
 
 
