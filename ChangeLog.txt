@@ -1,3 +1,14 @@
+2020.3.31:
+- New design for downloads and settings Tab
+- Handle big playlist faster and more efficiently, with option to save bandwidth to fetch information only for selected videos.
+- Show video names in playlist while fetching info.
+- Fixed "update youtube-dl module" in windows portable version with "rollback update" option
+- Added option to Manually select audio format for dash videos
+- better memory usage.
+- auto select the row of current download item
+- select table rows with keyboard up/down arrows
+- fixed url_change triggered on ctrl or shift buttons pressed
+
 2020.3.22:
 - Quick bug fix for unrecognized pillow module, github issue #60
 
@@ -13,9 +24,6 @@
 - stop creating global settings folder automatically.
 - playlist/video info extracting process becomes faster 2 times.
 - Fixed problem of scheduled downloads
-
-TODO:
-- new design for downloads and settings Tab
 
 2020.3.13:
 - Added support for more hls video streams / websites.
