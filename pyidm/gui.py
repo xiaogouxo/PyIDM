@@ -33,7 +33,7 @@ sg.SetOptions(icon=APP_ICON, font='Helvetica 10', auto_size_buttons=True, progre
               border_width=1)  # Helvetica font is guaranteed to work on all operating systems
 
 # transparent color for button which mimic current background, will be use as a parameter, ex. **transparent
-transparent = None
+transparent = {}
 
 
 class MainWindow:
@@ -260,7 +260,7 @@ class MainWindow:
                    sg.Button('', key='Resume All', tooltip=' Resume All ', image_data=resumeall_icon, **transparent),
                    sg.Button('', key='Stop All', tooltip=' Stop All ', image_data=stopall_icon, **transparent),
                    sg.B('', key='Schedule All', tooltip=' Schedule All ', image_data=sched_icon, **transparent),
-                   sg.Button('', key='Delete All', tooltip=' Delete All items from list ', image_data=delete_icon, **transparent),
+                   sg.Button('', key='Delete All', tooltip=' Delete All items from list ', image_data=deleteall_icon, **transparent),
 
                    ],
 
