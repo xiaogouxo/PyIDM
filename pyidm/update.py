@@ -253,6 +253,7 @@ def update_youtube_dl():
 def rollback_ytdl_update():
     """rollback last youtube-dl update"""
     if not config.FROZEN:
+        log('rollback youtube-dl update is currently working on portable windows version only')
         return
 
     log('rollback last youtube-dl update ................................')
