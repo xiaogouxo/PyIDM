@@ -439,7 +439,7 @@ def merge_video_audio(video, audio, output, d):
     verbose = True if config.log_level >= 2 else False
 
     # run command with shell=False if failed will use shell=True option
-    error, output = run_command(cmd1, verbose=verbose, shell=False, d=d)
+    error, output = run_command(cmd1, verbose=verbose, shell=True, d=d)
 
     if error:
         error, output = run_command(cmd1, verbose=verbose, shell=True, d=d)
