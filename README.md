@@ -46,7 +46,7 @@ You have 3 options to run pyIDM on your operating system:
 Latest Windows portable version available [here](https://github.com/pyIDM/pyIDM/releases/latest). <br>
 unzip, and run from pyidm.exe, no installation required.
 
-2. **pip**:<br>
+2. **PyPi**:<br>
     `python -m pip install pyidm --upgrade --no-cache`
     
     then you can run application from Terminal by:<br>
@@ -60,6 +60,20 @@ unzip, and run from pyidm.exe, no installation required.
 pyIDM is a python app. so, it can run on any platform that can run python, 
 To run from source, you have to have a python installed, "supported python versions is 3.6, 3.7, and 3.8", then download or clone this repository, and run pyIDM.py (it will install the other required python packages automatically if missing)
 if pyIDM failed to install required packages, you should install it manually, refer to "Dependencies" section below.
+
+4. **Build PyIDM yourself**:
+    - get the source code from github:<br>
+        `git clone https://github.com/pyIDM/pyIDM.git` <br>
+
+    - or get the source code from PyPi: <br>
+        navigate to https://pypi.org/project/pyIDM/#files and download a tar ball, example file name "pyIDM-2020.3.22.tar.gz", then extract it
+
+    - open your terminal or command prompt and navigate to pyidm folder then type below command <br>
+        `python setup.py install`
+
+    - run PyIDM from Terminal by typing:<br>
+        `python -m pyidm`     or  just `pyidm`   
+
 
 ---
 
@@ -97,12 +111,12 @@ python -m pip install --user --upgrade certifi PySimpleGUI pyperclip plyer youtu
 **more snapshots**
 
 ![Main_tab](https://user-images.githubusercontent.com/58998813/77241027-b40afd00-6bf5-11ea-8854-c181d1f9c957.PNG)
-![Main_tab2](https://user-images.githubusercontent.com/58998813/77240732-e155ac00-6bf1-11ea-8cd0-edc5facaa46a.PNG)
 ![d_window](https://user-images.githubusercontent.com/58998813/77240959-ec5e0b80-6bf4-11ea-819e-83bd7bd13249.PNG)
-![downloads_tab](https://user-images.githubusercontent.com/58998813/77240740-f16d8b80-6bf1-11ea-8579-1705dd750bfd.PNG)
+![downloads_tab](https://user-images.githubusercontent.com/58998813/78214514-bb63bd80-74b5-11ea-8d13-e3fce537394d.PNG)
 ![playlist_window](https://user-images.githubusercontent.com/58998813/77242155-12d77300-6c04-11ea-9e57-e781e67aaa3b.PNG)
-![setting_tab1](https://user-images.githubusercontent.com/58998813/77240742-f9c5c680-6bf1-11ea-860a-a434dcba599e.PNG)
-![setting_tab2](https://user-images.githubusercontent.com/58998813/77240744-fdf1e400-6bf1-11ea-92c6-bf2297524a80.PNG)
+![setting_tab1](https://user-images.githubusercontent.com/58998813/78214405-75a6f500-74b5-11ea-838f-c7ad95b722ed.PNG)
+![setting_tab2](https://user-images.githubusercontent.com/58998813/78214411-793a7c00-74b5-11ea-9179-68902d5cffff.PNG)
+![setting_tab3](https://user-images.githubusercontent.com/58998813/78214419-7c356c80-74b5-11ea-869f-1560cf5e2f78.PNG)
 ![Multi_window](https://user-images.githubusercontent.com/37757246/71418548-a2a46a00-2673-11ea-8101-c95d29b6a0e4.png)
 
 
@@ -114,7 +128,7 @@ python -m pip install --user --upgrade certifi PySimpleGUI pyperclip plyer youtu
 With all free and paid download manager why someone may need another one?
 I believe in one term, **"if the product is free, then you are the product"**, most (if not all) free applications collect data about you, some of them are toxic and plant trojans and spyware in your system, then I decided to make my own download manager based on python with 👉 **"--GUI--"** relies only on open source tools and libraries, nothing hidden, with source code exposed to thousands of programmers, no one can play dirty games here 😉.
 
-why not just use youtube-dl from command line or just use youtube-dl gui? answer is multithreading / multiconnection is not available in youtube-dl, most of the time streaming servers like youtube limit speed per connection and you end up with slow download speeds.
+why not just use youtube-dl from command line? the answer is multithreading / multiconnection is not available in youtube-dl, most of the time streaming servers like youtube limit speed per connection and you end up with slow download speeds.
 
 ---
 
@@ -147,7 +161,7 @@ On Linux, this module makes use of the xclip or xsel commands, which should come
 ---
 
 ### Windows binaries: <br>
-a standalone frozen version prepared by py2exe or cx_freeze is available on: [latest version](https://github.com/pyIDM/pyIDM/releases/latest) <br>
+a standalone frozen version prepared by py2exe or cx_freeze is available at: [latest version](https://github.com/pyIDM/pyIDM/releases/latest) <br>
 for all available build versions you can check https://github.com/pyIDM/pyIDM/releases
 
 
