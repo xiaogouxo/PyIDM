@@ -32,11 +32,8 @@ config.all_themes = natural_sort(sg.ListOfLookAndFeelValues())
 sg.SetOptions(icon=APP_ICON, font='Helvetica 10', auto_size_buttons=True, progress_meter_border_depth=0,
               border_width=1)  # Helvetica font is guaranteed to work on all operating systems
 
-# theme
-sg.ChangeLookAndFeel(config.current_theme)
-
 # transparent color for button which mimic current background, will be use as a parameter, ex. **transparent
-transparent = dict(button_color=(sg.theme_text_color(), sg.theme_background_color()), border_width=0)
+transparent = None
 
 
 class MainWindow:
@@ -98,6 +95,8 @@ class MainWindow:
 
     def setup(self):
         """initial setup"""
+
+        self.change_theme()
 
         # download folder
         if not self.d.folder:
@@ -592,6 +591,14 @@ class MainWindow:
         except:
             pass
 
+    def change_theme(self):
+        # theme
+        sg.ChangeLookAndFeel(config.current_theme)
+
+        # transparent color for button which mimic current background, will be use as a parameter, ex. **transparent
+        global transparent
+        transparent = dict(button_color=(sg.theme_text_color(), sg.theme_background_color()), border_width=0)
+
     # endregion
 
     def run(self):
@@ -781,7 +788,7 @@ class MainWindow:
             # Settings tab -------------------------------------------------------------------------------------------
             elif event == 'themes':
                 config.current_theme = values['themes']
-                sg.ChangeLookAndFeel(config.current_theme)
+                self.change_theme()
 
                 # close all download windows if existed
                 for win in self.download_windows.values():
