@@ -188,7 +188,7 @@ class Video(DownloadItem):
         if self.thumbnail_url and not self.thumbnail:
             self.thumbnail = process_thumbnail(self.thumbnail_url)
 
-    def update_param(self):
+    def update_param(self, audio_stream=None):
         # do some parameter updates
         stream = self.selected_stream
         self.name = self.title + '.' + stream.extension
@@ -202,9 +202,23 @@ class Video(DownloadItem):
         self.manifest_url = stream.manifest_url
 
         # select an audio to embed if our stream is dash video
-        if stream.mediatype == 'dash':
-            audio_stream = [audio for audio in self.audio_streams.values() if audio.extension == stream.extension
-                            or (audio.extension == 'm4a' and stream.extension == 'mp4')][0]
+        # audio streams in a list
+        audio_streams_list = [stream for stream in self.stream_list if stream.mediatype == 'audio']
+
+        # sort audio list
+        audio_streams_list = sorted(audio_streams_list, key=lambda stream: stream.quality, reverse=True)
+
+        if stream.mediatype == 'dash' and audio_streams_list:
+            # auto select audio stream
+            if not audio_stream:
+                matching_stream = [audio for audio in audio_streams_list if audio.extension == stream.extension
+                            or (audio.extension == 'm4a' and stream.extension == 'mp4')]
+                # if failed to find a matching audio, choose any one
+                if matching_stream:
+                    audio_stream = matching_stream[0]
+                else:
+                    audio_stream = audio_streams_list[0]
+
             self.audio_stream = audio_stream
             self.audio_url = audio_stream.url
             self.audio_size = audio_stream.size
@@ -398,7 +412,6 @@ def check_ffmpeg():
             found = True
 
             # fix issue 47 where command line return \n\r with path
-            # todo: just ignore the output path since ffmpeg in sys path and  we can call ffmpeg directly
             output = output.strip()
             config.ffmpeg_actual_path = os.path.realpath(output)
 
@@ -423,7 +436,7 @@ def merge_video_audio(video, audio, output, d):
     # slow, mix different formats
     cmd2 = f'"{ffmpeg}" -y -i "{video}" -i "{audio}" "{output}"'
 
-    verbose = True if config.log_level >= 3 else False
+    verbose = True if config.log_level >= 2 else False
 
     # run command with shell=False if failed will use shell=True option
     error, output = run_command(cmd1, verbose=verbose, shell=False, d=d)

@@ -321,7 +321,10 @@ class MainWindow:
              sg.T('*ex: 512 KB or 5 MB', font='any 8')],
 
             [sg.Checkbox('process big playlist info on demand', default=config.process_big_playlist_on_demand,
-                         enable_events=True, key='process_big_playlist_on_demand'), ]
+                         enable_events=True, key='process_big_playlist_on_demand')],
+
+            [sg.Checkbox('Manually select audio format for dash videos', default=config.manually_select_dash_audio,
+                         enable_events=True, key='manually_select_dash_audio')]
         ]
 
         network = [
@@ -796,6 +799,9 @@ class MainWindow:
             elif event == 'process_big_playlist_on_demand':
                 config.process_big_playlist_on_demand = values['process_big_playlist_on_demand']
 
+            elif event == 'manually_select_dash_audio':
+                config.manually_select_dash_audio = values['manually_select_dash_audio']
+
             elif event == 'speed_limit_switch':
                 switch = values['speed_limit_switch']
 
@@ -1204,8 +1210,12 @@ class MainWindow:
 
         # get copy of current download item
         d = copy.copy(self.d)
-
         d.folder = config.download_folder
+
+        # dash audio
+        if d.type == 'dash' and config.manually_select_dash_audio:
+            # manually select dash audio
+            self.select_dash_audio()
 
         r = self.start_download(d, downloader=downloader)
 
@@ -1243,7 +1253,6 @@ class MainWindow:
         return v
 
     def resume_btn(self):
-        # todo: fix resume parameters
         if self.selected_row_num is None:
             return
 
@@ -1710,7 +1719,6 @@ class MainWindow:
         self.video.selected_stream = self.video.streams[selected_text]
 
     def download_playlist(self):
-
         # check if playlist is ready
         if not self.playlist:
             sg.popup_ok('Playlist is empty, nothing to download :(', title='Playlist download')
@@ -1983,6 +1991,41 @@ class MainWindow:
         else:
             return True
 
+    def select_dash_audio(self):
+        """prompt user to select dash audio"""
+        if not self.d.type == 'dash':
+            log('select_dash_audio()> this function is available only for a dash video, ....')
+            return
+
+        if not self.d.audio_streams:
+            log('select_dash_audio()> there is no audio streams available, ....')
+            return
+
+        streams_menu = list(self.d.audio_streams.keys())
+        layout = [
+            [sg.T('Select audio stream to be merged with dash video:')],
+            [sg.Combo(streams_menu, default_value=self.d.audio_stream.name, key='stream')],
+            [sg.T('please not:\n'
+                  'Selecting different audio/video formats takes longer time "several minutes" while merging')],
+            [sg.T('')],
+            [sg.Ok(), sg.Cancel()]
+        ]
+
+        window = sg.Window('Select dash audio', layout, finalize=True)
+
+        # while True:
+        event, values = window()
+
+        if event == 'Ok':
+            selected_stream_name = values['stream']
+            selected_stream = self.d.audio_streams[selected_stream_name]
+
+            # set audio stream
+            self.d.update_param(audio_stream=selected_stream)
+            # print(self.d.audio_stream.name)
+        window.close()
+
+        # print(event, values)
     # endregion
 
     # region General
