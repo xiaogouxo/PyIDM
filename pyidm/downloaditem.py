@@ -108,8 +108,9 @@ class Segment:
 class DownloadItem:
 
     # animation ['►►   ', '  ►►'] › ► ⤮ ⇴ ↹ ↯  ↮  ₡ ['⯈', '▼', '⯇', '▲']
-    # ['⏵⏵', '  ⏵⏵'] ['›', '››', '›››', '››››', '›››››']
-    animation_icons = {config.Status.downloading: ['❯', '❯❯', '❯❯❯', '❯❯❯❯'], config.Status.pending: ['⏳'],
+    # ['⏵⏵', '  ⏵⏵'] ['›', '››', '›››', '››››', '›››››'] ['❯', '❯❯', '❯❯❯', '❯❯❯❯'] ['|', '||', '|||', '||||', '|||||']
+    animation_icons = {config.Status.downloading: ['❯' * n for n in range(1, 5)],
+                       config.Status.pending: ['⏳'],
                        config.Status.completed: ['✔'], config.Status.cancelled: ['-x-'],
                        config.Status.merging_audio: ['↯', '↯↯', '↯↯↯'], config.Status.error: ['err']}
 
@@ -371,6 +372,10 @@ class DownloadItem:
         if not p:
             return self.last_known_progress
 
+        # make progress 99% if not completed
+        if p >= 99 and not self.status == config.Status.completed:
+            p = 99
+
         self.last_known_progress = p  # to be loaded when restarting application
         return p
 
@@ -527,9 +532,8 @@ class DownloadItem:
 
     def delete_tempfiles(self):
         """delete temp files and folder for a given download item"""
-        delete_file(self.temp_file)
-        delete_folder(self.temp_folder)
 
-        if self.type == 'dash':
-            delete_file(self.audio_file)
+        delete_folder(self.temp_folder)
+        delete_file(self.temp_file)
+        delete_file(self.audio_file)
 
