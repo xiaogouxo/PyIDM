@@ -796,6 +796,12 @@ class MainWindow:
                 self.stream_OnChoice(values['stream_menu'])
 
             # Settings tab -------------------------------------------------------------------------------------------
+            # about window
+            elif event == 'about':
+                self.window['about'](disabled=True)
+                sg.PopupOK(about_notes, title=f'About {config.APP_NAME}', keep_on_top=True)
+                self.window['about'](disabled=False)
+
             elif event == 'themes':
                 config.current_theme = values['themes']
                 self.change_theme()
@@ -963,13 +969,7 @@ class MainWindow:
                 except:
                     pass
 
-            # about window
-            elif event == 'about':
-                self.window['about'](disabled=True)
-                sg.PopupNoButtons(about_notes, title=f'About {config.APP_NAME}', keep_on_top=True)
-                self.window['about'](disabled=False)
-
-            # Run every n seconds
+            # Run every n seconds -----------------------------------------------------------------------------------
             if time.time() - timer1 >= 0.5:
                 timer1 = time.time()
 
