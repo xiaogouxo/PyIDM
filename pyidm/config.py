@@ -66,6 +66,10 @@ max_connections = DEFAULT_CONNECTIONS
 use_referer = False
 referer_url = ''  # referer website url
 
+# website authentication
+username = ''
+password = ''
+
 # update
 update_frequency = 7  # 'every day'=1, every week=7, every month=30 and so on
 last_update_check = 0  # day number in the year range from 1 to 366

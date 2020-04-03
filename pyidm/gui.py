@@ -336,12 +336,14 @@ class MainWindow:
                       disabled=False if config.speed_limit else True, enable_events=True),
              sg.T('0', size=(30, 1), key='current_speed_limit'),
              sg.T('*ex: 512 KB or 5 MB', font='any 8')],
+            [sg.T('', font='any 1')],  # spacer
             [sg.Text('Max concurrent downloads:      '),
              sg.Combo(values=[x for x in range(1, 101)], size=(5, 1), enable_events=True,
                       key='max_concurrent_downloads', default_value=config.max_concurrent_downloads)],
             [sg.Text('Max connections per download:'),
              sg.Combo(values=[x for x in range(1, 101)], size=(5, 1), enable_events=True,
                       key='max_connections', default_value=config.max_connections)],
+            [sg.T('', font='any 1')],  # spacer
             [sg.Checkbox('Proxy:', default=config.enable_proxy, key='enable_proxy',
                          enable_events=True),
              sg.I(default_text=config.raw_proxy, size=(25, 1), font='any 9', key='raw_proxy',
@@ -353,9 +355,14 @@ class MainWindow:
              sg.T(config.proxy if config.proxy else '_no proxy_', key='current_proxy_value',
                   size=(100, 1), font='any 9'),
              ],
+            [sg.T('', font='any 1')],  # spacer
             [sg.Checkbox('Referer website url:', default=config.use_referer, key='use_referer', enable_events=True),
-             sg.I(default_text=config.referer_url, size=(25, 1), font='any 9', key='referer_url',
-                  enable_events=True, disabled=not config.use_referer),],
+             sg.I(default_text=config.referer_url, size=(60, 1), font='any 9', key='referer_url',
+                  enable_events=True, disabled=not config.use_referer)],
+            [sg.T('', font='any 1')],  # spacer
+            [sg.T('Website Auth: ')],
+            [sg.T('        user: '), sg.I(' ', size=(25, 1), key='username', enable_events=True)],
+            [sg.T('        Pass:'), sg.I(' ', size=(25, 1), key='password', enable_events=True)],
         ]
 
         update = [
@@ -926,8 +933,9 @@ class MainWindow:
                     self.window['referer_url'](disabled=True)
                     config.referer_url = ''
 
-                print(config.referer_url)
-
+            elif event in ('username', 'password'):
+                config.username = values['username']
+                config.password = values['password']
 
             # update -------------------------------------------------
             elif event == 'update_frequency':

@@ -52,8 +52,9 @@ def get_ytdl_options():
         ytdl.utils.std_headers['Referer'] = config.referer_url
 
     # website authentication
-    # ydl_opts['username'] = ''
-    # ydl_opts['password'] = ''
+    if config.username or config.password:
+        ydl_opts['username'] = config.username
+        ydl_opts['password'] = config.password
 
     # if config.log_level >= 3:
         # ydl_opts['verbose'] = True  # it make problem with Frozen PyIDM, extractor doesn't work

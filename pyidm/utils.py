@@ -59,6 +59,11 @@ def set_curl_options(c):
     if config.referer_url:
         c.setopt(pycurl.REFERER, config.referer_url)
 
+    # website authentication
+    if config.username or config.password:
+        c.setopt(pycurl.USERNAME, config.username)
+        c.setopt(pycurl.PASSWORD, config.password)
+
     # re-directions
     c.setopt(pycurl.FOLLOWLOCATION, 1)
     c.setopt(pycurl.MAXREDIRS, 10)
