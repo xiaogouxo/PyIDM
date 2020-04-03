@@ -1,5 +1,5 @@
 """
-    pyIDM
+    PyIDM
 
     multi-connections internet download manager, based on "pyCuRL/curl", "youtube_dl", and "PySimpleGUI"
 
@@ -9,13 +9,10 @@
 
 # worker class
 import os
-import time
-
-import certifi
 import pycurl
 
-from .config import Status, APP_NAME, proxy, USER_AGENT
-from .utils import get_seg_size, log
+from .config import Status
+from .utils import log, set_curl_options
 
 
 class Worker:
@@ -39,7 +36,6 @@ class Worker:
         self.headers = {}
 
     def debug(self, *args, log_level=2):
-        # todo: make a debug levels i.e: standard, detailed, evrything
         args = [repr(arg) for arg in args]
         msg = '>> ' + ' '.join(args)
 
@@ -157,8 +153,9 @@ class Worker:
         # print(self.headers)
 
     def set_options(self):
-        agent = USER_AGENT  # f"{APP_NAME} Download Manager"
-        self.c.setopt(pycurl.USERAGENT, agent)
+
+        # set general curl options
+        set_curl_options(self.c)
 
         self.c.setopt(pycurl.URL, self.seg.url)
 
@@ -166,33 +163,13 @@ class Worker:
         if range_:
             self.c.setopt(pycurl.RANGE, range_)  # download segment only not the whole file
 
-        # set proxy, must be string empty '' means no proxy
-        self.c.setopt(pycurl.PROXY, proxy)
-
-        # re-directions
-        self.c.setopt(pycurl.FOLLOWLOCATION, 1)
-        self.c.setopt(pycurl.MAXREDIRS, 10)
-
-        self.c.setopt(pycurl.NOSIGNAL, 1)  # option required for multithreading safety
         self.c.setopt(pycurl.NOPROGRESS, 0)  # will use a progress function
-        self.c.setopt(pycurl.CAINFO, certifi.where())  # for https sites and ssl cert handling
 
         # set speed limit selected by user
         self.c.setopt(pycurl.MAX_RECV_SPEED_LARGE, self.speed_limit)  # cap download speed to n bytes/sec, 0=disabled
 
-        # time out
-        self.c.setopt(pycurl.CONNECTTIMEOUT, 30)  # limits the connection phase, it has no impact once it has connected.
-        # self.c.setopt(pycurl.TIMEOUT, 300)  # limits the whole operation time
-
-        # abort if download speed slower than 1 byte/sec during 60 seconds
-        self.c.setopt(pycurl.LOW_SPEED_LIMIT, 1)
-        self.c.setopt(pycurl.LOW_SPEED_TIME, 60)
-
         # verbose
         self.c.setopt(pycurl.VERBOSE, 0)
-
-        # it tells curl not to include headers with the body
-        self.c.setopt(pycurl.HEADEROPT, 0)
 
         # call back functions
         self.c.setopt(pycurl.HEADERFUNCTION, self.header_callback)

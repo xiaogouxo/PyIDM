@@ -55,6 +55,10 @@ def set_curl_options(c):
     # set proxy, must be string empty '' means no proxy
     c.setopt(pycurl.PROXY, config.proxy)
 
+    # referer
+    if config.referer_url:
+        c.setopt(pycurl.REFERER, config.referer_url)
+
     # re-directions
     c.setopt(pycurl.FOLLOWLOCATION, 1)
     c.setopt(pycurl.MAXREDIRS, 10)
@@ -762,6 +766,6 @@ __all__ = [
     'run_command', 'print_object', 'update_object', 'truncate', 'sort_dictionary', 'popup', 'compare_versions',
     'translate_server_code', 'validate_url', 'open_file', 'clipboard_read', 'clipboard_write', 'delete_file',
     'rename_file', 'load_json', 'save_json', 'echo_stdout', 'echo_stderr', 'log_recorder', 'natural_sort',
-    'process_thumbnail', 'parse_bytes'
+    'process_thumbnail', 'parse_bytes', 'set_curl_options'
 
 ]

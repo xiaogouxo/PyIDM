@@ -43,16 +43,20 @@ class Logger(object):
 
 
 def get_ytdl_options():
-    ydl_opts = {'ignore_errors': True, 'prefer_insecure': True, 'no_warnings': False, 'logger': Logger()}
+    ydl_opts = {'ignore_errors': True, 'prefer_insecure': False, 'no_warnings': False, 'logger': Logger()}
     if config.proxy:
         ydl_opts['proxy'] = config.proxy
+
+    if config.referer_url:
+        # ydl_opts['Referer'] = config.referer_url
+        ytdl.utils.std_headers['Referer'] = config.referer_url
 
     # website authentication
     # ydl_opts['username'] = ''
     # ydl_opts['password'] = ''
 
-        # if config.log_level >= 3:
-    #     ydl_opts['verbose'] = True  # it make problem with Frozen PyIDM, extractor doesn't work
+    # if config.log_level >= 3:
+        # ydl_opts['verbose'] = True  # it make problem with Frozen PyIDM, extractor doesn't work
     # elif config.log_level <= 1:
     #     ydl_opts['quiet'] = True  # it doesn't work
 
@@ -441,9 +445,7 @@ def merge_video_audio(video, audio, output, d):
     # run command with shell=False if failed will use shell=True option
     error, output = run_command(cmd1, verbose=verbose, shell=True, d=d)
 
-    if error:
-        error, output = run_command(cmd1, verbose=verbose, shell=True, d=d)
-
+    # retry on error with cmd2
     if error:
         error, output = run_command(cmd2, verbose=verbose, shell=True, d=d)
 

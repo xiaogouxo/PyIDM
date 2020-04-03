@@ -353,6 +353,9 @@ class MainWindow:
              sg.T(config.proxy if config.proxy else '_no proxy_', key='current_proxy_value',
                   size=(100, 1), font='any 9'),
              ],
+            [sg.Checkbox('Referer website url:', default=config.use_referer, key='use_referer', enable_events=True),
+             sg.I(default_text=config.referer_url, size=(25, 1), font='any 9', key='referer_url',
+                  enable_events=True, disabled=not config.use_referer),],
         ]
 
         update = [
@@ -803,43 +806,6 @@ class MainWindow:
 
                 self.reset_thumbnail()
 
-            elif event == 'process_big_playlist_on_demand':
-                config.process_big_playlist_on_demand = values['process_big_playlist_on_demand']
-
-            elif event == 'manually_select_dash_audio':
-                config.manually_select_dash_audio = values['manually_select_dash_audio']
-
-            elif event == 'speed_limit_switch':
-                switch = values['speed_limit_switch']
-
-                if switch:
-                    self.window['speed_limit'](disabled=False)
-                else:
-                    config.speed_limit = 0
-                    self.window['speed_limit']('', disabled=True)  # clear and disable
-
-            elif event == 'speed_limit':
-                sl = values['speed_limit']
-
-                # if no units entered will assume it KB
-                try:
-                    _ = int(sl)  # will succeed if it has no string
-                    sl = f'{sl} KB'
-                except:
-                    pass
-
-                sl = parse_bytes(sl)
-                config.speed_limit = sl
-
-            elif event == 'max_concurrent_downloads':
-                config.max_concurrent_downloads = int(values['max_concurrent_downloads'])
-
-            elif event == 'max_connections':
-                mc = int(values['max_connections'])
-                if mc > 0:
-                    # self.max_connections = mc
-                    config.max_connections = mc
-
             elif event == 'monitor':
                 config.monitor_clipboard = values['monitor']
 
@@ -849,8 +815,11 @@ class MainWindow:
             elif event == 'auto_close_download_window':
                 config.auto_close_download_window = values['auto_close_download_window']
 
-            elif event in ('raw_proxy', 'http', 'https', 'socks4', 'socks5', 'proxy_type', 'enable_proxy'):
-                self.set_proxy()
+            elif event == 'process_big_playlist_on_demand':
+                config.process_big_playlist_on_demand = values['process_big_playlist_on_demand']
+
+            elif event == 'manually_select_dash_audio':
+                config.manually_select_dash_audio = values['manually_select_dash_audio']
 
             elif event == 'segment_size':
                 user_input = values['segment_size']
@@ -913,6 +882,54 @@ class MainWindow:
                 except:
                     pass
 
+            # network------------------------------------------------
+            elif event == 'speed_limit_switch':
+                switch = values['speed_limit_switch']
+
+                if switch:
+                    self.window['speed_limit'](disabled=False)
+                else:
+                    config.speed_limit = 0
+                    self.window['speed_limit']('', disabled=True)  # clear and disable
+
+            elif event == 'speed_limit':
+                sl = values['speed_limit']
+
+                # if no units entered will assume it KB
+                try:
+                    _ = int(sl)  # will succeed if it has no string
+                    sl = f'{sl} KB'
+                except:
+                    pass
+
+                sl = parse_bytes(sl)
+                config.speed_limit = sl
+
+            elif event == 'max_concurrent_downloads':
+                config.max_concurrent_downloads = int(values['max_concurrent_downloads'])
+
+            elif event == 'max_connections':
+                mc = int(values['max_connections'])
+                if mc > 0:
+                    # self.max_connections = mc
+                    config.max_connections = mc
+
+            elif event in ('raw_proxy', 'http', 'https', 'socks4', 'socks5', 'proxy_type', 'enable_proxy'):
+                self.set_proxy()
+
+            elif event in ('use_referer', 'referer_url'):
+                config.use_referer = values['use_referer']
+                if config.use_referer:
+                    self.window['referer_url'](disabled=False)
+                    config.referer_url = self.window['referer_url'].get()
+                else:
+                    self.window['referer_url'](disabled=True)
+                    config.referer_url = ''
+
+                print(config.referer_url)
+
+
+            # update -------------------------------------------------
             elif event == 'update_frequency':
                 selected = values['update_frequency']
                 config.update_frequency = selected  # config.update_frequency_map[selected]
@@ -2012,7 +2029,7 @@ class MainWindow:
         layout = [
             [sg.T('Select audio stream to be merged with dash video:')],
             [sg.Combo(streams_menu, default_value=self.d.audio_stream.name, key='stream')],
-            [sg.T('please not:\n'
+            [sg.T('please note:\n'
                   'Selecting different audio/video formats takes longer time "several minutes" while merging')],
             [sg.T('')],
             [sg.Ok(), sg.Cancel()]

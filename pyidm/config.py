@@ -63,6 +63,8 @@ manually_select_dash_audio = False  # if True, will prompt user to select audio 
 speed_limit = 0  # in bytes, zero == no limit
 max_concurrent_downloads = DEFAULT_CONCURRENT_CONNECTIONS
 max_connections = DEFAULT_CONNECTIONS
+use_referer = False
+referer_url = ''  # referer website url
 
 # update
 update_frequency = 7  # 'every day'=1, every week=7, every month=30 and so on
@@ -110,7 +112,8 @@ main_window_q = Queue()  # queue for Main application window
 settings_keys = ['current_theme', 'monitor_clipboard', 'show_download_window', 'auto_close_download_window',
                  'segment_size', 'show_thumbnail', 'speed_limit', 'max_concurrent_downloads', 'max_connections',
                  'update_frequency', 'last_update_check', 'proxy', 'proxy_type', 'raw_proxy', 'enable_proxy',
-                 'log_level', 'download_folder', 'process_big_playlist_on_demand', 'manually_select_dash_audio']
+                 'log_level', 'download_folder', 'process_big_playlist_on_demand', 'manually_select_dash_audio',
+                 'use_referer', 'referer_url']
 
 # -------------------------------------------------------------------------------------
 
