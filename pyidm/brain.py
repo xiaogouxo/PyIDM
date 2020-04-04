@@ -10,7 +10,8 @@ import io
 import os
 import time
 from threading import Thread
-from .video import merge_video_audio, unzip_ffmpeg, pre_process_hls, post_process_hls  # unzip_ffmpeg required here for ffmpeg callback
+from .video import merge_video_audio, unzip_ffmpeg, pre_process_hls, post_process_hls, \
+    convert_audio  # unzip_ffmpeg required here for ffmpeg callback
 from . import config
 from .config import Status, active_downloads, APP_NAME
 from .utils import (log, size_format, popup, notify, delete_folder, delete_file, rename_file, load_json, save_json)
@@ -193,8 +194,19 @@ def file_manager(d, keep_segments=False):
             except Exception as e:
                 log('failed to merge segment', seg.name, ' - ', e)
 
-        # check if all segments already merged
+        # all segments already merged
         if not job_list:
+
+            # handle audio streams
+            if d.selected_stream.mediatype == 'audio':
+                d.status = Status.merging_audio
+                success = convert_audio(d)
+                if not success:
+                    log('file_manager()>  convert_audio() failed, file:', d.target_file)
+                    d.status = Status.error
+                    break
+                else:
+                    d.delete_tempfiles()
 
             # handle HLS streams
             if 'm3u8' in d.protocol:

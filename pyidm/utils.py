@@ -366,7 +366,7 @@ def delete_file(file, verbose=False):
         return False
 
 
-def rename_file(oldname=None, newname=None):
+def rename_file(oldname=None, newname=None, verbose=False):
     if oldname == newname:
         return True
 
@@ -375,7 +375,8 @@ def rename_file(oldname=None, newname=None):
         log('done renaming file:', oldname, '... to:', newname)
         return True
     except Exception as e:
-        log('rename_file()> ', e)
+        if verbose:
+            log('rename_file()> ', e)
         return False
 
 

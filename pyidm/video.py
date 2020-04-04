@@ -6,7 +6,7 @@
     :copyright: (c) 2019-2020 by Mahmoud Elshahat.
     :license: GNU LGPLv3, see LICENSE for more details.
 """
-
+import copy
 import os
 import re
 import zipfile
@@ -119,6 +119,7 @@ class Video(DownloadItem):
     def _process_streams(self):
         """ Create Stream object lists"""
         all_streams = [Stream(x) for x in self.vid_info['formats']]
+        all_streams.reverse()  # get higher quality first
 
         # prepare some categories
         normal_streams = {stream.raw_name: stream for stream in all_streams if stream.mediatype == 'normal'}
@@ -127,7 +128,7 @@ class Video(DownloadItem):
         # normal streams will overwrite same streams names in dash
         video_streams = {**dash_streams, **normal_streams}
 
-        # sort streams based on quality
+        # sort streams based on quality, "youtube-dl will provide a sorted list, this step is not necessary"
         video_streams = {k: v for k, v in sorted(video_streams.items(), key=lambda item: item[1].quality, reverse=True)}
 
         # sort based on mp4 streams first
@@ -136,6 +137,28 @@ class Video(DownloadItem):
         video_streams = {**mp4_videos, **other_videos}
 
         audio_streams = {stream.name: stream for stream in all_streams if stream.mediatype == 'audio'}
+
+        # add another audio formats, mp3, aac, wav, ogg
+        if audio_streams:
+            audio = list(audio_streams.values())
+            webm = [stream for stream in audio if stream.extension == 'webm']
+            m4a = [stream for stream in audio if stream.extension in ('m4a')]
+
+            aac = m4a[0] if m4a else audio[0]
+            aac = copy.copy(aac)
+            aac.extension = 'aac'
+
+            ogg = webm[0] if webm else audio[0]
+            ogg = copy.copy(ogg)
+            ogg.extension = 'ogg'
+
+            mp3 = copy.copy(aac)
+            mp3.extension = 'mp3'
+            mp3.abr = 128
+
+            extra_audio = {aac.name: aac, ogg.name: ogg, mp3.name: mp3}
+            extra_audio.update(**audio_streams)
+            audio_streams = extra_audio
 
         # collect all in one dictionary of stream.name: stream pairs
         streams = {**video_streams, **audio_streams}
@@ -700,6 +723,33 @@ def post_process_hls(d):
     log('post_process_hls()> done processing', d.name)
 
     return True
+
+
+def convert_audio(d):
+    # famous formats: mp3, aac, wav, ogg
+    infile = d.temp_file
+    outfile = d.target_file
+
+    # look for compatible formats and use "copy" parameter for faster processing
+    cmd1 = f'ffmpeg -y -i "{infile}" -acodec copy "{outfile}"'
+
+    # general command, consume time
+    cmd2 = f'ffmpeg -y -i "{infile}" "{outfile}"'
+
+    # run command1
+    error, _ = run_command(cmd1, verbose=True, shell=True)
+
+    if error:
+        error, _ = run_command(cmd2, verbose=True, shell=True)
+
+    if error:
+        return False
+    else:
+        return True
+
+
+
+
 
 
 
