@@ -135,10 +135,6 @@ def thread_manager(d):
                 except:
                     break
 
-        # update d param
-        d.live_connections = len(busy_workers)
-        d.remaining_parts = len(busy_workers) + len(job_list) + q.jobs.qsize()
-
         # Monitor active threads and add the offline to a free_workers
         for t in live_threads:
             if not t.is_alive():
@@ -146,6 +142,10 @@ def thread_manager(d):
                 live_threads.remove(t)
                 busy_workers.remove(worker_num)
                 free_workers.append(worker_num)
+
+        # update d param
+        d.live_connections = len(busy_workers)
+        d.remaining_parts = len(busy_workers) + len(job_list) + q.jobs.qsize()
 
         # change status
         if d.status != Status.downloading:
