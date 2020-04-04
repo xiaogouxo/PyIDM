@@ -9,12 +9,8 @@
 
 import os
 import re
-import shlex
-import subprocess
-import sys
 import zipfile
 import time
-from threading import Thread
 from urllib.parse import urljoin
 
 from . import config
@@ -47,8 +43,9 @@ def get_ytdl_options():
     if config.proxy:
         ydl_opts['proxy'] = config.proxy
 
+    # set Referer website
     if config.referer_url:
-        # ydl_opts['Referer'] = config.referer_url
+        # this is not accessible via youtube-dl options, changing standard headers is the only way
         ytdl.utils.std_headers['Referer'] = config.referer_url
 
     # website authentication
@@ -459,8 +456,14 @@ def import_ytdl():
     global ytdl, ytdl_version
     try:
         import youtube_dl as ytdl
+
+        # update version value
         config.ytdl_VERSION = ytdl.version.__version__
 
+        # get a random user agent and update headers
+        config.HEADERS['User-Agent'] = ytdl.utils.random_user_agent()
+
+        # calculate loading time
         load_time = time.time() - start
         log(f'youtube-dl load_time= {int(load_time)} seconds')
     except Exception as e:

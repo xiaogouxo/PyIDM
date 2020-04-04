@@ -8,7 +8,6 @@
 """
 import base64
 import os
-import sys
 import io
 import pycurl
 import time
@@ -16,9 +15,7 @@ import time
 import plyer
 import certifi
 import shutil
-import zipfile
 import subprocess
-import py_compile
 import shlex
 import re
 import json
@@ -50,7 +47,13 @@ def handle_exceptions(error):
 
 def set_curl_options(c):
     """take pycurl object as an argument and set basic options"""
-    c.setopt(pycurl.USERAGENT, config.USER_AGENT)
+
+    # c.setopt(pycurl.USERAGENT, config.USER_AGENT)
+
+    # http headers must be in a list format
+    headers = [f'{k}:{v}' for k, v in config.HEADERS.items()]
+
+    c.setopt(pycurl.HTTPHEADER, headers)
 
     # set proxy, must be string empty '' means no proxy
     c.setopt(pycurl.PROXY, config.proxy)

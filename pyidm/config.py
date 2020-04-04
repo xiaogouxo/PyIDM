@@ -27,7 +27,16 @@ DEFAULT_SEGMENT_SIZE = 524288  # in bytes  = 512 KB
 DEFAULT_CONCURRENT_CONNECTIONS = 3
 APP_URL = 'https://github.com/pyIDM/pyIDM'
 LATEST_RELEASE_URL = 'https://github.com/pyIDM/pyIDM/releases/latest'
+
+# headers, note: a random user agent will replace below value later by video.import_ytdl()
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3721.3'
+HEADERS = {
+    'User-Agent': USER_AGENT,
+    'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.7',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'en-us,en;q=0.5',
+}
+
 DEFAULT_LOG_LEVEL = 2
 
 APP_LATEST_VERSION = None  # get value from update module
