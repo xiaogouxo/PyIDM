@@ -29,7 +29,7 @@ from .iconsbase64 import *
 
 # gui Settings
 config.all_themes = natural_sort(sg.ListOfLookAndFeelValues())
-sg.SetOptions(icon=APP_ICON, font='Helvetica 10', auto_size_buttons=True, progress_meter_border_depth=0,
+sg.SetOptions(icon=APP_ICON, font='Helvetica 10', auto_size_buttons=False, progress_meter_border_depth=0,
               border_width=1)  # Helvetica font is guaranteed to work on all operating systems
 
 # transparent color for button which mimic current background, will be use as a parameter, ex. **transparent
@@ -1317,7 +1317,7 @@ class MainWindow:
             return
 
         # confirm to delete
-        msg = "Warninig!!!\nAre you sure you want to delete!\n%s?" % self.selected_d.name
+        msg = f"Warning!!!\nAre you sure you want to delete!\n{self.selected_d.name}\n"
         r = sg.PopupYesNo(msg, title='Delete file?', keep_on_top=True)
         if r != 'Yes': return
 
