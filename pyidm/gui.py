@@ -235,7 +235,7 @@ class MainWindow:
 
         return layout
 
-    def creat_downloads_tab(self):
+    def create_downloads_tab(self):
 
         # selected download item's preview panel, "si" = selected item
         si_layout = [sg.Image(data=thumbnail_icon, key='si_thumbnail'),
@@ -290,7 +290,7 @@ class MainWindow:
                 """
 
         general = [
-            [sg.T('', size=(60, 1)), sg.Button(' about ', key='about')],
+            [sg.T('', size=(60, 1)), sg.Button('', key='about', image_data=about_icon, pad=(5, 10), **transparent)],
 
             [sg.T('Settings Folder:'),
              sg.Combo(values=['Local', 'Global'],
@@ -384,10 +384,11 @@ class MainWindow:
             [sg.T('', size=(1, 12))]
         ]
 
-        layout = [[sg.T('')],
-                  [sg.TabGroup([[sg.Tab('General ', general), sg.Tab('Network', network), sg.Tab('Update  ', update)]],
-                               tab_location='lefttop')]
-                  ]
+        layout = [
+            [sg.T('', size=(70, 1)), ],
+            [sg.TabGroup([[sg.Tab('General ', general), sg.Tab('Network', network), sg.Tab('Update  ', update)]],
+                         tab_location='lefttop')]
+        ]
 
         return layout
 
@@ -396,7 +397,7 @@ class MainWindow:
         main_layout = self.create_main_tab()
 
         # downloads tab -----------------------------------------------------------------------------------------
-        downloads_layout = self.creat_downloads_tab()
+        downloads_layout = self.create_downloads_tab()
 
         # Settings tab -------------------------------------------------------------------------------------------
         settings_layout = self.create_settings_tab()
@@ -796,11 +797,10 @@ class MainWindow:
                 self.stream_OnChoice(values['stream_menu'])
 
             # Settings tab -------------------------------------------------------------------------------------------
-            # about window
-            elif event == 'about':
-                self.window['about'](disabled=True)
+            elif event == 'about':  # about window
+                self.window['about'](visible=False)
                 sg.PopupOK(about_notes, title=f'About {config.APP_NAME}', keep_on_top=True)
-                self.window['about'](disabled=False)
+                self.window['about'](visible=True)
 
             elif event == 'themes':
                 config.current_theme = values['themes']
@@ -924,7 +924,6 @@ class MainWindow:
             elif event == 'max_connections':
                 mc = int(values['max_connections'])
                 if mc > 0:
-                    # self.max_connections = mc
                     config.max_connections = mc
 
             elif event in ('raw_proxy', 'http', 'https', 'socks4', 'socks5', 'proxy_type', 'enable_proxy'):

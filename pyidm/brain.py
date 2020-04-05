@@ -199,7 +199,7 @@ def file_manager(d, keep_segments=False):
 
             # handle audio streams
             if d.selected_stream.mediatype == 'audio':
-                d.status = Status.merging_audio
+                d.status = Status.processing
                 success = convert_audio(d)
                 if not success:
                     log('file_manager()>  convert_audio() failed, file:', d.target_file)
@@ -211,8 +211,8 @@ def file_manager(d, keep_segments=False):
             # handle HLS streams
             if 'm3u8' in d.protocol:
                 log('handling hls videos')
-                # Set status to merging
-                d.status = Status.merging_audio  # todo: should be renamed to merging instead of merging_audio
+                # Set status to processing
+                d.status = Status.processing
 
                 success = post_process_hls(d)
                 if not success:
@@ -226,8 +226,8 @@ def file_manager(d, keep_segments=False):
                 # merge audio and video
                 output_file = d.target_file.replace(' ', '_')  # remove spaces from target file
 
-                # set status to merge
-                d.status = Status.merging_audio
+                # set status to processing
+                d.status = Status.processing
                 error, output = merge_video_audio(d.temp_file, d.audio_file, output_file, d)
 
                 if not error:

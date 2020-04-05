@@ -135,9 +135,8 @@ settings_keys = ['current_theme', 'monitor_clipboard', 'show_download_window', '
 class Status:
     """used to identify status, work as an Enum"""
     downloading = 'downloading'
-    paused = 'paused'
     cancelled = 'cancelled'
     completed = 'completed'
     pending = 'pending'
-    merging_audio = 'merging_audio'
+    processing = 'processing'  # for any ffmpeg operation
     error = 'error'

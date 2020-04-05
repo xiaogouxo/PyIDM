@@ -112,7 +112,7 @@ class DownloadItem:
     animation_icons = {config.Status.downloading: ['❯' * n for n in range(1, 5)],
                        config.Status.pending: ['⏳'],
                        config.Status.completed: ['✔'], config.Status.cancelled: ['-x-'],
-                       config.Status.merging_audio: ['↯', '↯↯', '↯↯↯'], config.Status.error: ['err']}
+                       config.Status.processing: ['↯', '↯↯', '↯↯↯'], config.Status.error: ['err']}
 
     def __init__(self, id_=0, url='', name='', folder=''):
         self.id = id_
