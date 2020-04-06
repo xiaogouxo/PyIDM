@@ -608,7 +608,7 @@ class MainWindow:
 
         # transparent color for button which mimic current background, will be use as a parameter, ex. **transparent
         global transparent
-        transparent = dict(button_color=(sg.theme_text_color(), sg.theme_background_color()), border_width=0)
+        transparent = dict(button_color=('black', sg.theme_background_color()), border_width=0)
 
     # endregion
 
