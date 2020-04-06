@@ -29,7 +29,7 @@ from .iconsbase64 import *
 
 # gui Settings
 config.all_themes = natural_sort(sg.ListOfLookAndFeelValues())
-sg.SetOptions(icon=APP_ICON, font='Helvetica 10', auto_size_buttons=False, progress_meter_border_depth=0,
+sg.SetOptions(icon=APP_ICON, font='Helvetica 10', auto_size_buttons=True, progress_meter_border_depth=0,
               border_width=1)  # Helvetica font is guaranteed to work on all operating systems
 
 # transparent color for button which mimic current background, will be use as a parameter, ex. **transparent
@@ -54,7 +54,7 @@ class MainWindow:
         self.url_timer = None  # usage: Timer(0.5, self.refresh_headers, args=[self.d.url])
         self.bad_headers = [0, range(400, 404), range(405, 418), range(500, 506)]  # response codes
 
-        # youtube specific
+        # playlist/video
         self.video = None
         self.yt_id = 0  # unique id for each youtube thread
         self.playlist = []
@@ -788,7 +788,9 @@ class MainWindow:
 
             # video events
             elif event == 'pl_download':
+                self.window['pl_download'](disabled=True)
                 self.download_playlist()
+                self.window['pl_download'](disabled=False)
 
             elif event == 'pl_menu':
                 self.playlist_OnChoice(values['pl_menu'])
@@ -1755,9 +1757,17 @@ class MainWindow:
             sg.popup_ok('Playlist is empty, nothing to download :(', title='Playlist download')
             return
 
+        # technical limitation of tkinter, can not show more than 1000 item without glitches, or pl_window will not show
+        if len(self.playlist) > 1000:
+            sg.popup_ok('Playlist is more than 1000 videos, \n'
+                        'due to technical limitations will show only first 1000 videos', title='Playlist download')
+            playlist = self.playlist[:1000]
+        else:
+            playlist = self.playlist
+
         # fix repeated video names in playlist --------------------------------------------------------------------
         vid_names = []
-        for num, vid in enumerate(self.playlist):
+        for num, vid in enumerate(playlist):
             if vid.name in vid_names:
                 name, ext = os.path.splitext(vid.name)
                 name = f'{name}_{num}{ext}'
@@ -1772,7 +1782,7 @@ class MainWindow:
         audio_streams = {}
 
         # will use raw stream names which doesn't include size ex: {quality: raw_name}
-        for video in self.playlist:
+        for video in playlist:
             mp4_videos.update({stream.quality: stream.raw_name for stream in video.mp4_videos.values()})
             other_videos.update({stream.quality: stream.raw_name for stream in video.other_videos.values()})
             audio_streams.update({stream.quality: stream.raw_name for stream in video.audio_streams.values()})
@@ -1799,7 +1809,7 @@ class MainWindow:
         video_layout = []
 
         # build layout widgets
-        for num, video in enumerate(self.playlist):
+        for num, video in enumerate(playlist):
             # set selected stream
             if video.stream_list:
                 video.selected_stream = video.stream_list[0]
@@ -1828,7 +1838,7 @@ class MainWindow:
         video_layout = [sg.Column(video_layout, scrollable=True, vertical_scroll_only=True, size=(650, 250), key='col')]
 
         layout = [
-            [sg.T(f'Total Videos: {len(self.playlist)}')],
+            [sg.T(f'Total Videos: {len(playlist)}')],
             general_options_layout,
             [sg.T('*note: select videos first to load streams menu if not available!!', font='any 8')],
             [sg.Frame(title='Videos:', layout=[video_layout])],
@@ -1848,7 +1858,7 @@ class MainWindow:
 
         def update_video(num):
             # update some parameters for a selected video
-            video = self.playlist[num]
+            video = playlist[num]
             stream_widget = window[f'stream {num}']
             video_checkbox = window[f'video {num}']
             size_widget = window[f'size_text {num}']
@@ -1884,7 +1894,7 @@ class MainWindow:
             if event == 'OK':
                 chosen_videos.clear()
                 null_videos = []
-                for num, video in enumerate(self.playlist):
+                for num, video in enumerate(playlist):
                     # check if video is selected
                     if values[f'video {num}'] is True:
 
@@ -1927,7 +1937,7 @@ class MainWindow:
 
                 # update all videos stream menus from master stream menu
                 for num, stream_combo in enumerate(stream_combos):
-                    video = self.playlist[num]
+                    video = playlist[num]
                     if selected_text in video.raw_streams:
                         stream_combo(selected_text)
                         update_video(num)
@@ -1938,23 +1948,8 @@ class MainWindow:
                 num = int(event.split()[-1])
                 update_video(num)
 
-                # video = self.playlist[num]
-                # selected_text = window[event].get()
-                # # print(f'"{selected_text}", {video.raw_streams}')
-                #
-                # selected_stream = video.raw_streams.get(selected_text, None)
-                # if selected_stream:
-                #     video.selected_stream = selected_stream
-                #
-                # else:
-                #     if video.selected_stream:
-                #         window[event](video.selected_stream.raw_name)
-                #
-                # window[f'size_text {num}'](size_format(video.size))
-                # log('download playlist fn>', 'stream', repr(video.selected_stream))
-
             # update stream menu for processed videos
-            for num, video in enumerate(self.playlist):
+            for num, video in enumerate(playlist):
                 stream_combo = window[f'stream {num}']
                 if video.stream_list:
                     if stream_combo.Values != video.raw_stream_menu:
@@ -1966,13 +1961,18 @@ class MainWindow:
 
             # animate progress bars while loading streams
             for num, bar in enumerate(progress_bars):
-                video = self.playlist[num]
+                video = playlist[num]
                 if video.name in active_threads and not video.processed:
                     bar(visible=True)
                     bar.expand(expand_x=True)
                     bar.Widget['value'] += 10
                 else:
                     bar(visible=False)
+
+            # check terminate flag
+            if config.terminate:
+                window.close()
+                return
 
         # After closing playlist window, select downloads tab -------------------------------------------------------
         self.select_tab('Downloads')
@@ -2406,7 +2406,7 @@ class DownloadWindow:
             self.window['log2'](config.log_entry)
 
             # percentage value to move with progress bar
-            position = int(self.d.progress) - 5 if self.d.progress > 5 else 0
+            position = int(self.d.progress) if self.d.progress > 5 else 0
             self.window['percent'](f"{' ' * position} {self.d.progress}%")
 
             # status update
