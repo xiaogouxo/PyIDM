@@ -208,9 +208,7 @@ class MainWindow:
                       [[video_block]],
                       relief=sg.RELIEF_SUNKEN, key='playlist_frame'),
              pl_button],
-
-            # spacer
-            [sg.T('', font='any 1')],
+            [sg.T('        '), sg.T(' ' * 300, key='format_code', font='any 9')],
 
             # folder
             [sg.Image(data=folder_icon),
@@ -1479,6 +1477,7 @@ class MainWindow:
             self.pl_menu = ['Playlist']
             self.stream_menu = ['Video quality']
             self.window['playlist_frame'](value='Playlist/video:')
+            self.window['format_code']('')
 
             # reset thumbnail
             self.reset_thumbnail()
@@ -1742,14 +1741,16 @@ class MainWindow:
             log('playlist_OnChoice()> error', e)
 
     def stream_OnChoice(self, selected_text):
-        if selected_text not in self.stream_menu:
-            return
-        if selected_text not in self.video.stream_names:
-            selected_text = self.stream_menu_selection or self.video.stream_names[0]
-            self.window['stream_menu'](selected_text)
 
-        self.stream_menu_selection = selected_text
-        self.video.selected_stream = self.video.streams[selected_text]
+        try:
+            self.stream_menu_selection = selected_text
+            self.video.selected_stream = self.video.streams[selected_text]
+
+            # display format code
+            self.window['format_code']('Format code: ' + self.video.selected_stream.format_id + ' - ' +
+                                       self.video.selected_stream.format_note)
+        except:
+            pass
 
     def download_playlist(self):
         # check if playlist is ready
@@ -2243,16 +2244,10 @@ class MainWindow:
 
         if self.new_version_available:
             config.main_window_q.put(('show_update_gui', ''))
-            # self.show_update_gui()
         else:
-            popup(f"      App. is up-to-date \n\n"
-                  f"Current version: {config.APP_VERSION} \n"
-                  f"Server version:  {config.APP_LATEST_VERSION} \n",
-                  title='App update',
-                  type_='popup_no_buttons'
-                  )
             if self.new_version_description:
-                pass
+                popup(f"App. is up-to-date, Local version: {config.APP_VERSION} \n"
+                      f"Remote version:  {config.APP_LATEST_VERSION}", title='App update', )
             else:
                 popup("couldn't check for update")
 
@@ -2406,7 +2401,7 @@ class DownloadWindow:
             self.window['log2'](config.log_entry)
 
             # percentage value to move with progress bar
-            position = int(self.d.progress) if self.d.progress > 5 else 0
+            position = int(self.d.progress)
             self.window['percent'](f"{' ' * position} {self.d.progress}%")
 
             # status update

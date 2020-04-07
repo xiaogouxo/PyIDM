@@ -163,8 +163,15 @@ class Video(DownloadItem):
         # collect all in one dictionary of stream.name: stream pairs
         streams = {**video_streams, **audio_streams}
 
+        # get extra streams
+        extra_streams = {stream.name: stream for stream in all_streams if stream not in streams.values()}
+
+        # update streams
+        streams.update(**extra_streams)
+
         stream_menu = ['● Video streams:                     '] + list(mp4_videos.keys()) + list(other_videos.keys()) \
-                    + ['', '● Audio streams:                 '] + list(audio_streams.keys())
+                    + ['', '● Audio streams:                 '] + list(audio_streams.keys()) \
+                    + ['', '● Extra streams:                 '] + list(extra_streams.keys()) \
 
         # assign variables
         self.stream_list = list(streams.values())
@@ -278,14 +285,14 @@ def process_video_info(vid, getthumbnail=True):
 class Stream:
     def __init__(self, stream_info):
         # fetch data from youtube-dl stream_info dictionary
-        self.format_id = stream_info.get('format_id', None)
+        self.format_id = stream_info.get('format_id', '')
         self.url = stream_info.get('url', None)
         self.player_url = stream_info.get('player_url', None)
         self.extension = stream_info.get('ext', None)
         self.width = stream_info.get('width', None)
         self.fps = stream_info.get('fps', None)
         self.height = stream_info.get('height', 0)
-        self.format_note = stream_info.get('format_note', None)
+        self.format_note = stream_info.get('format_note', '')
         self.acodec = stream_info.get('acodec', None)
         self.abr = stream_info.get('abr', 0)
         self.size = stream_info.get('filesize', None)
