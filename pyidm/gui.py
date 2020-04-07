@@ -499,7 +499,7 @@ class MainWindow:
                 self.window['name'](self.d.name)
 
             file_properties = f'Size: {size_format(self.d.total_size)} - Type: {self.d.type} ' \
-                              f'{"fragments" if self.d.fragments else ""} - ' \
+                              f'{", ".join(self.d.subtype_list)} - ' \
                               f'Protocol: {self.d.protocol} - Resumable: {"Yes" if self.d.resumable else "No"} ...'
             self.window['file_properties'](file_properties)
 
@@ -579,7 +579,6 @@ class MainWindow:
             # update stream menu
             if self.video and self.stream_menu != self.video.stream_menu:
                 self.update_stream_menu()
-
 
         except Exception as e:
             log('MainWindow.update_gui() error:', e)
@@ -1080,7 +1079,7 @@ class MainWindow:
             return
 
         # check for ffmpeg availability in case this is a dash video
-        if d.type == 'dash' or 'm3u8' in d.protocol:
+        if 'dash' in d.subtype_list or 'hls' in d.subtype_list:
             # log('Dash video detected')
             if not self.ffmpeg_check():
                 log('Download cancelled, FFMPEG is missing')
@@ -1244,7 +1243,7 @@ class MainWindow:
         d.folder = config.download_folder
 
         # dash audio
-        if d.type == 'dash' and config.manually_select_dash_audio:
+        if 'dash' in d.subtype_list and config.manually_select_dash_audio:
             # manually select dash audio
             self.select_dash_audio()
 
@@ -1749,6 +1748,9 @@ class MainWindow:
             # display format code
             self.window['format_code']('Format code: ' + self.video.selected_stream.format_id + ' - ' +
                                        self.video.selected_stream.format_note)
+
+            # update gui
+            self.update_gui()
         except:
             pass
 
@@ -2024,8 +2026,8 @@ class MainWindow:
             return True
 
     def select_dash_audio(self):
-        """prompt user to select dash audio"""
-        if not self.d.type == 'dash':
+        """prompt user to select dash audio manually"""
+        if 'dash' not in self.d.subtype_list:
             log('select_dash_audio()> this function is available only for a dash video, ....')
             return
 

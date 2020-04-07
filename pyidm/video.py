@@ -221,17 +221,32 @@ class Video(DownloadItem):
             self.thumbnail = process_thumbnail(self.thumbnail_url)
 
     def update_param(self, audio_stream=None):
-        # do some parameter updates
+        """Mainly used when select a stream for current video object"""
+        # do some parameters updates
         stream = self.selected_stream
         self.name = self.title + '.' + stream.extension
         self.eff_url = stream.url
-        self.type = stream.mediatype
         self.size = stream.size
         self.fragment_base_url = stream.fragment_base_url
         self.fragments = stream.fragments
         self.protocol = stream.protocol
         self.format_id = stream.format_id
         self.manifest_url = stream.manifest_url
+
+        # set type ---------------------------------------------------------------------------------------
+        self.type = stream.mediatype if stream.mediatype == 'audio' else 'video'
+
+        # set subtype
+        self.subtype_list.clear()
+
+        if stream.mediatype in ('dash', 'normal'):
+            self.subtype_list.append(stream.mediatype)
+
+        if 'm3u8' in self.protocol:
+            self.subtype_list.append('hls')
+
+        if self.fragments:
+            self.subtype_list.append('fragmented')
 
         # select an audio to embed if our stream is dash video
         # audio streams in a list
@@ -241,7 +256,7 @@ class Video(DownloadItem):
         audio_streams_list = sorted(audio_streams_list, key=lambda stream: stream.quality, reverse=True)
 
         if stream.mediatype == 'dash' and audio_streams_list:
-            # auto select audio stream
+            # auto select audio stream if no parameter given
             if not audio_stream:
                 matching_stream = [audio for audio in audio_streams_list if audio.extension == stream.extension
                             or (audio.extension == 'm4a' and stream.extension == 'mp4')]
@@ -263,7 +278,8 @@ class Video(DownloadItem):
             self.audio_fragments = None
 
     def refresh(self):
-        # update properties
+        """will be used in case we updated vid_info dictionary from youtube-dl"""
+        # reset properties and rebuild streams
         self.setup()
 
 
@@ -570,7 +586,7 @@ def pre_process_hls(d):
             d.eff_url = eff_url
             video_m3u8 = download_m3u8(d.eff_url)
 
-    if d.type == 'dash' and not audio_m3u8:
+    if 'dash' in d.subtype_list and not audio_m3u8:
         eff_url = get_correct_m3u8_url(master_m3u8, media='audio')
         if not eff_url:
             log('pre_process_hls()> Failed to get correct audio m3u8 url, quitting!')
@@ -608,7 +624,7 @@ def pre_process_hls(d):
     d.segments += vkeys
 
     # handle audio stream in case of dash videos
-    if d.type == 'dash':
+    if 'dash' in d.subtype_list:
         audio_url_list, audio_keys_url_list = extract_url_list(audio_m3u8)
 
         # get absolute path from url_list relative path
@@ -691,7 +707,7 @@ def post_process_hls(d):
         log('post_process_hls()> error', e)
         return False
 
-    if d.type == 'dash':
+    if 'dash' in d.subtype_list:
         # create local m3u8 version - audio
         remote_audio_m3u8_file = os.path.join(d.temp_folder, 'remote_audio.m3u8')
         local_audio_m3u8_file = os.path.join(d.temp_folder, 'local_audio.m3u8')
@@ -718,7 +734,7 @@ def post_process_hls(d):
         log('post_process_hls()> ffmpeg failed:', output)
         return False
 
-    if d.type == 'dash':
+    if 'dash' in d.subtype_list:
         cmd = f'"{config.ffmpeg_actual_path}" -y -protocol_whitelist "file,http,https,tcp,tls,crypto"  ' \
               f'-allowed_extensions ALL -i "{local_audio_m3u8_file}" -c copy -f mp4 "file:{d.audio_file}"'
 

@@ -44,7 +44,7 @@ def brain(d=None, downloader=None):
     d.load_progress_info()
 
     # experimental m3u8 protocols
-    if 'm3u8' in d.protocol:  # todo: use better way to identify HLS streams
+    if 'hls' in d.subtype_list:
         keep_segments = True  # don't delete segments after completed, it will be post-processed by ffmpeg
         success = pre_process_hls(d)
         if not success:
@@ -198,7 +198,7 @@ def file_manager(d, keep_segments=False):
         if not job_list:
 
             # handle audio streams
-            if d.selected_stream.mediatype == 'audio':
+            if d.type == 'audio':
                 d.status = Status.processing
                 success = convert_audio(d)
                 if not success:
@@ -209,7 +209,7 @@ def file_manager(d, keep_segments=False):
                     d.delete_tempfiles()
 
             # handle HLS streams
-            if 'm3u8' in d.protocol:
+            if 'hls' in d.subtype_list:
                 log('handling hls videos')
                 # Set status to processing
                 d.status = Status.processing
@@ -221,7 +221,7 @@ def file_manager(d, keep_segments=False):
                     break
 
             # handle dash video
-            if d.type == 'dash':
+            if 'dash' in d.subtype_list:
                 log('handling dash videos')
                 # merge audio and video
                 output_file = d.target_file.replace(' ', '_')  # remove spaces from target file

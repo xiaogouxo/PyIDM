@@ -126,7 +126,10 @@ class DownloadItem:
 
         self.size = 0
         self.resumable = False
-        self.type = ''
+
+        # type and subtypes
+        self.type = ''  # general, video, audio
+        self.subtype_list = []  # it might contains one or more og "general, video, audio, hls, dash, fragmented"
 
         self._segment_size = config.segment_size
 
@@ -216,7 +219,7 @@ class DownloadItem:
                  resumable=self.resumable, selected_quality=self.selected_quality,
                  _segment_size=self._segment_size, _downloaded=self._downloaded, _status=self._status,
                  remaining_parts=self.remaining_parts, audio_url=self.audio_url, audio_size=self.audio_size,
-                 type=self.type, fragments=self.fragments, fragment_base_url=self.fragment_base_url,
+                 type=self.type, type_list=self.subtype_list, fragments=self.fragments, fragment_base_url=self.fragment_base_url,
                  audio_fragments=self.audio_fragments, audio_fragment_base_url=self.audio_fragment_base_url,
                  last_known_size=self.last_known_size, last_known_progress=self.last_known_progress,
                  protocol=self.protocol, manifest_url=self.manifest_url
@@ -253,7 +256,7 @@ class DownloadItem:
                     for i, x in enumerate(range_list)]
 
             # get an audio stream to be merged with dash video
-            if self.type == 'dash':
+            if 'dash' in self.subtype_list:
                 # handle fragmented audio
                 if self.audio_fragments:
                     # example 'fragments': [{'path': 'range/0-640'}, {'path': 'range/2197-63702', 'duration': 9.985},]
@@ -298,7 +301,7 @@ class DownloadItem:
 
     @property
     def total_size(self):
-        if self.type == 'dash':
+        if 'dash' in self.subtype_list:
             size = self.size + self.audio_size
         else:
             size = self.size
