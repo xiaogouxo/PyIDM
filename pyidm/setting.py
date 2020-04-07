@@ -117,9 +117,10 @@ def load_d_list():
 def save_d_list(d_list):
     try:
         data = []
-        thumbnails = {}  # dictionary, key=d.id, value=base64 binary string of thumbnail
+        thumbnails = {}  # dictionary, key=d.id, value=base64 binary string for thumbnail
         for d in d_list:
-            data.append(d.get_persistent_properties())
+            dict_ = {key: d.__dict__.get(key) for key in d.saved_properties}
+            data.append(dict_)
 
             # thumbnails
             if d.thumbnail:

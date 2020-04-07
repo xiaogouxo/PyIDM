@@ -206,25 +206,18 @@ class DownloadItem:
         # selected raw stream name for video objects
         self.selected_quality = None
 
+        # properties names that will be saved on disk
+        self.saved_properties = ['id', '_name', 'folder', 'url', 'eff_url', 'playlist_url', 'playlist_title', 'size',
+                                 'resumable', 'selected_quality', '_segment_size', '_downloaded', '_status',
+                                 'remaining_parts', 'audio_url', 'audio_size', 'type', 'type_list', 'fragments',
+                                 'fragment_base_url', 'audio_fragments', 'audio_fragment_base_url',
+                                 'last_known_size', 'last_known_progress', 'protocol', 'manifest_url']
+
     # def __getattr__(self, attrib):  # commented out as it makes problem with copy.copy module
     #     """this method will be called if no attribute found"""
     #
     #     # will return empty string instead of raising error
     #     return ''
-
-    def get_persistent_properties(self):
-        """return a dict of important parameters to be saved in file"""
-        a = dict(id=self.id, _name=self._name, folder=self.folder, url=self.url, eff_url=self.eff_url,
-                 playlist_url=self.playlist_url, playlist_title=self.playlist_title, size=self.size,
-                 resumable=self.resumable, selected_quality=self.selected_quality,
-                 _segment_size=self._segment_size, _downloaded=self._downloaded, _status=self._status,
-                 remaining_parts=self.remaining_parts, audio_url=self.audio_url, audio_size=self.audio_size,
-                 type=self.type, type_list=self.subtype_list, fragments=self.fragments, fragment_base_url=self.fragment_base_url,
-                 audio_fragments=self.audio_fragments, audio_fragment_base_url=self.audio_fragment_base_url,
-                 last_known_size=self.last_known_size, last_known_progress=self.last_known_progress,
-                 protocol=self.protocol, manifest_url=self.manifest_url
-                 )
-        return a
 
     def reset_segments(self):
         """reset each segment properties "downloaded and merged" """
