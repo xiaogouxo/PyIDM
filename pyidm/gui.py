@@ -2506,6 +2506,7 @@ class SubtitleWindow:
 
         window = sg.Window('Subtitles window', layout)
         self.window = window
+        self.subtitles = subtitles
 
     @staticmethod
     def download_subtitle(url, file_name):
@@ -2526,12 +2527,14 @@ class SubtitleWindow:
                 error, _ = run_command(cmd, verbose=False, shell=True)
                 if not error:
                     log('created ".srt" subtitle:', output)
-        except:
-            pass
+        except Exception as e:
+            log('download_subtitle() error', e)
 
     def run(self):
 
-        event, values = self.window.read(timeout=10)
+        event, values = self.window.read(timeout=10, timeout_key='_TIMEOUT_')
+
+        if event != '_TIMEOUT_': print(event)
 
         if event in ('Close', None):
             self.window.close()
@@ -2551,10 +2554,9 @@ class SubtitleWindow:
                     # get selected extension
                     ext = values[f'ext_{i}']
                     url = [dict_['url'] for dict_ in self.subtitles[k] if dict_['ext'] == ext][0]
-                    name = k + '.' + ext
-                    full_name = os.path.join(config.download_folder, name)
+                    name = f'{os.path.splitext(self.d.target_file)[0]}_{k}.{ext}'
 
-                    self.selected_subs[full_name] = url
+                    self.selected_subs[name] = url
 
             # download selected self.subtitles in separate threads
             self.threads = []
