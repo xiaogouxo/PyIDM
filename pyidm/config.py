@@ -76,6 +76,7 @@ use_referer = False
 referer_url = ''  # referer website url
 
 # website authentication
+use_web_auth = False
 username = ''
 password = ''
 

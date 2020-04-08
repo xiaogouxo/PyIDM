@@ -362,13 +362,20 @@ class MainWindow:
                   size=(100, 1), font='any 9'),
              ],
             [sg.T('', font='any 1')],  # spacer
-            [sg.Checkbox('Referer website url:', default=config.use_referer, key='use_referer', enable_events=True),
+
+            [sg.Checkbox('Website Auth: ', default=config.use_web_auth, key='use_web_auth', enable_events=True),
+             sg.T('    *user/pass will not be saved on disk', font='any 8')],
+            [sg.T('        user: '),
+             sg.I('', size=(25, 1), key='username', enable_events=True, disabled=not config.use_web_auth)],
+            [sg.T('        Pass:'), sg.I('', size=(25, 1), key='password', enable_events=True,
+                                         disabled=not config.use_web_auth, password_char='*')],
+            [sg.T('', font='any 1')],  # spacer
+
+            [sg.Checkbox('Referee url:', default=config.use_referer, key='use_referer', enable_events=True),
              sg.I(default_text=config.referer_url, size=(60, 1), font='any 9', key='referer_url',
                   enable_events=True, disabled=not config.use_referer)],
-            [sg.T('', font='any 1')],  # spacer
-            [sg.T('Website Auth: ')],
-            [sg.T('        user: '), sg.I(' ', size=(25, 1), key='username', enable_events=True)],
-            [sg.T('        Pass:'), sg.I(' ', size=(25, 1), key='password', enable_events=True)],
+
+
         ]
 
         update = [
@@ -952,9 +959,23 @@ class MainWindow:
                     self.window['referer_url'](disabled=True)
                     config.referer_url = ''
 
-            elif event in ('username', 'password'):
-                config.username = values['username']
-                config.password = values['password']
+            elif event in ('username', 'password', 'use_web_auth'):
+                if values['use_web_auth']:
+                    # enable widgets
+                    self.window['username'](disabled=False)
+                    self.window['password'](disabled=False)
+
+                    config.username = values['username']
+                    config.password = values['password']
+                else:
+                    config.username = ''
+                    config.password = ''
+
+                    # disable widgets
+                    self.window['username'](disabled=True)
+                    self.window['password'](disabled=True)
+
+                # log('user, pass:', config.username, config.password)
 
             # update -------------------------------------------------
             elif event == 'update_frequency':
