@@ -39,7 +39,7 @@ class Logger(object):
 
 
 def get_ytdl_options():
-    ydl_opts = {'ignore_errors': True, 'prefer_insecure': False, 'no_warnings': False, 'logger': Logger()}
+    ydl_opts = {'ignoreerrors': True, 'prefer_insecure': False, 'no_warnings': False, 'logger': Logger()}
     if config.proxy:
         ydl_opts['proxy'] = config.proxy
 
@@ -52,6 +52,13 @@ def get_ytdl_options():
     if config.username or config.password:
         ydl_opts['username'] = config.username
         ydl_opts['password'] = config.password
+
+    # subtitle
+    # ydl_opts['listsubtitles'] = True  # this is has a problem with playlist
+    # ydl_opts['allsubtitles'] = True  # has no effect
+    ydl_opts['writesubtitles'] = True
+    ydl_opts['writeautomaticsub'] = True
+
 
     # if config.log_level >= 3:
         # ydl_opts['verbose'] = True  # it make problem with Frozen PyIDM, extractor doesn't work
@@ -102,6 +109,9 @@ class Video(DownloadItem):
 
         self.setup()
 
+    def __repr__(self):
+        return f'Video object( name: {self.name}, url:{self.url}'
+
     def setup(self):
         url = self.vid_info.get('url', None) or self.vid_info.get('webpage_url', None) or self.vid_info.get('id', None)
         if url:
@@ -112,6 +122,10 @@ class Video(DownloadItem):
 
         # thumbnail
         self.thumbnail_url = self.vid_info.get('thumbnail', '')
+
+        # subtitles
+        self.subtitles = self.vid_info.get('subtitles', {})
+        self.automatic_captions = self.vid_info.get('automatic_captions', {})
 
         # build streams
         self._process_streams()
@@ -286,14 +300,16 @@ class Video(DownloadItem):
 def process_video_info(vid, getthumbnail=True):
     try:
         with ytdl.YoutubeDL(get_ytdl_options()) as ydl:
-            vid.vid_info = ydl.process_ie_result(vid.vid_info, download=False)
-            vid.refresh()
-            vid.processed = True
+            vid_info = ydl.process_ie_result(vid.vid_info, download=False)
+            if vid_info:
+                vid.vid_info = vid_info
+                vid.refresh()
 
-        if getthumbnail:
-            vid.get_thumbnail()
+            if vid and getthumbnail:
+                vid.get_thumbnail()
 
         log('process_video_info()> processed url:', vid.url, log_level=3)
+        vid.processed = True
     except Exception as e:
         log('process_video_info()> error:', e)
 

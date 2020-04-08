@@ -32,7 +32,7 @@ config.all_themes = natural_sort(sg.ListOfLookAndFeelValues())
 sg.SetOptions(icon=APP_ICON, font='Helvetica 10', auto_size_buttons=True, progress_meter_border_depth=0,
               border_width=1)  # Helvetica font is guaranteed to work on all operating systems
 
-# transparent color for button which mimic current background, will be use as a parameter, ex. **transparent
+# transparent color for button which mimic current background, will be used as a parameter, ex. **transparent
 transparent = {}
 
 
@@ -46,8 +46,8 @@ class MainWindow:
         # main window
         self.window = None
 
-        # download windows
-        self.download_windows = {}  # dict that holds Download_Window() objects --> {d.id: Download_Window()}
+        # active child windows
+        self.active_windows = []  # list holds active_Windows objects
 
         # url
         self.url = ''  # current url in url input widget
@@ -207,8 +207,16 @@ class MainWindow:
              sg.Frame('Playlist/video:',
                       [[video_block]],
                       relief=sg.RELIEF_SUNKEN, key='playlist_frame'),
-             pl_button],
-            [sg.T('        '), sg.T(' ' * 300, key='format_code', font='any 9')],
+             sg.Column([
+                 [sg.T('', font='any 2')],
+                 [sg.Button('', tooltip=' download playlist ', key='pl_download', image_data=playlist_icon, **transparent)],
+                 [sg.T('', font='any 2')],
+                 [sg.Button('', tooltip=' subtitles ', key='subtitles', image_data=subtitle_icon, **transparent)]],
+             pad=(0,0))
+             ],
+
+            # format code
+            [sg.T(' ' * 300, key='format_code', font='any 9', pad=(5, 0))],
 
             # folder
             [sg.Image(data=folder_icon),
@@ -664,6 +672,24 @@ class MainWindow:
                 self.window['url'](clipboard_read().strip())
                 self.url_text_change()
 
+            # video events
+            elif event == 'pl_download':
+                self.window['pl_download'](disabled=True)
+                self.download_playlist()
+                self.window['pl_download'](disabled=False)
+
+            elif event == 'pl_menu':
+                self.playlist_OnChoice(values['pl_menu'])
+
+            elif event == 'stream_menu':
+                self.stream_OnChoice(values['stream_menu'])
+
+            elif event == 'subtitles':
+                try:
+                    self.download_subtitles()
+                except Exception as e:
+                    log('download_subtitles()> error', e)
+
             elif event == 'Download':
                 self.download_btn()
 
@@ -759,10 +785,11 @@ class MainWindow:
                                  'go to setting tab, then uncheck "auto close download window" option', title='info')
                     else:
                         d = self.selected_d
-                        if d.id not in self.download_windows:
-                            self.download_windows[d.id] = DownloadWindow(d=d)
+                        if d.id not in [win.d.id for win in self.active_windows]:
+                            self.active_windows.append(DownloadWindow(d=d))
                         else:
-                            self.download_windows[d.id].focus()
+                            win = [win for win in self.active_windows if win.d.id == d.id][0]
+                            win.focus()
 
             elif event == 'Resume All':
                 self.resume_all_downloads()
@@ -783,18 +810,6 @@ class MainWindow:
             elif event == 'Delete All':
                 self.delete_all_downloads()
 
-            # video events
-            elif event == 'pl_download':
-                self.window['pl_download'](disabled=True)
-                self.download_playlist()
-                self.window['pl_download'](disabled=False)
-
-            elif event == 'pl_menu':
-                self.playlist_OnChoice(values['pl_menu'])
-
-            elif event == 'stream_menu':
-                self.stream_OnChoice(values['stream_menu'])
-
             # Settings tab -------------------------------------------------------------------------------------------
             elif event == 'about':  # about window
                 self.window['about'](visible=False)
@@ -805,10 +820,10 @@ class MainWindow:
                 config.current_theme = values['themes']
                 self.change_theme()
 
-                # close all download windows if existed
-                for win in self.download_windows.values():
+                # close all active windows
+                for win in self.active_windows:
                     win.window.Close()
-                self.download_windows = {}
+                self.active_windows.clear()
 
                 self.restart_window()
                 self.select_tab('Settings')
@@ -984,13 +999,10 @@ class MainWindow:
                 if self.pending and len(self.active_downloads) < config.max_concurrent_downloads:
                     self.start_download(self.pending.popleft(), silent=True)
 
-            # run download windows if existed
-            keys = list(self.download_windows.keys())
-            for i in keys:
-                win = self.download_windows[i]
+            # run active windows
+            for win in self.active_windows:
                 win.run()
-                if win.event is None:
-                    self.download_windows.pop(i, None)
+            self.active_windows = [win for win in self.active_windows if win.active]  # update active list
 
             # run one time, reason this is here not in setup, is to minimize gui loading time
             if one_time:
@@ -1193,8 +1205,8 @@ class MainWindow:
 
         # start downloading
         if config.show_download_window and not silent:
-            # create download window
-            self.download_windows[d.id] = DownloadWindow(d)
+            # create download window and append to active list
+            self.active_windows.append(DownloadWindow(d))
 
         # create and start brain in a separate thread
         Thread(target=brain, daemon=True, args=(d, downloader)).start()
@@ -1654,8 +1666,8 @@ class MainWindow:
                 else:
                     # one video, not a playlist, processing info
                     vid = Video(self.d.url, vid_info=info)
-                    process_video_info(vid)
                     self.playlist = [vid]
+                    # process_video_info(vid)  # will be called from playlist_on_choice()
 
                     # update playlist menu
                     self.update_pl_menu()
@@ -1726,7 +1738,7 @@ class MainWindow:
             self.update_gui()
 
             # fetch video info if not available and animate side bar
-            if not self.video.processed:
+            if self.video and not self.video.processed:
                 self.s_bar = 0
                 self.animate_bar = True  # let update_gui() start a fake progress
 
@@ -1996,6 +2008,15 @@ class MainWindow:
 
         # create a separate thread to prevent gui freeze
         Thread(target=download_selected_videos).start()
+
+    def download_subtitles(self):
+        if not (self.d.subtitles or self.d.automatic_captions):
+            sg.PopupOK('No Subtitles available')
+            return
+
+        if self.d.id not in self.active_windows:
+            subtitle_window = SubtitleWindow(self.d)
+            self.active_windows.append(subtitle_window)
 
     def ffmpeg_check(self):
         if not check_ffmpeg():
@@ -2328,6 +2349,7 @@ class DownloadWindow:
         self.d = d
         self.q = d.q
         self.window = None
+        self.active = True
         self.event = None
         self.values = None
         self.timeout = 10
@@ -2431,4 +2453,124 @@ class DownloadWindow:
 
     def close(self):
         self.event = None
+        self.active = False
         self.window.Close()
+
+
+class SubtitleWindow:
+
+    def __init__(self, d):
+        self.d = d
+        self.window = None
+        self.active = True
+        self.subtitles = {}
+        self.selected_subs = {}
+        self.threads = []
+        self.threads_num = 0
+
+        self.setup()
+
+    def setup(self):
+        # build subtitles from self.d.subtitles and self.d.automatic_captions, and rename repeated keys
+        subtitles = {}
+        for k, v in self.d.subtitles.items():
+            if k in subtitles:
+                k = k + '_2'
+            subtitles[k] = v
+
+        for k, v in self.d.automatic_captions.items():
+            if k in subtitles:
+                k = k + '_2'
+            subtitles[k] = v
+
+        # build gui layout
+        layout = [[sg.T('Subtitles for:')], [sg.T(self.d.name, tooltip=self.d.name)]]
+
+        for i, lang in enumerate(subtitles.keys()):
+            extensions = [entry.get('ext', '-') for entry in subtitles[lang]]
+
+            # choose default extension
+            if 'srt' in extensions:
+                default_ext = 'srt'
+            elif 'vtt' in extensions:
+                default_ext = 'vtt'
+            else:
+                default_ext = extensions[0]
+
+            layout.append([sg.Checkbox(lang, key=f'lang_{i}', size=(15, 1)), sg.T(' - Extension:'),
+                           sg.Combo(values=extensions, default_value=default_ext, key=f'ext_{i}', size=(10, 1)),
+                           sg.T('*sub' if lang in self.d.subtitles else '*caption')])
+
+        layout = [[sg.Column(layout, scrollable=True, vertical_scroll_only=True, size=(400, 195), key='col')],
+                  [sg.Button('Download'), sg.Button('Close'), sg.ProgressBar(100, size=(25, 10), key='bar')]]
+
+        window = sg.Window('Subtitles window', layout)
+        self.window = window
+
+    @staticmethod
+    def download_subtitle(url, file_name):
+        try:
+            download(url, file_name)
+            name, ext = os.path.splitext(file_name)
+
+            # create 'srt' subtitle format from 'vtt' file
+            if ext == '.vtt':
+                # ffmpeg file full location
+                ffmpeg = config.ffmpeg_actual_path
+
+                output = name + '.srt'
+
+                # very fast audio just copied, format must match [mp4, m4a] and [webm, webm]
+                cmd = f'"{ffmpeg}" -y -i "{file_name}" "{output}"'
+
+                error, _ = run_command(cmd, verbose=False, shell=True)
+                if not error:
+                    log('created ".srt" subtitle:', output)
+        except:
+            pass
+
+    def run(self):
+
+        event, values = self.window.read(timeout=10)
+
+        if event in ('Close', None):
+            self.window.close()
+            self.active = False
+            return
+
+        if event == 'Download':
+            # disable download button
+            self.window['Download'](disabled=True)
+
+            # reset selected subtitles
+            self.selected_subs.clear()
+
+            # get selected subs
+            for i, k in enumerate(self.subtitles):
+                if values[f'lang_{i}']:  # selected language checkbox, true if selected
+                    # get selected extension
+                    ext = values[f'ext_{i}']
+                    url = [dict_['url'] for dict_ in self.subtitles[k] if dict_['ext'] == ext][0]
+                    name = k + '.' + ext
+                    full_name = os.path.join(config.download_folder, name)
+
+                    self.selected_subs[full_name] = url
+
+            # download selected self.subtitles in separate threads
+            self.threads = []
+            for file_name, url in self.selected_subs.items():
+                log('downloading subtitle', file_name)
+                t = Thread(target=self.download_subtitle, args=(url, file_name))
+                self.threads.append(t)
+                t.start()
+            self.threads_num = len(self.threads)
+
+        # check download threads and update progress bar
+        if self.threads:
+            self.threads = [t for t in self.threads if t.is_alive()]
+            percent = (self.threads_num - len(self.threads)) * 100 // self.threads_num
+            self.window['bar'].update_bar(percent)
+
+        else:
+            # enable download button again
+            self.window['Download'](disabled=False)
