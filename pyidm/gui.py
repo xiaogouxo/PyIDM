@@ -523,8 +523,12 @@ class MainWindow:
                             self.d_list]
             self.window.Element('table').Update(values=table_values[:])
 
-            # re-select the previously selected row in the table
-            if self.selected_row_num is not None:
+            if self.d_list:
+                # select first row by default if nothing previously selected
+                if not self.selected_row_num:
+                    self.selected_row_num = 0
+
+                # re-select the previously selected row in the table
                 self.window['table'](select_rows=(self.selected_row_num,))
 
             # update active and pending downloads
