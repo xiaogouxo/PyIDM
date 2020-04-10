@@ -1,3 +1,18 @@
+2020.4.8:
+- website authentication option, issue #65.
+- subtitles download,  issue #70
+- Added support for famous Audio formats aac, ogg, and mp3 - issue #67
+- Fixed some issues with hls videos i.e. problem downloading audio, and resume error
+- add extra redundant streams while showing format code to identify them, issue #68
+- choose first item in downloads table by default if non is selected
+- Fixed progress reporting 100% before completed merging audio/video or segments.
+- Add referee link option, issue #66
+- Fixed focus for "about window".
+- added http-headers.
+- fixed, thread manager exit without updating the "remaining parts" value
+- unfortunately watch while downloading is no more available for all hls videos.
+
+
 2020.3.31:
 - New design for downloads and settings Tab
 - Handle big playlist faster and more efficiently, with option to save bandwidth to fetch information only for selected videos.
