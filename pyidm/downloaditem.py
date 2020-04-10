@@ -185,10 +185,9 @@ class DownloadItem:
         self.audio_format_id = None
 
         # quality for video and audio
-        self.width = None
-        self.height = None
         self.abr = None
-        self.tbr = None
+        self.tbr = None  # for video equal Bandwidth/1000
+        self.resolution = None  # for videos only example for 720p: 1280x720
 
         # some downloads will have their progress and total size calculated and we can't store these values in self.size
         # since it will affect self.segments, workaround: use self.last_known_size, and self.last_known_progress so it
@@ -221,8 +220,8 @@ class DownloadItem:
                                  'resumable', 'selected_quality', '_segment_size', '_downloaded', '_status',
                                  'remaining_parts', 'audio_url', 'audio_size', 'type', 'subtype_list', 'fragments',
                                  'fragment_base_url', 'audio_fragments', 'audio_fragment_base_url',
-                                 'last_known_size', 'last_known_progress', 'protocol', 'manifest_url', 'width', 'height',
-                                 'abr', 'tbr', 'format_id', 'audio_format_id']
+                                 'last_known_size', 'last_known_progress', 'protocol', 'manifest_url',
+                                 'abr', 'tbr', 'format_id', 'audio_format_id', 'resolution']
 
     # def __getattr__(self, attrib):  # commented out as it makes problem with copy.copy module
     #     """this method will be called if no attribute found"""

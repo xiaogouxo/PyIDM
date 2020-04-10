@@ -159,7 +159,7 @@ def get_headers(url, verbose=False):
     return curl_headers
 
 
-def download(url, file_name=None):
+def download(url, file_name=None, verbose=True):
     """simple file download, return False if failed,
     :param url: text url link
     :param file_name: if specified it will save file to disk, otherwise it will buffer to memory
@@ -169,7 +169,8 @@ def download(url, file_name=None):
         log('download()> url not valid:', url)
         return None
 
-    log('download()> downloading', url)
+    if verbose:
+        log('download()> downloading', url)
 
     def set_options():
         # set general curl options

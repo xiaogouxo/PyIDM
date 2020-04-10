@@ -1089,7 +1089,6 @@ class MainWindow:
 
             # check if the link contains stream videos by youtube-dl
             Thread(target=self.youtube_func, daemon=True).start()
-        # self.enable()
         self.change_cursor('default')
 
     # endregion
