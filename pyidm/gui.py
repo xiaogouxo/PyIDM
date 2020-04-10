@@ -1082,7 +1082,6 @@ class MainWindow:
                 self.window['status_code'](f'status: {self.d.status_code}')
             except:
                 pass
-            # self.set_status(self.d.status_code_description)
 
             # enable download button
             if self.d.status_code not in self.bad_headers and self.d.type != 'text/html':
@@ -1090,7 +1089,7 @@ class MainWindow:
 
             # check if the link contains stream videos by youtube-dl
             Thread(target=self.youtube_func, daemon=True).start()
-
+        # self.enable()
         self.change_cursor('default')
 
     # endregion

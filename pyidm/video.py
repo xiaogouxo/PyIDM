@@ -246,6 +246,10 @@ class Video(DownloadItem):
         self.protocol = stream.protocol
         self.format_id = stream.format_id
         self.manifest_url = stream.manifest_url
+        self.width = stream.width
+        self.height = stream.height
+        self.abr = stream.abr
+        self.tbr = stream.tbr
 
         # set type ---------------------------------------------------------------------------------------
         self.type = stream.mediatype if stream.mediatype == 'audio' else 'video'
@@ -263,8 +267,7 @@ class Video(DownloadItem):
             self.subtype_list.append('fragmented')
 
         # select an audio to embed if our stream is dash video
-        # audio streams in a list
-        audio_streams_list = [stream for stream in self.stream_list if stream.mediatype == 'audio']
+        audio_streams_list = [stream for stream in self.stream_list if stream.mediatype == 'audio']  # audio streams in a list
 
         # sort audio list
         audio_streams_list = sorted(audio_streams_list, key=lambda stream: stream.quality, reverse=True)
@@ -290,6 +293,7 @@ class Video(DownloadItem):
             self.audio_url = None
             self.audio_fragment_base_url = None
             self.audio_fragments = None
+            self.audio_format_id = None
 
     def refresh(self):
         """will be used in case we updated vid_info dictionary from youtube-dl"""
@@ -321,14 +325,14 @@ class Stream:
         self.url = stream_info.get('url', None)
         self.player_url = stream_info.get('player_url', None)
         self.extension = stream_info.get('ext', None)
-        self.width = stream_info.get('width', None)
-        self.fps = stream_info.get('fps', None)
+        self.width = stream_info.get('width', 0)
         self.height = stream_info.get('height', 0)
+        self.fps = stream_info.get('fps', None)
         self.format_note = stream_info.get('format_note', '')
         self.acodec = stream_info.get('acodec', None)
         self.abr = stream_info.get('abr', 0)
+        self.tbr = stream_info.get('tbr', 0)
         self.size = stream_info.get('filesize', None)
-        self.tbr = stream_info.get('tbr', None)
         # self.quality = stream_info.get('quality', None)
         self.vcodec = stream_info.get('vcodec', None)
         self.res = stream_info.get('resolution', None)
@@ -533,46 +537,21 @@ def import_ytdl():
 
 
 def pre_process_hls(d):
-    """handle m3u8 list and build a url list of file segments"""
+    """
+    handle m3u8 manifest file and build a local m3u8 file and download item segments
+    :param d: DownloadItem() object
+    """
 
     log('pre_process_hls()> start processing', d.name)
 
-    # get correct url of m3u8 file
-    def get_correct_m3u8_url(master_m3u8_doc, media='video'):
-        if not master_m3u8_doc:
+    # create temp_folder if doesn't exist
+    if not os.path.isdir(d.temp_folder):
+        try:
+            os.makedirs(d.temp_folder)
+        except:
             return False
 
-        lines = master_m3u8_doc.splitlines()
-        for i, line in enumerate(lines):
-
-            if media == 'video' and (str(d.selected_stream.width) in line and str(
-                    d.selected_stream.height) in line or d.format_id in line):
-                correct_url = urljoin(d.manifest_url, lines[i + 1])
-                return correct_url
-            elif media == 'audio' and (str(d.audio_stream.abr) in line or str(
-                    d.selected_stream.tbr) in line or d.format_id in line):
-                correct_url = urljoin(d.manifest_url, lines[i + 1])
-                return correct_url
-
-    def extract_url_list(m3u8_doc):
-        # url_list
-        url_list = []
-        keys = []  # for encrypted streams
-
-        for line in m3u8_doc.splitlines():
-            line.strip()
-            if line and not line.startswith('#'):
-                url_list.append(line)
-            elif line.startswith('#EXT-X-KEY'):
-                # '#EXT-X-KEY:METHOD=AES-128,URI="https://content-aus...62a9",IV=0x00000000000000000000000000000000'
-                match = re.search(r'URI="(.*)"', line)
-                if match:
-                    url = match.group(1)
-                    keys.append(url)
-
-        # log('process hls> url list:', url_list)
-        return url_list, keys
-
+    # download m3u8 files ----------------------------------------------------------------------------------------
     def download_m3u8(url):
         # download the manifest from m3u8 file descriptor located at url
         buffer = download(url)  # get BytesIO object
@@ -580,6 +559,8 @@ def pre_process_hls(d):
         if buffer:
             # convert to string
             buffer = buffer.getvalue().decode()
+
+            # verify file is m3u8 format
             if '#EXT' in repr(buffer):
                 return buffer
 
@@ -588,7 +569,36 @@ def pre_process_hls(d):
             log('---------------------------------------\n', buffer, '---------------------------------------\n')
         return None
 
-    # download m3u8 files
+    # get correct url of m3u8 file from playlist or master m3u8 manifest, youtube-dl sometimes gives wrong url
+    def get_correct_m3u8_url(master_m3u8_doc, media='video'):
+        if not master_m3u8_doc:
+            return False
+
+        lines = master_m3u8_doc.splitlines()
+        for i, line in enumerate(lines):
+
+            # video_checks = any([str(x) in line for x in (d.width, d.height, d.format_id) if x is not None])
+            # audio_checks = any([str(x) in line for x in (d.abr, d.tbr, d.audio_format_id) if x is not None])
+
+            # todo: these checks are very fragile, we need to parse line into dict
+            video_checks = (str(d.width) in line and str(d.height) in line or d.format_id in line)
+            audio_checks = (str(d.abr) in line or str(d.tbr) in line or d.audio_format_id in line)
+
+            found = video_checks if media == 'video' else audio_checks
+
+            if found:
+                # url maybe in same line with "URI" notation or at the next line
+                match = re.search(r'URI="(.*)"', line)
+                if match:
+                    url = match.group(1)
+                elif not lines[i + 1].startswith('#'):
+                    url = lines[i + 1]
+                else:
+                    return False
+
+                correct_url = urljoin(d.manifest_url, url)
+                return correct_url
+
     master_m3u8 = download_m3u8(d.manifest_url)
     video_m3u8 = download_m3u8(d.eff_url)
     audio_m3u8 = download_m3u8(d.audio_url)
@@ -611,58 +621,94 @@ def pre_process_hls(d):
             d.audio_url = eff_url
             audio_m3u8 = download_m3u8(d.audio_url)
 
-    # first lets handle video stream
-    video_url_list, video_keys_url_list = extract_url_list(video_m3u8)
-
-    # get absolute path from url_list relative path
-    video_url_list = [urljoin(d.eff_url, seg_url) for seg_url in video_url_list]
-    video_keys_url_list = [urljoin(d.eff_url, seg_url) for seg_url in video_keys_url_list]
-
-    # create temp_folder if doesn't exist
-    if not os.path.isdir(d.temp_folder):
-        os.makedirs(d.temp_folder)
-
-    # save m3u8 file to disk
+    # save remote m3u8 files to disk
     with open(os.path.join(d.temp_folder, 'remote_video.m3u8'), 'w') as f:
         f.write(video_m3u8)
 
-    # build video segments
-    d.segments = [Segment(name=os.path.join(d.temp_folder, str(i) + '.ts'), num=i, range=None, size=0,
-                          url=seg_url, tempfile=d.temp_file, merge=True)
-                  for i, seg_url in enumerate(video_url_list)]
-
-    # add video crypt keys
-    vkeys = [Segment(name=os.path.join(d.temp_folder, 'crypt' + str(i) + '.key'), num=i, range=None, size=0,
-                          url=seg_url, seg_type='video_key', merge=False)
-                  for i, seg_url in enumerate(video_keys_url_list)]
-
-    # add to d.segments
-    d.segments += vkeys
-
-    # handle audio stream in case of dash videos
     if 'dash' in d.subtype_list:
-        audio_url_list, audio_keys_url_list = extract_url_list(audio_m3u8)
-
-        # get absolute path from url_list relative path
-        audio_url_list = [urljoin(d.audio_url, seg_url) for seg_url in audio_url_list]
-        audio_keys_url_list = [urljoin(d.audio_url, seg_url) for seg_url in audio_keys_url_list]
-
-        # save m3u8 file to disk
         with open(os.path.join(d.temp_folder, 'remote_audio.m3u8'), 'w') as f:
             f.write(audio_m3u8)
 
-        # build audio segments
-        audio_segments = [Segment(name=os.path.join(d.temp_folder, str(i) + '_audio.ts'), num=i, range=None, size=0,
-                                  url=seg_url, tempfile=d.audio_file, merge=False)
-                          for i, seg_url in enumerate(audio_url_list)]
+    # ---------------------------------------------------------------------------------------------------------
 
-        # audio crypt segments
-        akeys = [Segment(name=os.path.join(d.temp_folder, 'audio_crypt' + str(i) + '.key'), num=i, range=None, size=0,
-                                  url=seg_url, seg_type='audio_key', merge=False)
-                          for i, seg_url in enumerate(audio_keys_url_list)]
+    # process remote m3u8 files -------------------------------------------------------------------------------
+    def process_m3u8(file, type_='video'):
+        """
+        process m3u8 file, extract urls, build local m3u8 file, and build segments for download item
+        :param file: m3u8 as a file object
+        :param type_: 'video' or 'audio'
+        :return: None
+        """
 
-        # add to video segments
-        d.segments += audio_segments + akeys
+        base_url = d.eff_url if type_=='video' else d.audio_url
+        seg_name = 'v' if type_ == 'video' else 'a'
+
+        url_list = []
+        local_lines = []
+        local_lines2 = []
+        lines = file.splitlines()
+
+        # iterate over all m3u8 file lines
+        for i, line in enumerate(lines[:]):
+            url = ''
+            line2 = line
+
+            # lines doesn't start with # is a media links
+            if line and not line.startswith('#'):
+                # get absolute url from relative paths
+                url = urljoin(base_url, line)
+                line2 = url
+
+                # build line for local m3u8 file with reference to local segment file
+                line = os.path.join(d.temp_folder, f'{seg_name}{i}')
+
+            # handle buried urls inside lines ex: # '#EXT-X-KEY:METHOD=AES-128,URI="https://content-aus...62a9",IV=0x0000'
+            elif line.startswith('#'):
+                match = re.search(r'URI="(.*)"', line)
+                if match:
+                    url = match.group(1)
+                    # get absolute url from relative paths
+                    url = urljoin(base_url, url)
+
+                    line2 = line.replace(match.group(1), url)
+                    line = line.replace(match.group(1), os.path.join(d.temp_folder, f'{seg_name}{i}'))
+
+            # process line and convert '\' to '/'
+            line = line.replace('\\', '/')
+            line2 = line2.replace('\\', '/')
+
+            local_lines2.append(line2)
+            local_lines.append(line)
+
+            url_list.append(url)
+
+        # write m3u8 file with absolute paths for debugging
+        name = 'remote_video2.m3u8' if type_ == 'video' else 'remote_audio2.m3u8'
+        local_file = os.path.join(d.temp_folder, name)
+        with open(os.path.join(d.temp_folder, local_file), 'w') as f:
+            f.write('\n'.join(local_lines2))
+
+        # write local m3u8 file
+        name = 'local_video.m3u8' if type_ == 'video' else 'local_audio.m3u8'
+        local_file = os.path.join(d.temp_folder, name)
+        with open(os.path.join(d.temp_folder, local_file), 'w') as f:
+            f.write('\n'.join(local_lines))
+
+        # create segments
+        seg_name = 'v' if type_ == 'video' else 'a'
+        d._segments += [Segment(name=os.path.join(d.temp_folder, f'{seg_name}{i}'), num=i, range=None, size=0,
+                                url=seg_url, tempfile=d.temp_file, merge=False)
+                        for i, seg_url in enumerate(url_list) if seg_url]
+
+    # reset segments
+    d._segments = []
+
+    # send video m3u8 file for processing
+    process_m3u8(video_m3u8, type_='video')
+
+    # send audio m3u8 file for processing
+    if 'dash' in d.subtype_list:
+        process_m3u8(audio_m3u8, type_='audio')
 
     # load previous segment information from disk - resume download -
     d.load_progress_info()
@@ -677,70 +723,8 @@ def post_process_hls(d):
 
     log('post_process_hls()> start processing', d.name)
 
-    def create_local_m3u8(remote_file, local_file, local_names, crypt_key_names=None):
-
-        with open(remote_file, 'r') as f:
-            lines = f.readlines()
-
-        names = [f'{name}\n' for name in local_names]
-        names.reverse()
-
-        crypt_key_names.reverse()
-
-        # log(len([a for a in lines if not a.startswith('#')]))
-
-        for i, line in enumerate(lines[:]):
-            if line and not line.startswith('#'):
-                try:
-                    name = names.pop()
-                    lines[i] = name
-                except:
-                    pass
-            elif line.startswith('#EXT-X-KEY'):
-                # '#EXT-X-KEY:METHOD=AES-128,URI="https://content-aus...62a9",IV=0x00000000000000000000000000000000'
-                match = re.search(r'URI="(.*)"', line)
-                if match:
-                    try:
-                        key_name = crypt_key_names.pop()
-                        key_name = key_name.replace('\\', '/')
-                        lines[i] = line.replace(match.group(1), key_name)
-                    except:
-                        pass
-
-        with open(local_file, 'w') as f:
-            f.writelines(lines)
-            # print(lines)
-
-    # create local m3u8 version - video
-    remote_video_m3u8_file = os.path.join(d.temp_folder, 'remote_video.m3u8')
     local_video_m3u8_file = os.path.join(d.temp_folder, 'local_video.m3u8')
-
-    try:
-        names = [seg.name for seg in d.segments if seg.tempfile == d.temp_file]
-        crypt_key_names = [seg.name for seg in d.segments if seg.seg_type == 'video_key']
-        create_local_m3u8(remote_video_m3u8_file, local_video_m3u8_file, names, crypt_key_names)
-    except Exception as e:
-        log('post_process_hls()> error', e)
-        return False
-
-    if 'dash' in d.subtype_list:
-        # create local m3u8 version - audio
-        remote_audio_m3u8_file = os.path.join(d.temp_folder, 'remote_audio.m3u8')
-        local_audio_m3u8_file = os.path.join(d.temp_folder, 'local_audio.m3u8')
-
-        try:
-            names = [seg.name for seg in d.segments if seg.tempfile == d.audio_file]
-            crypt_key_names = [seg.name for seg in d.segments if seg.seg_type == 'audio_key']
-            create_local_m3u8(remote_audio_m3u8_file, local_audio_m3u8_file, names, crypt_key_names)
-        except Exception as e:
-            log('post_process_hls()> error', e)
-            return False
-
-    # now processing with ffmpeg
-    # note: ffmpeg doesn't support socks proxy, also proxy must start with "http://"
-    # currently will download crypto keys manually and use ffmpeg for merging only
-
-    # proxy = f'-http_proxy "{config.proxy}"' if config.proxy else ''
+    local_audio_m3u8_file = os.path.join(d.temp_folder, 'local_audio.m3u8')
 
     cmd = f'"{config.ffmpeg_actual_path}" -y -protocol_whitelist "file,http,https,tcp,tls,crypto"  ' \
           f'-allowed_extensions ALL -i "{local_video_m3u8_file}" -c copy -f mp4 "file:{d.temp_file}"'
@@ -765,6 +749,11 @@ def post_process_hls(d):
 
 
 def convert_audio(d):
+    """
+    convert audio formats
+    :param d: DownloadItem object
+    :return: bool True for success or False when failed
+    """
     # famous formats: mp3, aac, wav, ogg
     infile = d.temp_file
     outfile = d.target_file

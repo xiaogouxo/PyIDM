@@ -134,9 +134,9 @@ class Worker:
             return False
 
     def report_not_completed(self):
-        self.debug('worker', self.tag, 'did not complete', self.seg.name, 'downloaded',
-                   self.current_filesize, 'target size:', self.seg.size, 'remaining:',
-                   self.seg.size - self.current_filesize)
+        self.debug('worker', self.tag, 'did not complete', os.path.basename(self.seg.name), 'done',
+                   self.current_filesize, 'target size:', self.seg.size, 'left:',
+                   self.seg.size - self.current_filesize, 'url:', self.seg.url)
 
         # put back to jobs queue to try again
         self.q.jobs.put(self.seg)

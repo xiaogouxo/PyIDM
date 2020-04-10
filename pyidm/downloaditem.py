@@ -184,6 +184,12 @@ class DownloadItem:
         self.format_id = None
         self.audio_format_id = None
 
+        # quality for video and audio
+        self.width = None
+        self.height = None
+        self.abr = None
+        self.tbr = None
+
         # some downloads will have their progress and total size calculated and we can't store these values in self.size
         # since it will affect self.segments, workaround: use self.last_known_size, and self.last_known_progress so it
         # will be shown when loading self.d_list from disk, other solution is to load progress info
@@ -213,9 +219,10 @@ class DownloadItem:
         # properties names that will be saved on disk
         self.saved_properties = ['id', '_name', 'folder', 'url', 'eff_url', 'playlist_url', 'playlist_title', 'size',
                                  'resumable', 'selected_quality', '_segment_size', '_downloaded', '_status',
-                                 'remaining_parts', 'audio_url', 'audio_size', 'type', 'type_list', 'fragments',
+                                 'remaining_parts', 'audio_url', 'audio_size', 'type', 'subtype_list', 'fragments',
                                  'fragment_base_url', 'audio_fragments', 'audio_fragment_base_url',
-                                 'last_known_size', 'last_known_progress', 'protocol', 'manifest_url']
+                                 'last_known_size', 'last_known_progress', 'protocol', 'manifest_url', 'width', 'height',
+                                 'abr', 'tbr', 'format_id', 'audio_format_id']
 
     # def __getattr__(self, attrib):  # commented out as it makes problem with copy.copy module
     #     """this method will be called if no attribute found"""

@@ -40,18 +40,24 @@ def brain(d=None, downloader=None):
     log('-' * 100)
     log(f'start downloading file: "{d.name}", size: {size_format(d.size)}, to: {d.folder}')
 
-    # load previous saved progress info
-    d.load_progress_info()
-
     # experimental m3u8 protocols
     if 'hls' in d.subtype_list:
         keep_segments = True  # don't delete segments after completed, it will be post-processed by ffmpeg
-        success = pre_process_hls(d)
-        if not success:
+        try:
+            success = pre_process_hls(d)
+            if not success:
+                d.status = Status.error
+                return
+        except Exception as e:
+            log('pre_process_hls()> error', e)
             d.status = Status.error
             return
     else:
+        # for non hls videos and normal files
         keep_segments = False
+
+        # load previous saved progress info
+        d.load_progress_info()
 
     # run file manager in a separate thread
     Thread(target=file_manager, daemon=True, args=(d, keep_segments)).start()
