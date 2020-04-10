@@ -2596,6 +2596,8 @@ class SubtitleWindow:
             self.threads = [t for t in self.threads if t.is_alive()]
             percent = (self.threads_num - len(self.threads)) * 100 // self.threads_num
             self.window['bar'].update_bar(percent)
+            if percent >= 100:
+                sg.popup_ok('done downloading subtitles at:', self.d.folder)
 
         else:
             # enable download button again
