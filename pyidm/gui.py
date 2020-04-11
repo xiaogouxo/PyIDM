@@ -96,7 +96,30 @@ class MainWindow:
     def setup(self):
         """initial setup"""
 
+        # set global theme
         self.change_theme()
+
+        # override PySimpleGUI standard buttons' background with artwork
+        # define a decorator function
+        def button_decorator(init_func):
+            def new_init_func(self, *args, **kwargs):
+                # pre processing arguments
+                if not kwargs.get('font'):
+                    kwargs['font'] = 'any 10 bold'
+
+                # calling Button __init__() constructor
+                init_func(self, *args, **kwargs)
+
+                # post process Button properties
+                if not self.ImageData:
+                    self.ImageData = blank_button_icon
+                    self.ButtonColor = ('black', sg.theme_background_color())
+                    self.BorderWidth = 0
+
+            return new_init_func
+
+        # redefine Button constructor
+        sg.Button.__init__ = button_decorator(sg.Button.__init__)
 
         # download folder
         if not self.d.folder:
@@ -296,7 +319,7 @@ class MainWindow:
                 """
 
         general = [
-            [sg.T('', size=(60, 1)), sg.Button('', key='about', image_data=about_icon, pad=(5, 10), **transparent)],
+            [sg.T('', size=(60, 1)), sg.Button('About', key='about', pad=(5, 10))],
 
             [sg.T('Settings Folder:'),
              sg.Combo(values=['Local', 'Global'],
@@ -823,9 +846,9 @@ class MainWindow:
 
             # Settings tab -------------------------------------------------------------------------------------------
             elif event == 'about':  # about window
-                self.window['about'](visible=False)
+                self.window['about'](disabled=True)
                 sg.PopupOK(about_notes, title=f'About {config.APP_NAME}', keep_on_top=True)
-                self.window['about'](visible=True)
+                self.window['about'](disabled=False)
 
             elif event == 'themes':
                 config.current_theme = values['themes']
@@ -2043,7 +2066,7 @@ class MainWindow:
 
     def download_subtitles(self):
         if not (self.d.subtitles or self.d.automatic_captions):
-            sg.PopupOK('No Subtitles available')
+            sg.PopupOK("No Sub's available")
             return
 
         if self.d.id not in self.active_windows:
@@ -2414,7 +2437,7 @@ class DownloadWindow:
             [sg.ProgressBar(max_value=100, key='progress_bar', size=(42, 15), border_width=3)],
 
             # [sg.Column([[sg.Button('Hide', key='hide'), sg.Button('Cancel', key='cancel')]], justification='right')],
-            [sg.T(' ', key='status', size=(42, 1)), sg.Button('Hide', key='hide'), sg.Button('Cancel', key='cancel')],
+            [sg.T(' ', key='status', size=(33, 1)), sg.Button('Hide', key='hide'), sg.Button('Cancel', key='cancel')],
             [sg.T(' ', font='any 1')],
             [sg.T('', size=(100, 1),  font='any 8', key='log2', relief=sg.RELIEF_RAISED)],
         ]
@@ -2452,7 +2475,7 @@ class DownloadWindow:
 
             # change cancel button to done when completed
             if self.d.status == Status.completed:
-                self.window['cancel'](text='Done', button_color=('black', 'green'))
+                self.window['cancel'](text='Done')
 
             # log
             self.window['log2'](config.log_entry)
@@ -2546,12 +2569,15 @@ class SubtitleWindow:
                            sg.Combo(values=extensions, default_value=default_ext, key=f'ext_{i}', size=(10, 1)),
                            sg.T('*sub' if lang in self.d.subtitles else '*caption')])
 
-        layout = [[sg.Column(layout, scrollable=True, vertical_scroll_only=True, size=(400, 195), key='col')],
+        layout = [[sg.Column(layout, scrollable=True, vertical_scroll_only=True, size=(433, 195), key='col')],
                   [sg.Button('Download'), sg.Button('Close'), sg.ProgressBar(100, size=(25, 10), key='bar')]]
 
-        window = sg.Window('Subtitles window', layout)
+        window = sg.Window('Subtitles window', layout, finalize=True)
         self.window = window
         self.subtitles = subtitles
+
+        # set focus on first checkbox, button focus is not looking good
+        self.window['lang_0'].set_focus()
 
     @staticmethod
     def download_subtitle(url, file_name):
