@@ -2503,6 +2503,10 @@ class SubtitleWindow:
         self.setup()
 
     def setup(self):
+        # subtitles will be in a dictionary, example:
+        # {'en': [{'url': 'http://x.com/s1', 'ext': 'srv1'}, {'url': 'http://x.com/s2', 'ext': 'vtt'}], 'ar': [{'url': 'https://www.youtub}, {},...]
+        # template: subtitles = {language1:[sub1, sub2, ...], language2: [sub1, ...]}, where sub = {'url': 'xxx', 'ext': 'xxx'}
+
         # build subtitles from self.d.subtitles and self.d.automatic_captions, and rename repeated keys
         subtitles = {}
         for k, v in self.d.subtitles.items():
@@ -2518,16 +2522,22 @@ class SubtitleWindow:
         # build gui layout
         layout = [[sg.T('Subtitles for:')], [sg.T(self.d.name, tooltip=self.d.name)]]
 
-        for i, lang in enumerate(subtitles.keys()):
-            extensions = [entry.get('ext', '-') for entry in subtitles[lang]]
+        for i, lang in enumerate(subtitles):
+            lang_subs = subtitles[lang]  # list with sub1, sub2, ...  every sub is dict with url and ext
+
+            extensions = [sub.get('ext', '-') for sub in lang_subs]
 
             # choose default extension
             if 'srt' in extensions:
                 default_ext = 'srt'
             elif 'vtt' in extensions:
                 # add 'srt' extension
-
-                default_ext = 'vtt'
+                vtt_sub = [sub for sub in lang_subs if sub.get('ext') == 'vtt'][0]
+                srt_sub = vtt_sub.copy()
+                srt_sub['ext'] = 'srt'
+                lang_subs.append(srt_sub)
+                extensions.insert(0, 'srt')
+                default_ext = 'srt'
             else:
                 default_ext = extensions[0]
 
@@ -2542,27 +2552,44 @@ class SubtitleWindow:
         self.window = window
         self.subtitles = subtitles
 
+        # print(subtitles)
+        # self.set_cursor('busy')
+
     @staticmethod
     def download_subtitle(url, file_name):
         try:
             download(url, file_name)
             name, ext = os.path.splitext(file_name)
 
-            # create 'srt' subtitle format from 'vtt' file
-            if ext == '.vtt':
+            # post processing 'srt' subtitle, it might be a 'vtt' file
+            if ext == '.srt':
                 # ffmpeg file full location
                 ffmpeg = config.ffmpeg_actual_path
 
-                output = name + '.srt'
+                output = f'{name}2.srt'
 
-                # very fast audio just copied, format must match [mp4, m4a] and [webm, webm]
                 cmd = f'"{ffmpeg}" -y -i "{file_name}" "{output}"'
 
                 error, _ = run_command(cmd, verbose=False, shell=True)
                 if not error:
+                    delete_file(file_name)
+                    rename_file(oldname=f'{name}2.srt', newname=f'{name}.srt')
                     log('created ".srt" subtitle:', output)
+                else:
+                    # if failed to convert
+                    log("couldn't convert subtitle to srt, check file format might be corrupted")
+
         except Exception as e:
             log('download_subtitle() error', e)
+
+    def set_cursor(self, cursor='default'):
+        # must be called after window.Read()
+        if cursor == 'busy':
+            cursor_name = 'watch'
+        else:  # default
+            cursor_name = 'arrow'
+
+        self.window.TKroot['cursor'] = cursor_name
 
     def run(self):
 
@@ -2582,13 +2609,19 @@ class SubtitleWindow:
             # reset selected subtitles
             self.selected_subs.clear()
 
-            # get selected subs
-            for i, k in enumerate(self.subtitles):
+            # get selected subs,
+            # subtitles = {language1:[sub1, sub2, ...], language2: [sub1, ...]}, where sub = {'url': 'xxx', 'ext': 'xxx'}
+            for i, lang in enumerate(self.subtitles):
                 if values[f'lang_{i}']:  # selected language checkbox, true if selected
                     # get selected extension
                     ext = values[f'ext_{i}']
-                    url = [dict_['url'] for dict_ in self.subtitles[k] if dict_['ext'] == ext][0]
-                    name = f'{os.path.splitext(self.d.target_file)[0]}_{k}.{ext}'
+
+                    # language subs list
+                    lang_subs = self.subtitles[lang]
+
+                    # get url
+                    url = [sub['url'] for sub in lang_subs if sub['ext'] == ext][0]
+                    name = f'{os.path.splitext(self.d.target_file)[0]}_{lang}.{ext}'
 
                     self.selected_subs[name] = url
 
@@ -2603,11 +2636,20 @@ class SubtitleWindow:
 
         # check download threads and update progress bar
         if self.threads:
+            # change cursor to busy
+            self.set_cursor('busy')
+
             self.threads = [t for t in self.threads if t.is_alive()]
             percent = (self.threads_num - len(self.threads)) * 100 // self.threads_num
             self.window['bar'].update_bar(percent)
+
             if percent >= 100:
+                # reset cursor
+                self.set_cursor()
+
+                # notify user
                 sg.popup_ok('done downloading subtitles at:', self.d.folder)
+
 
         else:
             # enable download button again
