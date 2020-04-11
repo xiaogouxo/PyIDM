@@ -1067,7 +1067,7 @@ class MainWindow:
     # region headers
     def refresh_headers(self, url):
         if self.d.url != '':
-            self.change_cursor('busy')
+            self.set_cursor('busy')
             Thread(target=self.get_header, args=[url], daemon=True).start()
 
     def get_header(self, url):
@@ -1089,7 +1089,7 @@ class MainWindow:
 
             # check if the link contains stream videos by youtube-dl
             Thread(target=self.youtube_func, daemon=True).start()
-        self.change_cursor('default')
+        self.set_cursor('default')
 
     # endregion
 
@@ -1584,7 +1584,7 @@ class MainWindow:
 
         # main progress bar initial indication
         self.m_bar = 10
-        self.change_cursor('busy')
+        self.set_cursor('busy')
 
         # reset playlist
         self.playlist = []
@@ -1725,7 +1725,7 @@ class MainWindow:
             self.reset_video_controls()
 
         finally:
-            self.change_cursor('default')
+            self.set_cursor('default')
 
     def update_pl_menu(self):
         try:
@@ -2163,16 +2163,17 @@ class MainWindow:
         # Force python garbage collector to free up memory
         gc.collect()
 
-    def change_cursor(self, cursor='default'):
-        # return
-        # todo: check if we can set cursor  for window not individual tabs
+    def set_cursor(self, cursor='default'):
+        # can't be called before window.Read()
         if cursor == 'busy':
             cursor_name = 'watch'
         else:  # default
             cursor_name = 'arrow'
 
-        self.window['Main'].set_cursor(cursor_name)
-        self.window['Settings'].set_cursor(cursor_name)
+        try:
+            self.window.TKroot['cursor'] = cursor_name
+        except:
+            pass
 
     def main_frameOnClose(self):
         # config.terminate = True
@@ -2263,7 +2264,7 @@ class MainWindow:
 
     # region update
     def check_for_update(self):
-        self.change_cursor('busy')
+        self.set_cursor('busy')
 
         # check for update
         current_version = config.APP_VERSION
@@ -2289,7 +2290,7 @@ class MainWindow:
             self.new_version_description = None
             self.new_version_available = False
 
-        self.change_cursor('default')
+        self.set_cursor('default')
 
     def update_app(self, remote=True):
         """show changelog with latest version and ask user for update
@@ -2552,9 +2553,6 @@ class SubtitleWindow:
         self.window = window
         self.subtitles = subtitles
 
-        # print(subtitles)
-        # self.set_cursor('busy')
-
     @staticmethod
     def download_subtitle(url, file_name):
         try:
@@ -2583,13 +2581,16 @@ class SubtitleWindow:
             log('download_subtitle() error', e)
 
     def set_cursor(self, cursor='default'):
-        # must be called after window.Read()
+        # can't be called before window.Read()
         if cursor == 'busy':
             cursor_name = 'watch'
         else:  # default
             cursor_name = 'arrow'
 
-        self.window.TKroot['cursor'] = cursor_name
+        try:
+            self.window.TKroot['cursor'] = cursor_name
+        except:
+            pass
 
     def run(self):
 
@@ -2648,8 +2649,7 @@ class SubtitleWindow:
                 self.set_cursor()
 
                 # notify user
-                sg.popup_ok('done downloading subtitles at:', self.d.folder)
-
+                sg.popup_ok('Done downloading subtitles at:', self.d.folder)
 
         else:
             # enable download button again
