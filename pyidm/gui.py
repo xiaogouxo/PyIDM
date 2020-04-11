@@ -1694,7 +1694,12 @@ class MainWindow:
                     info = ydl.extract_info(self.d.url, download=False, process=True)
                     vid = Video(self.d.url, vid_info=info)
                     self.playlist = [vid]
-                    # process_video_info(vid)  # will be called from playlist_on_choice()
+
+                    # get thumbnail
+                    vid.get_thumbnail()
+
+                    # report done processing
+                    vid.processed = True
 
                     # update playlist menu
                     self.update_pl_menu()
@@ -2520,6 +2525,8 @@ class SubtitleWindow:
             if 'srt' in extensions:
                 default_ext = 'srt'
             elif 'vtt' in extensions:
+                # add 'srt' extension
+
                 default_ext = 'vtt'
             else:
                 default_ext = extensions[0]
