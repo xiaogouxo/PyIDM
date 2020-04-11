@@ -1688,6 +1688,10 @@ class MainWindow:
 
                 else:
                     # one video, not a playlist, processing info
+                    # I believe the best is to call youtube-dl again with process=True is the best
+                    # process_video_info() will fail to get formats for some videos
+                    # https://vod.tvp.pl/video/rozmowy-przy-wycinaniu-lasu,rozmowy-przy-wycinaniu-lasu,21765408
+                    info = ydl.extract_info(self.d.url, download=False, process=True)
                     vid = Video(self.d.url, vid_info=info)
                     self.playlist = [vid]
                     # process_video_info(vid)  # will be called from playlist_on_choice()

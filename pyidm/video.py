@@ -303,7 +303,7 @@ class Video(DownloadItem):
 def process_video_info(vid, getthumbnail=True):
     try:
         with ytdl.YoutubeDL(get_ytdl_options()) as ydl:
-            vid_info = ydl.process_ie_result(vid.vid_info, download=False)
+            vid_info = ydl.process_ie_result(vid.vid_info, download=False, process=True)
             if vid_info:
                 vid.vid_info = vid_info
                 vid.refresh()
