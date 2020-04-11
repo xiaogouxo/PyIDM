@@ -238,8 +238,8 @@ class MainWindow:
              pad=(0,0))
              ],
 
-            # format code
-            [sg.T(' ' * 300, key='format_code', font='any 9', pad=(5, 0))],
+            # format id
+            [sg.T(' ' * 300, key='format_id', font='any 9', pad=(5, 0))],
 
             # folder
             [sg.Image(data=folder_icon),
@@ -1534,7 +1534,7 @@ class MainWindow:
             self.pl_menu = ['Playlist']
             self.stream_menu = ['Video quality']
             self.window['playlist_frame'](value='Playlist/video:')
-            self.window['format_code']('')
+            self.window['format_id']('')
 
             # reset thumbnail
             self.reset_thumbnail()
@@ -1812,9 +1812,8 @@ class MainWindow:
             self.stream_menu_selection = selected_text
             self.video.selected_stream = self.video.streams[selected_text]
 
-            # display format code
-            self.window['format_code']('Format code: ' + self.video.selected_stream.format_id + ' - ' +
-                                       self.video.selected_stream.format_note)
+            # display format Id
+            self.window['format_id']('Format Id: ' + self.video.selected_stream.format_id)
 
             # update gui
             self.update_gui()
