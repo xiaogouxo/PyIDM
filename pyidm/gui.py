@@ -7,6 +7,8 @@
     :license: GNU LGPLv3, see LICENSE for more details.
 """
 import gc
+import webbrowser
+
 import PySimpleGUI as sg
 import os
 import time
@@ -21,7 +23,6 @@ from . import update
 from .brain import brain
 from . import video
 from .video import Video, check_ffmpeg, download_ffmpeg, unzip_ffmpeg, get_ytdl_options, process_video_info
-from .about import about_notes
 from .downloaditem import DownloadItem
 from .iconsbase64 import *
 
@@ -217,7 +218,6 @@ class MainWindow:
             # app icon and app name
             [sg.Image(data=APP_ICON), sg.Text(f'{config.APP_NAME}', font='any 20', justification='center', key='app_title'),
              sg.T('', size=(30, 1), justification='center', key='update_note', enable_events=True, font='any 9'),
-             # sg.T('  !    ', key='about', font='any 8 bold', enable_events=True, tooltip=' about! ')
              ],
 
             # url entry
@@ -846,9 +846,10 @@ class MainWindow:
 
             # Settings tab -------------------------------------------------------------------------------------------
             elif event == 'about':  # about window
-                self.window['about'](disabled=True)
-                sg.PopupOK(about_notes, title=f'About {config.APP_NAME}', keep_on_top=True)
-                self.window['about'](disabled=False)
+                # make sure only one window is opened
+                if AboutWindow.obj_counter == 0:
+                    about_window = AboutWindow()
+                    self.active_windows.append(about_window)
 
             elif event == 'themes':
                 config.current_theme = values['themes']
@@ -2332,7 +2333,7 @@ class MainWindow:
     def show_update_gui(self):
         layout = [
             [sg.T('New version available:')],
-            [sg.Multiline(self.new_version_description, size=(50, 10))],
+            [sg.Multiline(self.new_version_description, size=(70, 10))],
             [sg.B('Update'), sg.Cancel()]
         ]
         window = sg.Window('Update Application', layout, finalize=True, keep_on_top=True)
@@ -2621,8 +2622,6 @@ class SubtitleWindow:
 
         event, values = self.window.read(timeout=10, timeout_key='_TIMEOUT_')
 
-        if event != '_TIMEOUT_': print(event)
-
         if event in ('Close', None):
             self.window.close()
             self.active = False
@@ -2679,3 +2678,55 @@ class SubtitleWindow:
         else:
             # enable download button again
             self.window['Download'](disabled=False)
+
+
+class AboutWindow:
+    # single instant flag
+    obj_counter = 0  # num of objects created from this class and still alive
+
+    def __init__(self):
+        self.active = True
+        AboutWindow.obj_counter += 1
+
+        # create gui
+        msg1 = f'PyIDM is a python open source (Internet Download Manager) with multi-connections, high speed engine, \n ' \
+               f'it downloads general files and videos from youtube and tons of other streaming websites.\n' \
+               f'Developed in Python, based on "pyCuRL/libcurl", "youtube_dl", and "PySimpleGUI" \n ' \
+               f'your feedback is most welcomed on'
+
+        msg2 = f'Author,\n' \
+               f'Mahmoud Elshahat\n' \
+               f'2019-2020'
+
+        layout = [[sg.T(msg1)],
+                  [sg.T('https://github.com/pyIDM/pyIDM', key='home_page', font='any 10 underline', enable_events=True)],
+                  [sg.T('email: mahmoud_elshahhat@yahoo.com', key='email', font='any 10 underline', enable_events=True)],
+                  [sg.T(msg2)],
+                  [sg.Ok()]]
+
+        window = sg.Window(f'about PyIDM', layout, finalize=True)
+
+        # set cursor for links
+        window['home_page'].set_cursor('hand2')
+        window['email'].set_cursor('hand2')
+
+        self.window = window
+
+    def run(self):
+        # read events
+        event, values = self.window.read(timeout=10, timeout_key='_TIMEOUT_')
+
+        if event in ('Ok', None):
+            self.window.close()
+            self.active = True
+            AboutWindow.obj_counter -= 1
+
+        elif event == 'home_page':
+            print('clicked homepage')
+            webbrowser.open_new('https://github.com/pyIDM/pyIDM')
+
+        elif event == 'email':
+            print('clicked email')
+            clipboard_write('mahmoud_elshahhat@yahoo.com')
+            sg.PopupOK('email copied to clipboard')
+
