@@ -8,7 +8,6 @@
 """
 
 # worker class
-import io
 import os
 import pycurl
 
@@ -59,8 +58,8 @@ class Worker:
         self.seg = seg
         self.speed_limit = speed_limit
 
-        self.debug('worker', self.tag, 'start seg:', os.path.basename(self.seg.name), 'range:', self.seg.range, 'size:',
-                   self.seg.size, 'SL=', self.speed_limit)
+        log('worker', self.tag, 'start seg:', os.path.basename(self.seg.name), 'range:', self.seg.range, 'size:',
+            self.seg.size, 'SL=', self.speed_limit, log_level=2)
 
         self.check_previous_download()
 
@@ -255,19 +254,25 @@ class Worker:
     def write(self, data):
         """write to file"""
 
+        content_type = self.headers.get('content-type')
+        if content_type and 'text/html' in content_type:
+            # some video encryption keys has content-type 'text/html'
+            try:
+                if '<html>' in data.decode('utf-8'):
+                    log('worker: received html contents, aborting', log_level=3)
+
+                    # report server error to thread manager
+                    error_q.put('text/html')
+
+                    return -1  # abort
+            except Exception as e:
+                pass
+                # log('worker:', e)
+
         self.downloaded += len(data)
 
         # report to download item
         self.d.downloaded += len(data)
-
-        content_type = self.headers.get('content-type')
-        if content_type and 'text/html' in content_type:
-            log('worker: received html contents, aborting', log_level=3)
-
-            # report server error to thread manager
-            error_q.put('text/html')
-
-            return -1  # abort
 
         # write to file
         self.file.write(data)

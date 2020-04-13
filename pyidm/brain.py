@@ -96,7 +96,14 @@ def thread_manager(d):
     q = d.q
 
     error_timer = 0
-    limited_connections = config.max_connections  # used to limit connections in case of server errors
+
+    #   soft start, connections will be gradually increase overtime "3 sec. intervals" to reach max. number
+    #   set by user, this prevent impact on servers/network, and avoid "service not available" response
+    #   from server when exceeding multi-connection number set by server.
+    #
+    #   this technique will affect starting speed and may affect PyIDM speed testing against other download managers,
+    #   but playing fair is more important than winning the game.
+    limited_connections = 1  # used to limit connections in case of server errors
 
     # create worker/connection list
     workers = [Worker(tag=i, d=d) for i in range(config.max_connections)]
@@ -140,7 +147,7 @@ def thread_manager(d):
             else:
                 if limited_connections < config.max_connections:
                     limited_connections = limited_connections + 1
-                    log('Thread Manager: no more server errors, trying', limited_connections, 'connections.' )
+                    log('Thread Manager: trying', limited_connections, 'connections.')
 
         # speed limit
         if allowable_connections:
@@ -151,7 +158,7 @@ def thread_manager(d):
         # reuse a free worker to handle a job from job_list
         if free_workers and job_list and d.status == Status.downloading and len(live_threads) < allowable_connections:
             # log('live_threads=', len(live_threads))
-            for _ in range(allowable_connections - len(live_threads) + 1):
+            for _ in range(allowable_connections - len(live_threads)):
                 try:
                     worker_num, seg = free_workers.pop(), job_list.pop()  # get available tag # get a new job
                     busy_workers.append(worker_num)  # add number to busy workers
@@ -199,6 +206,7 @@ def thread_manager(d):
 
     # update d param
     d.live_connections = 0
+    d.remaining_parts = len(live_threads) + len(job_list) + q.jobs.qsize()
     log(f'thread_manager {d.num}: quitting')
 
 
