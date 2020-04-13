@@ -87,18 +87,11 @@ class Video(DownloadItem):
         self.name = self.title
 
         # streams
-        self.stream_names = []  # names in a list
-        self.raw_stream_names = []  # names but without size
-        self.stream_list = []  # streams in a list
-        self.video_streams = {}
-        self.mp4_videos = {}
-        self.other_videos = {}
-        self.audio_streams = {}
-        self._streams = {}
-        self.raw_streams = {}
+        self.all_streams = []
+        self.stream_menu = []
+        self.stream_menu_map = []
+        self.names_map = {'mp4_videos': [], 'other_videos': [], 'audio_streams': [], 'extra_streams': []}
 
-        self.stream_menu = []  # it will be shown in video quality combo box != self.stream.names
-        self.raw_stream_menu = []  # same as self.stream_menu but without size
         self._selected_stream = None
 
         # thumbnail
@@ -131,38 +124,39 @@ class Video(DownloadItem):
         self._process_streams()
 
     def _process_streams(self):
-        """ Create Stream object lists"""
         all_streams = [Stream(x) for x in self.vid_info['formats']]
         all_streams.reverse()  # get higher quality first
 
-        # prepare some categories
-        normal_streams = {stream.raw_name: stream for stream in all_streams if stream.mediatype == 'normal'}
-        dash_streams = {stream.raw_name: stream for stream in all_streams if stream.mediatype == 'dash'}
+        # streams has mediatype = (normal, dash, audio)
+        # arrange streams as follows: video mp4, video other formats, audio, extra formats
+        video_streams = [stream for stream in all_streams if stream.mediatype != 'audio']
+        audio_streams = [stream for stream in all_streams if stream.mediatype == 'audio']
+        extra_streams = []
 
-        # normal streams will overwrite same streams names in dash
-        video_streams = {**dash_streams, **normal_streams}
+        # filter repeated video streams and prefer normal over dash
+        v_names = []
+        for i, stream in enumerate(video_streams[:]):
+            if stream.raw_name in v_names and stream.mediatype == 'dash':
+                extra_streams.append(stream)
+            v_names.append(stream.raw_name)
 
-        # sort streams based on quality, "youtube-dl will provide a sorted list, this step is not necessary"
-        video_streams = {k: v for k, v in sorted(video_streams.items(), key=lambda item: item[1].quality, reverse=True)}
+        # sort and rebuild video streams again
+        video_streams = sorted([stream for stream in video_streams if stream not in extra_streams], key=lambda stream: stream.quality, reverse=True)
 
-        # sort based on mp4 streams first
-        mp4_videos = {stream.name: stream for stream in video_streams.values() if stream.extension == 'mp4'}
-        other_videos = {stream.name: stream for stream in video_streams.values() if stream.extension != 'mp4'}
-        video_streams = {**mp4_videos, **other_videos}
-
-        audio_streams = {stream.name: stream for stream in all_streams if stream.mediatype == 'audio'}
+        # sort video streams mp4 first
+        mp4_videos = [stream for stream in video_streams if stream.extension == 'mp4']
+        other_videos = [stream for stream in video_streams if stream.extension != 'mp4']
 
         # add another audio formats, mp3, aac, wav, ogg
         if audio_streams:
-            audio = list(audio_streams.values())
-            webm = [stream for stream in audio if stream.extension == 'webm']
-            m4a = [stream for stream in audio if stream.extension in ('m4a')]
+            webm = [stream for stream in audio_streams if stream.extension == 'webm']
+            m4a = [stream for stream in audio_streams if stream.extension in ('m4a')]
 
-            aac = m4a[0] if m4a else audio[0]
+            aac = m4a[0] if m4a else audio_streams[0]
             aac = copy.copy(aac)
             aac.extension = 'aac'
 
-            ogg = webm[0] if webm else audio[0]
+            ogg = webm[0] if webm else audio_streams[0]
             ogg = copy.copy(ogg)
             ogg.extension = 'ogg'
 
@@ -170,53 +164,66 @@ class Video(DownloadItem):
             mp3.extension = 'mp3'
             mp3.abr = 128
 
-            extra_audio = {aac.name: aac, ogg.name: ogg, mp3.name: mp3}
-            extra_audio.update(**audio_streams)
-            audio_streams = extra_audio
+            extra_audio = [aac, ogg, mp3]
+            audio_streams = extra_audio + audio_streams
 
-        # collect all in one dictionary of stream.name: stream pairs
-        streams = {**video_streams, **audio_streams}
+        # update all streams with sorted ones
+        all_streams = video_streams + audio_streams + extra_streams
 
-        # get extra streams
-        extra_streams = {stream.name: stream for stream in all_streams if stream not in streams.values()}
+        # make a raw name map to be used with playlist master combo box
+        names_map = {'mp4_videos': [stream.name for stream in mp4_videos],
+                         'other_videos': [stream.name for stream in other_videos],
+                         'audio_streams': [stream.name for stream in audio_streams],
+                         'extra_streams': [stream.name for stream in extra_streams]}
 
-        # update streams
-        streams.update(**extra_streams)
+        # build menu
+        stream_menu = ['● Video streams:                     '] + [stream.name for stream in mp4_videos] + [stream.name for stream in other_videos]  \
+                      + ['', '● Audio streams:                 '] + [stream.name for stream in audio_streams]\
+                      + ['', '● Extra streams:                 '] + [stream.name for stream in extra_streams]
 
-        stream_menu = ['● Video streams:                     '] + list(mp4_videos.keys()) + list(other_videos.keys()) \
-                    + ['', '● Audio streams:                 '] + list(audio_streams.keys()) \
-                    + ['', '● Extra streams:                 '] + list(extra_streams.keys()) \
+        # stream menu map will be used to lookup streams from stream menu, can't use dictionary to allow repeated key names
+        stream_menu_map = [None] + mp4_videos + other_videos + [None, None] + audio_streams + [None, None] + extra_streams
 
-        # assign variables
-        self.stream_list = list(streams.values())
-        self.stream_names = [stream.name for stream in self.stream_list]
-        self.raw_stream_names = [stream.raw_name for stream in self.stream_list]
-        self.video_streams = video_streams
-        self.mp4_videos = mp4_videos
-        self.other_videos = other_videos
-        self.audio_streams = audio_streams
-
-        self._streams = streams
-        self.raw_streams = {stream.raw_name: stream for stream in streams.values()}
+        # update properties
+        self.all_streams = all_streams
         self.stream_menu = stream_menu
-        self.raw_stream_menu = [x.rsplit(' -', 1)[0] for x in stream_menu]
+        self.stream_menu_map = stream_menu_map
+        self.names_map = names_map  # {'mp4_videos': [], 'other_videos': [], 'audio_streams': [], 'extra_streams': []}
 
-    @property
-    def streams(self):
-        """ Returns dictionary of all streams sorted  key=stream.name, value=stream object"""
-        if not self._streams:
-            self._process_streams()
+    def select_stream(self, index=None, name=None, raw_name=None, update=True):
+        """
+        search for a stream in self.stream_menu_map
+        :param index: index number from stream menu
+        :param name: stream name
+        :param raw_name: stream raw name
+        :param update: if True it will update selected stream
+        :return: stream
+        """
+        try:
+            stream = None
 
-        return self._streams
+            if index:
+                stream = self.stream_menu_map[index]
 
-    @property
-    def selected_stream_index(self):
-        return self.stream_list.index(self.selected_stream)
+            elif name:
+                stream = [stream for stream in self.all_streams if name == stream.name][0]
+
+            elif raw_name:
+                stream = [stream for stream in self.all_streams if raw_name == stream.raw_name][0]
+        except:
+            stream = None
+
+        finally:
+            # update selected stream
+            if update and stream:
+                self.selected_stream = stream
+
+            return stream
 
     @property
     def selected_stream(self):
         if not self._selected_stream:
-            self._selected_stream = self.stream_list[0]  # select first stream
+            self._selected_stream = self.all_streams[0]  # select first stream
 
         return self._selected_stream
 
@@ -266,21 +273,19 @@ class Video(DownloadItem):
             self.subtype_list.append('fragmented')
 
         # select an audio to embed if our stream is dash video
-        audio_streams_list = [stream for stream in self.stream_list if stream.mediatype == 'audio']  # audio streams in a list
+        audio_streams = sorted([stream for stream in self.all_streams if stream.mediatype == 'audio'],
+                               key=lambda stream: stream.quality, reverse=True)
 
-        # sort audio list
-        audio_streams_list = sorted(audio_streams_list, key=lambda stream: stream.quality, reverse=True)
-
-        if stream.mediatype == 'dash' and audio_streams_list:
+        if stream.mediatype == 'dash' and audio_streams:
             # auto select audio stream if no parameter given
             if not audio_stream:
-                matching_stream = [audio for audio in audio_streams_list if audio.extension == stream.extension
+                matching_stream = [audio for audio in audio_streams if audio.extension == stream.extension
                             or (audio.extension == 'm4a' and stream.extension == 'mp4')]
                 # if failed to find a matching audio, choose any one
                 if matching_stream:
                     audio_stream = matching_stream[0]
                 else:
-                    audio_stream = audio_streams_list[0]
+                    audio_stream = audio_streams[0]
 
             self.audio_stream = audio_stream
             self.audio_url = audio_stream.url
