@@ -95,6 +95,9 @@ def brain(d=None, downloader=None):
 def thread_manager(d):
     q = d.q
 
+    error_timer = 0
+    limited_connections = config.max_connections  # used to limit connections in case of server errors
+
     # create worker/connection list
     workers = [Worker(tag=i, d=d) for i in range(config.max_connections)]
 
@@ -119,16 +122,36 @@ def thread_manager(d):
             job_list.append(job)
             # print('thread managaer jobs q:', job)
 
+        # allowable connections
+        allowable_connections = min(config.max_connections, d.remaining_parts, limited_connections)
+
+        # check for server errors, in case of too many connections server will refuse all connections
+        # check every n seconds
+        if time.time() - error_timer >= 3:
+            error_timer = time.time()
+            errors_num = config.error_q.qsize()
+            if errors_num >= 10:
+                limited_connections = limited_connections - 1 if limited_connections > 1 else 1
+                log('Thread Manager: receiving server errors, connections limited to:', limited_connections)
+
+                # clear error queue
+                for _ in range(config.error_q.qsize()):
+                    _ = config.error_q.get()
+            else:
+                if limited_connections < config.max_connections:
+                    limited_connections = limited_connections + 1
+                    log('Thread Manager: no more server errors, trying', limited_connections, 'connections.' )
+
         # speed limit
-        allowable_connections = min(config.max_connections, d.remaining_parts)
         if allowable_connections:
             worker_sl = config.speed_limit // allowable_connections
         else:
             worker_sl = 0
 
         # reuse a free worker to handle a job from job_list
-        if free_workers and job_list and d.status == Status.downloading:
-            for _ in free_workers[:]:
+        if free_workers and job_list and d.status == Status.downloading and len(live_threads) < allowable_connections:
+            # log('live_threads=', len(live_threads))
+            for _ in range(allowable_connections - len(live_threads) + 1):
                 try:
                     worker_num, seg = free_workers.pop(), job_list.pop()  # get available tag # get a new job
                     busy_workers.append(worker_num)  # add number to busy workers
@@ -139,22 +162,26 @@ def thread_manager(d):
                     t = Thread(target=worker.run, daemon=True, name=str(worker_num))
                     live_threads.append(t)
                     t.start()
+
+                    time.sleep(0.1)  # slow down between requests
                 except:
                     break
+
+        # update d param
+        d.live_connections = len(live_threads)
+        d.remaining_parts = len(live_threads) + len(job_list) + q.jobs.qsize()
 
         # Monitor active threads and add the offline to a free_workers
         for t in live_threads:
             if not t.is_alive():
                 worker_num = int(t.name)
-                live_threads.remove(t)
                 busy_workers.remove(worker_num)
                 free_workers.append(worker_num)
 
-        # update d param
-        d.live_connections = len(busy_workers)
-        d.remaining_parts = len(busy_workers) + len(job_list) + q.jobs.qsize()
+        # update live threads
+        live_threads = [thread for thread in live_threads if thread.is_alive()]
 
-        # change status
+        # monitor status change
         if d.status != Status.downloading:
             # print('--------------thread manager cancelled-----------------')
             break
@@ -165,10 +192,13 @@ def thread_manager(d):
             job_list = [seg for seg in d.segments if not seg.downloaded]
             if not job_list:
                 # print('--------------thread manager done----------------------')
+
                 break
             else:
                 log('Thread manager found some orphan segments, continue downloading')
 
+    # update d param
+    d.live_connections = 0
     log(f'thread_manager {d.num}: quitting')
 
 

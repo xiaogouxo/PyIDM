@@ -8,11 +8,12 @@
 """
 
 # worker class
+import io
 import os
 import pycurl
 
-from .config import Status
-from .utils import log, set_curl_options
+from .config import Status, error_q
+from .utils import log, set_curl_options, delete_file, get_headers
 
 
 class Worker:
@@ -35,7 +36,7 @@ class Worker:
         self.speed_limit = 0
         self.headers = {}
 
-    def debug(self, *args, log_level=2):
+    def debug(self, *args, log_level=3):
         args = [repr(arg) for arg in args]
         msg = '>> ' + ' '.join(args)
 
@@ -145,7 +146,7 @@ class Worker:
         # self.debug('worker', self.tag, 'completed', self.seg.name)
         self.seg.downloaded = True
 
-        self.debug('downloaded segment:', os.path.basename(self.seg.name))
+        log('downloaded segment:', os.path.basename(self.seg.name), log_level=2)
 
         # in case couldn't fetch segment size from headers we put the downloaded length as segment size
         if not self.seg.size:
@@ -212,6 +213,7 @@ class Worker:
 
         if not self.seg.url:
             log(f'worker-{self.tag}: segment "{os.path.basename(self.seg.name)}" has no valid url')
+            return
 
         try:
             # set options
@@ -235,24 +237,40 @@ class Worker:
 
             response_code = self.c.getinfo(pycurl.RESPONSE_CODE)
             if response_code in range(400, 512):
-                self.debug('server refuse connection', response_code, 'cancel download and try to refresh link')
+                log('server refuse connection', response_code, 'content type:', self.headers.get('content-type'), log_level=3)
+
+                # send error to thread manager
+                error_q.put(response_code)
 
         except Exception as e:
             if any(statement in repr(e) for statement in ('Failed writing body', 'Callback aborted')):
-                error = f'terminated by user'
-                log('worker', self.tag, error, log_level=2)
+                error = f'terminated by user, or html content received from server'
+                log('worker', self.tag, error, log_level=3)
             else:
                 error = repr(e)
-                log('worker', self.tag, ': quitting ...', error, self.seg.url, log_level=2)
+                log('worker', self.tag, ': quitting ...', error, self.seg.url, log_level=3)
 
             self.report_not_completed()
 
     def write(self, data):
         """write to file"""
-        self.file.write(data)
+
         self.downloaded += len(data)
 
+        # report to download item
         self.d.downloaded += len(data)
+
+        content_type = self.headers.get('content-type')
+        if content_type and 'text/html' in content_type:
+            log('worker: received html contents, aborting', log_level=3)
+
+            # report server error to thread manager
+            error_q.put('text/html')
+
+            return -1  # abort
+
+        # write to file
+        self.file.write(data)
 
         # check if we getting over sized
         if self.current_filesize > self.seg.size > 0:

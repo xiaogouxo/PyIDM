@@ -121,6 +121,7 @@ d_list = []
 
 # queues
 main_window_q = Queue()  # queue for Main application window
+error_q = Queue()  # used by workers to report server refuse connection errors
 
 # settings parameters to be saved on disk
 settings_keys = ['current_theme', 'monitor_clipboard', 'show_download_window', 'auto_close_download_window',
