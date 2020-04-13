@@ -208,7 +208,7 @@ class DownloadItem:
         self.playlist_url = ''
         self.playlist_title = ''
 
-        # selected raw stream name for video objects
+        # selected stream name for video objects
         self.selected_quality = None
 
         # subtitles

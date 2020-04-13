@@ -210,9 +210,13 @@ class Worker:
         if self.seg.downloaded:
             return
 
-        self.set_options()
+        if not self.seg.url:
+            log(f'worker-{self.tag}: segment "{os.path.basename(self.seg.name)}" has no valid url')
 
         try:
+            # set options
+            self.set_options()
+
             # make sure target directory exist
             target_directory = os.path.dirname(self.seg.name)
             if not os.path.isdir(target_directory):

@@ -78,9 +78,9 @@ def set_curl_options(c):
     # time out
     c.setopt(pycurl.CONNECTTIMEOUT, 30)  # limits the connection phase, it has no impact once it has connected.
 
-    # abort if download speed slower than 1 byte/sec during 60 seconds
-    c.setopt(pycurl.LOW_SPEED_LIMIT, 1)
-    c.setopt(pycurl.LOW_SPEED_TIME, 60)
+    # abort if download speed slower than 1000 byte/sec during 30 seconds
+    c.setopt(pycurl.LOW_SPEED_LIMIT, 1000)
+    c.setopt(pycurl.LOW_SPEED_TIME, 30)
 
     # verbose
     if config.log_level >= 3:
