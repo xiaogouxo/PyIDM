@@ -113,7 +113,7 @@ class MainWindow:
 
                 # post process Button properties
                 if not self.ImageData:
-                    self.ImageData = blank_button_icon
+                    self.ImageData = default_button_icon
                     self.ButtonColor = ('black', sg.theme_background_color())
                     self.BorderWidth = 0
 
@@ -2472,7 +2472,7 @@ class DownloadWindow:
             [sg.ProgressBar(max_value=100, key='progress_bar', size=(42, 15), border_width=3)],
 
             # [sg.Column([[sg.Button('Hide', key='hide'), sg.Button('Cancel', key='cancel')]], justification='right')],
-            [sg.T(' ', key='status', size=(33, 1)), sg.Button('Hide', key='hide'), sg.Button('Cancel', key='cancel')],
+            [sg.T(' ', key='status', size=(35, 1)), sg.Button('Hide', key='hide'), sg.Button('Cancel', key='cancel')],
             [sg.T(' ', font='any 1')],
             [sg.T('', size=(100, 1),  font='any 8', key='log2', relief=sg.RELIEF_RAISED)],
         ]

@@ -97,7 +97,7 @@ def thread_manager(d):
 
     error_timer = 0
 
-    #   soft start, connections will be gradually increase overtime "3 sec. intervals" to reach max. number
+    #   soft start, connections will be gradually increase over time to reach max. number
     #   set by user, this prevent impact on servers/network, and avoid "service not available" response
     #   from server when exceeding multi-connection number set by server.
     #
@@ -127,14 +127,13 @@ def thread_manager(d):
         for _ in range(q.jobs.qsize()):
             job = q.jobs.get()
             job_list.append(job)
-            # print('thread managaer jobs q:', job)
 
         # allowable connections
         allowable_connections = min(config.max_connections, d.remaining_parts, limited_connections)
 
-        # check for server errors, in case of too many connections server will refuse all connections
-        # check every n seconds
-        if time.time() - error_timer >= 3:
+        # dynamic connection manager
+        # check every n seconds for server errors, in case of too many connections server will refuse all connections
+        if time.time() - error_timer >= 1:
             error_timer = time.time()
             errors_num = config.error_q.qsize()
             if errors_num >= 10:
