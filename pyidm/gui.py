@@ -2142,16 +2142,17 @@ class MainWindow:
             log('select_dash_audio()> this function is available only for a dash video, ....')
             return
 
-        if not self.d.audio_streams:
+        audio_streams = [stream for stream in self.d.all_streams if stream.mediatype == 'audio']
+        if not audio_streams:
             log('select_dash_audio()> there is no audio streams available, ....')
             return
 
-        streams_menu = list(self.d.audio_streams.keys())
+        streams_menu = [stream.name for stream in audio_streams]
         layout = [
             [sg.T('Select audio stream to be merged with dash video:')],
             [sg.Combo(streams_menu, default_value=self.d.audio_stream.name, key='stream')],
             [sg.T('please note:\n'
-                  'Selecting different audio/video formats takes longer time "several minutes" while merging')],
+                  'Selecting different audio format than video format, may takes longer time while merging')],
             [sg.T('')],
             [sg.Ok(), sg.Cancel()]
         ]
@@ -2162,8 +2163,8 @@ class MainWindow:
         event, values = window()
 
         if event == 'Ok':
-            selected_stream_name = values['stream']
-            selected_stream = self.d.audio_streams[selected_stream_name]
+            selected_stream_index = window['stream'].Widget.current()
+            selected_stream = audio_streams[selected_stream_index]
 
             # set audio stream
             self.d.update_param(audio_stream=selected_stream)
