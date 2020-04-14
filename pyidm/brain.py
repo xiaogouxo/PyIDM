@@ -192,17 +192,6 @@ def thread_manager(d):
             # print('--------------thread manager cancelled-----------------')
             break
 
-        # done downloading
-        if not busy_workers and not job_list and not q.jobs.qsize():
-            # at this point there might be a died worker left a segment without downloading, will scan all segments again
-            job_list = [seg for seg in d.segments if not seg.downloaded]
-            if not job_list:
-                # print('--------------thread manager done----------------------')
-
-                break
-            else:
-                log('Thread manager found some orphan segments, continue downloading')
-
     # update d param
     d.live_connections = 0
     d.remaining_parts = len(live_threads) + len(job_list) + q.jobs.qsize()
