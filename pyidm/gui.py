@@ -486,6 +486,9 @@ class MainWindow:
         self.window['log'].Widget.config(wrap='none', undo='false')
 
     def restart_window(self):
+        # stor log temporarily
+        log = self.window['log'].get()
+
         try:
             self.window.Close()
         except:
@@ -493,9 +496,16 @@ class MainWindow:
 
         self.start_window()
 
+        # restore log
+        self.window['log'](log)
+
         if self.video:
             self.update_pl_menu()
             self.update_stream_menu()
+
+            # get the last value of bars after restart
+            self.m_bar = self._m_bar
+            self.s_bar = self._s_bar
         else:
             self.pl_menu = ['Playlist']
             self.stream_menu = ['Video quality']
