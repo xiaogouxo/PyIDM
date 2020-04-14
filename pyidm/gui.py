@@ -209,14 +209,13 @@ class MainWindow:
                               [sg.ProgressBar(max_value=100, size=(15, 9), key='m_bar', pad=(0, 5)),
                                sg.ProgressBar(max_value=100, size=(5, 9), key='s_bar', pad=(0, 5))]], size=(290, 80))
 
-        pl_button = sg.Button('', tooltip=' download playlist ', key='pl_download', image_data=playlist_icon, **transparent)
-
         layout = [
             # spacer
             [sg.T('', font='any 2')],
 
             # app icon and app name
-            [sg.Image(data=APP_ICON), sg.Text(f'{config.APP_NAME}', font='any 20', justification='center', key='app_title'),
+            [sg.Image(data=APP_ICON, enable_events=True, key='app_icon'),
+             sg.Text(f'{config.APP_NAME}', font='any 20', justification='center', key='app_name', enable_events=True),
              sg.T('', size=(30, 1), justification='center', key='update_note', enable_events=True, font='any 9'),
              ],
 
@@ -855,7 +854,7 @@ class MainWindow:
                 self.delete_all_downloads()
 
             # Settings tab -------------------------------------------------------------------------------------------
-            elif event == 'about':  # about window
+            elif event in ('about', 'app_icon', 'app_name'):  # about window
                 # make sure only one window is opened
                 if AboutWindow.obj_counter == 0:
                     about_window = AboutWindow()
