@@ -2752,9 +2752,9 @@ class AboutWindow:
         event, values = self.window.read(timeout=10, timeout_key='_TIMEOUT_')
 
         if event in ('Ok', None):
-            self.window.close()
-            self.active = True
+            self.active = False
             AboutWindow.obj_counter -= 1
+            self.window.close()
 
         elif event == 'home_page':
             print('clicked homepage')
