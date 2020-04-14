@@ -855,8 +855,16 @@ class MainWindow:
 
             # Settings tab -------------------------------------------------------------------------------------------
             elif event in ('about', 'app_icon', 'app_name'):  # about window
-                # make sure only one window is opened
-                if AboutWindow.obj_counter == 0:
+                # check if "about_window" is already opened
+                found = [window for window in self.active_windows if isinstance(window, AboutWindow)]
+                if found:
+                    about_window = found[0]
+
+                    # bring window to front
+                    about_window.focus()
+
+                else:  # not found
+                    # create new window and append it to active windows
                     about_window = AboutWindow()
                     self.active_windows.append(about_window)
 
@@ -2113,9 +2121,18 @@ class MainWindow:
             sg.PopupOK("No Sub's available")
             return
 
-        if self.d.id not in self.active_windows:
-            subtitle_window = SubtitleWindow(self.d)
-            self.active_windows.append(subtitle_window)
+        # check if "subtitle_window" is already opened
+        found = [window for window in self.active_windows if isinstance(window, SubtitleWindow)]
+        if found:
+            window = found[0]
+
+            # bring window to front
+            window.focus()
+
+        else:  # not found
+            # create new window and append it to active windows
+            window = SubtitleWindow(self.d)
+            self.active_windows.append(window)
 
     def ffmpeg_check(self):
         if not check_ffmpeg():
@@ -2624,6 +2641,9 @@ class SubtitleWindow:
         # set focus on first checkbox, button focus is not looking good
         self.window['lang_0'].set_focus()
 
+    def focus(self):
+        self.window.BringToFront()
+
     @staticmethod
     def download_subtitle(url, file_name):
         try:
@@ -2726,12 +2746,9 @@ class SubtitleWindow:
 
 
 class AboutWindow:
-    # single instant flag
-    obj_counter = 0  # num of objects created from this class and still alive
 
     def __init__(self):
-        self.active = True
-        AboutWindow.obj_counter += 1
+        self.active = True  # if False, object will be removed from "active windows list"
 
         # create gui
         msg1 = f'PyIDM is a python open source (Internet Download Manager) with multi-connections, high speed engine, \n ' \
@@ -2757,13 +2774,15 @@ class AboutWindow:
 
         self.window = window
 
+    def focus(self):
+        self.window.BringToFront()
+
     def run(self):
         # read events
         event, values = self.window.read(timeout=10, timeout_key='_TIMEOUT_')
 
         if event in ('Ok', None):
             self.active = False
-            AboutWindow.obj_counter -= 1
             self.window.close()
 
         elif event == 'home_page':
