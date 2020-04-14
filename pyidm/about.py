@@ -5,7 +5,7 @@ Developed in Python, based on "pyCuRL/libcurl", "youtube_dl", and "PySimpleGUI"
 your feedback is most welcomed on
 
 https://github.com/pyIDM/pyIDM
-email: mahmoud_elshahhat@yahoo.com
+email: pyidm2019@gmail.com
 
 Author,
 Mahmoud Elshahat

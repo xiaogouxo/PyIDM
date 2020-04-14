@@ -278,7 +278,7 @@ class MainWindow:
         col_widths = [6, 30, 10, 10, 10, 10, 10, 10]
 
         layout = [[sg.Button('', key='Resume', tooltip=' Resume download ', image_data=resume_icon, **transparent),
-                   sg.Button('', key='Cancel', tooltip=' Cancel download ', image_data=stop_icon, **transparent),
+                   sg.Button('', key='Cancel', tooltip=' Stop download ', image_data=stop_icon, **transparent),
                    sg.Button('', key='Refresh', tooltip=' Refresh link ', image_data=refresh_icon, **transparent),
                    sg.Button('', key='Folder', tooltip=' open file location ', image_data=folder_icon, **transparent),
                    sg.Button('', key='D.Window', tooltip=' Show download window ', image_data=dwindow_icon, **transparent),
@@ -1201,7 +1201,7 @@ class MainWindow:
                       'Overwrite ==> delete old downloads and overwrite existing item... \n' \
                       'note: "if you need fresh download, you have to change file name \n' \
                       'or target folder or delete same entry from download list'
-                window = sg.Window(title='', layout=[[sg.T(msg)], [sg.B('Resume'), sg.B('Overwrite'), sg.B('Cancel')]])
+                window = sg.Window(title='', layout=[[sg.T(msg)], [sg.B('Resume'), sg.B('Overwrite', font='any 9 bold'), sg.B('Cancel')]])
                 response, _ = window()
                 window.close()
 
@@ -2605,7 +2605,7 @@ class SubtitleWindow:
                            sg.T('*sub' if lang in self.d.subtitles else '*caption')])
 
         layout = [[sg.Column(layout, scrollable=True, vertical_scroll_only=True, size=(433, 195), key='col')],
-                  [sg.Button('Download'), sg.Button('Close'), sg.ProgressBar(100, size=(25, 10), key='bar')]]
+                  [sg.Button('Download', font='any 9 bold'), sg.Button('Close'), sg.ProgressBar(100, size=(25, 10), key='bar')]]
 
         window = sg.Window('Subtitles window', layout, finalize=True)
         self.window = window
@@ -2735,7 +2735,7 @@ class AboutWindow:
 
         layout = [[sg.T(msg1)],
                   [sg.T('https://github.com/pyIDM/pyIDM', key='home_page', font='any 10 underline', enable_events=True)],
-                  [sg.T('email: mahmoud_elshahhat@yahoo.com', key='email', font='any 10 underline', enable_events=True)],
+                  [sg.T('email: pyidm2019@gmail.com', key='email', font='any 10 underline', enable_events=True)],
                   [sg.T(msg2)],
                   [sg.Ok()]]
 
@@ -2762,6 +2762,6 @@ class AboutWindow:
 
         elif event == 'email':
             print('clicked email')
-            clipboard_write('mahmoud_elshahhat@yahoo.com')
+            clipboard_write('pyidm2019@gmail.com')
             sg.PopupOK('email copied to clipboard')
 
