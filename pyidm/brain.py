@@ -23,8 +23,6 @@ def brain(d=None, downloader=None):
     """main brain for a single download, it controls thread manger, file manager, and get data from workers
     and communicate with download window Gui, Main frame gui"""
 
-    q = d.q
-
     # in case of re-downloading a completed file will reset segment flags
     if d.status == Status.completed:
         d.reset_segments()
@@ -37,10 +35,11 @@ def brain(d=None, downloader=None):
     else:
         d.status = Status.downloading
 
-    log('-' * 100)
+    log('\n')
+    log(' -*- ' * 35)
     log(f'start downloading file: "{d.name}", size: {size_format(d.size)}, to: {d.folder}')
 
-    # experimental m3u8 protocols
+    # hls / m3u8 protocols
     if 'hls' in d.subtype_list:
         keep_segments = True  # don't delete segments after completed, it will be post-processed by ffmpeg
         try:
@@ -90,6 +89,7 @@ def brain(d=None, downloader=None):
 
     # report quitting
     log(f'brain {d.num}: quitting')
+    log(' -*- ' * 35, '\n')
 
 
 def thread_manager(d):
