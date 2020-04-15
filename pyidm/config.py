@@ -121,6 +121,7 @@ d_list = []
 
 # queues
 main_window_q = Queue()  # queue for Main application window
+commands_q = Queue()  # queue to access MainWindow internal methods from threads
 error_q = Queue()  # used by workers to report server refuse connection errors
 
 # settings parameters to be saved on disk

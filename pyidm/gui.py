@@ -195,6 +195,15 @@ class MainWindow:
             elif k == 'show_update_gui':  # show update gui
                 self.show_update_gui()
 
+        # read commands coming from other threads / modules and execute them.
+        for _ in range(config.commands_q.qsize()):
+            try:
+                command, args, kwargs = config.commands_q.get()
+                log(f'MainWindow, received command: {command}(), args={args}, kwargs={kwargs}', log_level=3)
+                getattr(self, command)(*args, **kwargs)
+            except Exception as e:
+                log('MainWindow, error running command:', command, e)
+
     # region gui design
 
     def create_main_tab(self):
@@ -531,7 +540,7 @@ class MainWindow:
         except Exception as e:
             log('MainWindow.select_row(): ', e)
 
-    def select_tab(self, tab_name):
+    def select_tab(self, tab_name=''):
         try:
             self.window[tab_name].Select()
         except Exception as e:
@@ -1861,260 +1870,25 @@ class MainWindow:
             sg.popup_ok('Playlist is empty, nothing to download :(', title='Playlist download')
             return
 
-        # technical limitation of tkinter, can not show more than 1000 item without glitches, or pl_window will not show
-        if len(self.playlist) > 1000:
-            sg.popup_ok('Playlist is more than 1000 videos, \n'
-                        'due to technical limitations will show only first 1000 videos', title='Playlist download')
-            playlist = self.playlist[:1000]
-        else:
-            playlist = self.playlist
+        # check if "subtitle_window" is already opened
+        found = [window for window in self.active_windows if isinstance(window, PlaylistWindow)]
+        if found:
+            window = found[0]
 
-        # fix repeated video names in playlist --------------------------------------------------------------------
-        vid_names = []
-        for num, vid in enumerate(playlist):
-            if vid.name in vid_names:
-                name, ext = os.path.splitext(vid.name)
-                name = f'{name}_{num}{ext}'
-                vid.name = name
+            # bring window to front
+            window.focus()
 
-            vid_names.append(vid.name)
-        del vid_names  # no longer needed, free memory
+        else:  # not found
+            # technical limitation of tkinter, can not show more than 1000 item without glitches, or pl_window will not show
+            if len(self.playlist) > 1000:
+                sg.popup_ok('Playlist is more than 1000 videos, \n'
+                            'due to technical limitations will show only first 1000 videos', title='Playlist download')
+                playlist = self.playlist[:1000]
+            else:
+                playlist = self.playlist
 
-        # extract video quality (abr for audio and height for video) ----------------------------------------------
-        def extract_quality(text=''):
-            # example: '      ›  mp4 - 1080'
-            quality = text.rsplit(' - ', maxsplit=1)[-1]
-            try:
-                quality = int(quality)
-            except:
-                quality = 0
-            finally:
-                return quality
-
-        # lists for raw names
-        names_map = {'mp4_videos': [], 'other_videos': [], 'audio_streams': [], 'extra_streams': []}
-
-        for vid in playlist:
-            for key in names_map:
-                for name in vid.names_map[key]:
-                    # convert name to raw name ex: mp4 - 1080 - 30MB  to mp4 - 1080
-                    name = name.rsplit(' - ', maxsplit=1)[0]
-                    if name not in names_map[key]:
-                        names_map[key].append(name)
-
-        # sort names based on quality
-        for key in names_map:
-            names_map[key] = sorted(names_map[key], key=extract_quality, reverse=True)
-
-        # build master combo box
-        master_stream_menu = ['● Video streams:                     '] + names_map['mp4_videos'] + names_map['other_videos'] + \
-                             ['', '● Audio streams:                 '] + names_map['audio_streams'] + \
-                             ['', '● Extra streams:                 '] + names_map['extra_streams']
-
-        # gui layout ------------------------------------------------------------------------------------------------
-        video_checkboxes = []
-        progress_bars = []
-        stream_combos = []
-
-        general_options_layout = [sg.Checkbox('Select All', enable_events=True, key='Select All'),
-                                  sg.T('', size=(15, 1)),
-                                  sg.T('Choose quality for all videos:'),
-                                  sg.Combo(values=master_stream_menu, default_value=master_stream_menu[0], size=(28, 1),
-                                           key='master_stream_combo', enable_events=True)]
-
-        video_layout = []
-
-        # build layout widgets
-        for num, vid in enumerate(playlist):
-            # set selected stream
-            if vid.all_streams:
-                vid.selected_stream = vid.all_streams[0]
-
-            # video names with check boxes
-            video_checkbox = sg.Checkbox(truncate(vid.title, 62), size=(62, 1), tooltip=vid.title, font='any 8',
-                                         key=f'video {num}', enable_events=True)
-            video_checkboxes.append(video_checkbox)
-
-            # hidden progress bars works only while loading streams
-            progress_bar = sg.ProgressBar(100, size=(10, 5), pad=(5, 1), key=f'bar {num}')
-            progress_bars.append(progress_bar)
-
-            # streams / quality menu
-            stream_combo = sg.Combo(values=vid.stream_menu, default_value=vid.stream_menu[1], font='any 8',
-                                    size=(25, 1), key=f'stream {num}', enable_events=True, pad=(5, 0))
-            stream_combos.append(stream_combo)
-
-            # build one row from the above
-            row = [video_checkbox, sg.Col([[stream_combo], [progress_bar]]),
-                   sg.T(size_format(vid.total_size), size=(10, 1), font='any 8', key=f'size_text {num}')]
-
-            # add row to video_layout
-            video_layout.append(row)
-
-        video_layout = [sg.Column(video_layout, scrollable=True, vertical_scroll_only=True, size=(650, 250), key='col')]
-
-        layout = [
-            [sg.T(f'Total Videos: {len(playlist)}')],
-            general_options_layout,
-            [sg.T('*note: select videos first to load streams menu if not available!!', font='any 8')],
-            [sg.Frame(title='Videos:', layout=[video_layout])],
-            [sg.Col([[sg.OK(), sg.Cancel()]], justification='right')]
-        ]
-
-        # create window
-        window = sg.Window(title='Playlist download window', layout=layout, finalize=True, margins=(2, 2))
-
-        # set progress bar properties
-        for bar in progress_bars:
-            bar.Widget.config(mode='indeterminate')
-            bar.expand(expand_x=True)
-
-        selected_videos = []
-        active_threads = {}  # {video.name: thread}
-
-        def update_video(num):
-            # update some parameters for a selected video
-            vid = playlist[num]
-            stream_widget = window[f'stream {num}']
-            video_checkbox = window[f'video {num}']
-            size_widget = window[f'size_text {num}']
-
-            selected = video_checkbox.get()
-            stream_text = stream_widget.get()
-
-            # process video
-            if selected and not vid.processed and not active_threads.get(vid.name, None):
-                t = Thread(target=process_video_info, daemon=True, args=(vid,))
-                active_threads[vid.name] = t
-                t.start()
-
-            # first check if video has streams
-            if not vid.all_streams:
-                return
-
-            # correct chosen stream values
-            stream = vid.select_stream(name=stream_text)
-            if not stream:
-                stream_widget(vid.selected_stream.name)
-
-            size_widget(size_format(vid.total_size))
-
-        # event loop -------------------------------------------------------------------------------------------------
-        while True:
-            event, values = window.read(timeout=100)
-            if event in (None, 'Cancel'):
-                window.close()
-                return
-
-            if event == 'OK':
-                selected_videos.clear()
-                null_videos = []
-                for num, vid in enumerate(playlist):
-                    # check if video is selected
-                    selected = values[f'video {num}']
-
-                    if selected:
-                        # append to chosen videos list
-                        selected_videos.append(vid)
-
-                        # get selected text from stream menu
-                        selected_text = values[f'stream {num}']
-
-                        # get selected stream
-                        stream = vid.select_stream(name=selected_text)
-
-                        # check if video has streams or not
-                        if not stream:
-                            null_videos.append(vid.name)
-
-                # do nothing if there is selected videos which have no streams
-                if null_videos:
-                    vid_names = "\n".join(null_videos)
-                    sg.popup_ok(f'The following selected videos: \n\n'
-                                f'{vid_names}\n\n'
-                                f'have no streams, please wait until finish loading '
-                                f'or un-select this video and try again')
-                else:
-                    window.close()
-                    break
-
-            elif event == 'Select All':
-                checked = values['Select All']
-
-                # process all other check boxes
-                for num, checkbox in enumerate(video_checkboxes):
-                    checkbox(checked)
-                    update_video(num)
-
-            elif event == 'master_stream_combo':
-                master_text = values['master_stream_combo']  # example: mp4 - 1080
-
-                # update all videos stream menus from master stream menu
-                for num, stream_combo in enumerate(stream_combos):
-                    vid = playlist[num]
-                    stream = vid.select_stream(raw_name=master_text)
-                    if stream:
-                        # set a matching stream name, note: for example, if master_text is "mp4 - 1080",
-                        # then matching could be "mp4 - 1080 - 40MB" with size included
-                        stream_combo([text for text in vid.stream_menu if master_text in text][0])
-                        update_video(num)
-
-            # video checkbox or stream menu events
-            elif event.startswith('stream') or event.startswith('video'):
-                num = int(event.split()[-1])
-                update_video(num)
-
-            # update stream menu for processed videos, in case stream menu not yet loaded
-            for num, vid in enumerate(playlist):
-                stream_combo = window[f'stream {num}']
-                if vid.all_streams:
-                    if stream_combo.Values != vid.stream_menu:
-                        stream_combo(values=vid.stream_menu)
-
-                        # set current selection to match master combo selection
-                        master_stream_text = values['master_stream_combo']
-
-                        stream = vid.select_stream(raw_name=master_stream_text)
-                        if stream:
-                            stream_combo(master_stream_text)
-                            update_video(num)
-                        else:
-                            stream_combo(vid.selected_stream.name)
-
-            # animate progress bars while loading streams
-            for num, bar in enumerate(progress_bars):
-                vid = playlist[num]
-                if vid.name in active_threads and not vid.processed:
-                    bar(visible=True)
-                    bar.expand(expand_x=True)
-                    bar.Widget['value'] += 10
-                else:
-                    bar(visible=False)
-
-            # check terminate flag
-            if config.terminate:
-                window.close()
-                return
-
-        # After closing playlist window, select downloads tab -------------------------------------------------------
-        self.select_tab('Downloads')
-
-        # start downloading chosen videos ---------------------------------------------------------------------------
-        def download_selected_videos():
-            # will send videos to self.download() with paused intervals to prevent cpu surge
-
-            for video in selected_videos:
-                log(f'download playlist fn> {repr(video.selected_stream)}, title: {video.name}')
-                video.folder = config.download_folder
-
-                # send video to download method
-                self.start_download(video, silent=True)
-
-                # give a small pause
-                time.sleep(0.5)
-
-        # create a separate thread to prevent gui freeze
-        Thread(target=download_selected_videos).start()
+            window = PlaylistWindow(playlist)
+            self.active_windows.append(window)
 
     def download_subtitles(self):
         if not (self.d.subtitles or self.d.automatic_captions):
@@ -2793,4 +2567,292 @@ class AboutWindow:
             print('clicked email')
             clipboard_write('pyidm2019@gmail.com')
             sg.PopupOK('email copied to clipboard')
+
+
+class PlaylistWindow:
+    def __init__(self, playlist):
+        self.active = True
+        self.playlist = playlist  # reference to MainWindow instant
+        self.window = None
+        self.selected_videos = []
+        self.active_threads = {}  # {video.name: thread}
+        self.video_checkboxes = []
+        self.stream_combos = []
+        self.progress_bars = []
+
+        self.setup()
+
+    def setup(self):
+        # # check if playlist is ready
+        # if not self.playlist:
+        #     sg.popup_ok('Playlist is empty, nothing to download :(', title='Playlist download')
+        #     return
+
+        # technical limitation of tkinter, can not show more than 1000 item without glitches, or pl_window will not show
+        if len(self.playlist) > 1000:
+            popup('Playlist is more than 1000 videos, \n'
+                  'due to technical limitations will show only first 1000 videos', title='Playlist download')
+            playlist = self.playlist[:1000]
+        else:
+            playlist = self.playlist
+
+        # fix repeated video names in playlist --------------------------------------------------------------------
+        vid_names = []
+        for num, vid in enumerate(playlist):
+            if vid.name in vid_names:
+                name, ext = os.path.splitext(vid.name)
+                name = f'{name}_{num}{ext}'
+                vid.name = name
+
+            vid_names.append(vid.name)
+        del vid_names  # no longer needed, free memory
+
+        # extract video quality (abr for audio and height for video) ----------------------------------------------
+        def extract_quality(text=''):
+            # example: '      ›  mp4 - 1080'
+            quality = text.rsplit(' - ', maxsplit=1)[-1]
+            try:
+                quality = int(quality)
+            except:
+                quality = 0
+            finally:
+                return quality
+
+        # lists for raw names
+        names_map = {'mp4_videos': [], 'other_videos': [], 'audio_streams': [], 'extra_streams': []}
+
+        for vid in playlist:
+            for key in names_map:
+                for name in vid.names_map[key]:
+                    # convert name to raw name ex: mp4 - 1080 - 30MB  to mp4 - 1080
+                    name = name.rsplit(' - ', maxsplit=1)[0]
+                    if name not in names_map[key]:
+                        names_map[key].append(name)
+
+        # sort names based on quality
+        for key in names_map:
+            names_map[key] = sorted(names_map[key], key=extract_quality, reverse=True)
+
+        # build master combo box
+        master_stream_menu = ['● Video streams:                     '] + names_map['mp4_videos'] + names_map['other_videos'] + \
+                             ['', '● Audio streams:                 '] + names_map['audio_streams'] + \
+                             ['', '● Extra streams:                 '] + names_map['extra_streams']
+
+        # gui layout ------------------------------------------------------------------------------------------------
+        video_checkboxes = []
+        progress_bars = []
+        stream_combos = []
+
+        general_options_layout = [sg.Checkbox('Select All', enable_events=True, key='Select All'),
+                                  sg.T('', size=(15, 1)),
+                                  sg.T('Choose quality for all videos:'),
+                                  sg.Combo(values=master_stream_menu, default_value=master_stream_menu[0], size=(28, 1),
+                                           key='master_stream_combo', enable_events=True)]
+
+        video_layout = []
+
+        # build layout widgets
+        for num, vid in enumerate(playlist):
+            # set selected stream
+            if vid.all_streams:
+                vid.selected_stream = vid.all_streams[0]
+
+            # video names with check boxes
+            video_checkbox = sg.Checkbox(truncate(vid.title, 62), size=(62, 1), tooltip=vid.title, font='any 8',
+                                         key=f'video {num}', enable_events=True)
+            video_checkboxes.append(video_checkbox)
+
+            # hidden progress bars works only while loading streams
+            progress_bar = sg.ProgressBar(100, size=(10, 5), pad=(5, 1), key=f'bar {num}')
+            progress_bars.append(progress_bar)
+
+            # streams / quality menu
+            stream_combo = sg.Combo(values=vid.stream_menu, default_value=vid.stream_menu[1], font='any 8',
+                                    size=(25, 1), key=f'stream {num}', enable_events=True, pad=(5, 0))
+            stream_combos.append(stream_combo)
+
+            # build one row from the above
+            row = [video_checkbox, sg.Col([[stream_combo], [progress_bar]]),
+                   sg.T(size_format(vid.total_size), size=(10, 1), font='any 8', key=f'size_text {num}')]
+
+            # add row to video_layout
+            video_layout.append(row)
+
+        video_layout = [sg.Column(video_layout, scrollable=True, vertical_scroll_only=True, size=(650, 250), key='col')]
+
+        layout = [
+            [sg.T(f'Total Videos: {len(playlist)}')],
+            general_options_layout,
+            [sg.T('*note: select videos first to load streams menu if not available!!', font='any 8')],
+            [sg.Frame(title='Videos:', layout=[video_layout])],
+            [sg.Col([[sg.OK(), sg.Cancel()]], justification='right')]
+        ]
+
+        # create window
+        window = sg.Window(title='Playlist download window', layout=layout, finalize=True, margins=(2, 2))
+
+        # set progress bar properties
+        for bar in progress_bars:
+            bar.Widget.config(mode='indeterminate')
+            bar.expand(expand_x=True)
+
+        self.window = window
+        self.playlist = playlist
+        self.video_checkboxes = video_checkboxes
+        self.stream_combos = stream_combos
+        self.progress_bars = progress_bars
+
+    def focus(self):
+        self.window.BringToFront()
+
+    def update_video(self, num):
+        # update some parameters for a selected video
+        vid = self.playlist[num]
+        stream_widget = self.window[f'stream {num}']
+        video_checkbox = self.window[f'video {num}']
+        size_widget = self.window[f'size_text {num}']
+
+        selected = video_checkbox.get()
+        stream_text = stream_widget.get()
+
+        # process video
+        if selected and not vid.processed and not self.active_threads.get(vid.name, None):
+            t = Thread(target=process_video_info, daemon=True, args=(vid,))
+            self.active_threads[vid.name] = t
+            t.start()
+
+        # first check if video has streams
+        if not vid.all_streams:
+            return
+
+        # correct chosen stream values
+        stream = vid.select_stream(name=stream_text)
+        if not stream:
+            stream_widget(vid.selected_stream.name)
+
+        size_widget(size_format(vid.total_size))
+
+    def run(self):
+        # event loop -------------------------------------------------------------------------------------------------
+        window = self.window
+        selected_videos = self.selected_videos
+        playlist = self.playlist
+
+        # while True:
+        event, values = window.read(timeout=100)
+        if event in (None, 'Cancel'):
+            window.close()
+            return
+
+        if event == 'OK':
+            selected_videos.clear()
+            null_videos = []
+            for num, vid in enumerate(playlist):
+                # check if video is selected
+                selected = values[f'video {num}']
+
+                if selected:
+                    # append to chosen videos list
+                    selected_videos.append(vid)
+
+                    # get selected text from stream menu
+                    selected_text = values[f'stream {num}']
+
+                    # get selected stream
+                    stream = vid.select_stream(name=selected_text)
+
+                    # check if video has streams or not
+                    if not stream:
+                        null_videos.append(vid.name)
+
+            # do nothing if there is selected videos which have no streams
+            if null_videos:
+                vid_names = "\n".join(null_videos)
+                sg.popup_ok(f'The following selected videos: \n\n'
+                            f'{vid_names}\n\n'
+                            f'have no streams, please wait until finish loading '
+                            f'or un-select this video and try again')
+            else:
+                # downloading
+                Thread(target=self.download_selected_videos).start()
+
+                # select downloads tab
+                if self.selected_videos:
+                    execute_command("select_tab", tab_name='Downloads')
+
+                self.close()
+
+        elif event == 'Select All':
+            checked = values['Select All']
+
+            # process all other check boxes
+            for num, checkbox in enumerate(self.video_checkboxes):
+                checkbox(checked)
+                self.update_video(num)
+
+        elif event == 'master_stream_combo':
+            master_text = values['master_stream_combo']  # example: mp4 - 1080
+
+            # update all videos stream menus from master stream menu
+            for num, stream_combo in enumerate(self.stream_combos):
+                vid = playlist[num]
+                stream = vid.select_stream(raw_name=master_text)
+                if stream:
+                    # set a matching stream name, note: for example, if master_text is "mp4 - 1080",
+                    # then matching could be "mp4 - 1080 - 40MB" with size included
+                    stream_combo([text for text in vid.stream_menu if master_text in text][0])
+                    self.update_video(num)
+
+        # video checkbox or stream menu events
+        elif event.startswith('stream') or event.startswith('video'):
+            num = int(event.split()[-1])
+            self.update_video(num)
+
+        # update stream menu for processed videos, in case stream menu not yet loaded
+        for num, vid in enumerate(playlist):
+            stream_combo = window[f'stream {num}']
+            if vid.all_streams:
+                if stream_combo.Values != vid.stream_menu:
+                    stream_combo(values=vid.stream_menu)
+
+                    # set current selection to match master combo selection
+                    master_stream_text = values['master_stream_combo']
+
+                    stream = vid.select_stream(raw_name=master_stream_text)
+                    if stream:
+                        stream_combo(master_stream_text)
+                        self.update_video(num)
+                    else:
+                        stream_combo(vid.selected_stream.name)
+
+        # animate progress bars while loading streams
+        for num, bar in enumerate(self.progress_bars):
+            vid = playlist[num]
+            if vid.name in self.active_threads and not vid.processed:
+                bar(visible=True)
+                bar.expand(expand_x=True)
+                bar.Widget['value'] += 10
+            else:
+                bar(visible=False)
+
+        # check terminate flag
+        if config.terminate:
+            self.close()
+
+    def download_selected_videos(self):
+        for vid in self.selected_videos:
+            log(f'download playlist fn> {repr(vid.selected_stream)}, title: {vid.name}')
+            vid.folder = config.download_folder
+
+            # send download request to main window
+            execute_command("start_download", vid, silent=True)
+
+            # give a small pause intervals to prevent cpu surge
+            time.sleep(0.5)
+
+    def close(self):
+        self.window.close()
+
+        # set in active status
+        self.active = False
 
