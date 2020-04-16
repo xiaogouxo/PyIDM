@@ -100,13 +100,17 @@ class MainWindow:
         # set global theme
         self.change_theme()
 
-        # override PySimpleGUI standard buttons' background with artwork
-        # define a decorator function
+        # override PySimpleGUI standard buttons' background with artwork using a decorator function
         def button_decorator(init_func):
             def new_init_func(self, *args, **kwargs):
                 # pre processing arguments
                 if not kwargs.get('font'):
-                    kwargs['font'] = 'any 10 bold'
+                    button_text = kwargs.get('button_text') or args[0] or ' '
+                    # adjust font to let text fit within button bg image boundaries
+                    if len(button_text) < 6:
+                        kwargs['font'] = 'any 10 bold'
+                    else:
+                        kwargs['font'] = 'any 9 bold'  # todo: measuring font will be more practical
 
                 # calling Button __init__() constructor
                 init_func(self, *args, **kwargs)
@@ -182,7 +186,7 @@ class MainWindow:
                 self.window.BringToFront()
                 sg.popup_ok('application is already running', title=config.APP_NAME)
 
-            elif k == 'download':  # receive download requests
+            elif k == 'download':  # todo: tobe removed
                 self.start_download(*v)
 
             elif k == 'popup':
@@ -726,9 +730,7 @@ class MainWindow:
 
             # video events
             elif event == 'pl_download':
-                self.window['pl_download'](disabled=True)
                 self.download_playlist()
-                self.window['pl_download'](disabled=False)
 
             elif event == 'pl_menu':
                 self.playlist_OnChoice(values['pl_menu'])
@@ -2741,10 +2743,9 @@ class PlaylistWindow:
         # while True:
         event, values = window.read(timeout=100)
         if event in (None, 'Cancel'):
-            window.close()
-            return
+            self.close()
 
-        if event == 'OK':
+        elif event == 'OK':
             selected_videos.clear()
             null_videos = []
             for num, vid in enumerate(playlist):
@@ -2851,8 +2852,9 @@ class PlaylistWindow:
             time.sleep(0.5)
 
     def close(self):
-        self.window.close()
-
         # set in active status
         self.active = False
+
+        self.window.close()
+
 

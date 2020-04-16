@@ -36,7 +36,7 @@ def brain(d=None, downloader=None):
         d.status = Status.downloading
 
     log('\n')
-    log(' -*- ' * 35)
+    log('=' * 106)
     log(f'start downloading file: "{d.name}", size: {size_format(d.size)}, to: {d.folder}')
 
     # hls / m3u8 protocols
@@ -89,7 +89,7 @@ def brain(d=None, downloader=None):
 
     # report quitting
     log(f'brain {d.num}: quitting')
-    log(' -*- ' * 35, '\n')
+    log('=' * 106, '\n')
 
 
 def thread_manager(d):

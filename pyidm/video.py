@@ -16,7 +16,7 @@ from urllib.parse import urljoin
 from . import config
 from .downloaditem import DownloadItem, Segment
 from .utils import log, validate_file_name, get_headers, size_format, run_command, size_splitter, get_seg_size, \
-    delete_file, download, process_thumbnail
+    delete_file, download, process_thumbnail, execute_command
 
 # youtube-dl
 ytdl = None  # youtube-dl will be imported in a separate thread to save loading time
@@ -170,11 +170,11 @@ class Video(DownloadItem):
         # update all streams with sorted ones
         all_streams = video_streams + audio_streams + extra_streams
 
-        # make a raw name map to be used with playlist master combo box
+        # create a name map
         names_map = {'mp4_videos': [stream.name for stream in mp4_videos],
-                         'other_videos': [stream.name for stream in other_videos],
-                         'audio_streams': [stream.name for stream in audio_streams],
-                         'extra_streams': [stream.name for stream in extra_streams]}
+                     'other_videos': [stream.name for stream in other_videos],
+                     'audio_streams': [stream.name for stream in audio_streams],
+                     'extra_streams': [stream.name for stream in extra_streams]}
 
         # build menu
         stream_menu = ['● Video streams:                     '] + [stream.name for stream in mp4_videos] + [stream.name for stream in other_videos]  \
@@ -437,7 +437,7 @@ def download_ffmpeg(destination=config.sett_folder):
     d.callback = 'unzip_ffmpeg'
 
     # send download request to main window
-    config.main_window_q.put(('download', (d, False)))
+    execute_command("start_download", d, silent=False)
 
 
 def unzip_ffmpeg():
