@@ -1881,15 +1881,7 @@ class MainWindow:
             window.focus()
 
         else:  # not found
-            # technical limitation of tkinter, can not show more than 1000 item without glitches, or pl_window will not show
-            if len(self.playlist) > 1000:
-                sg.popup_ok('Playlist is more than 1000 videos, \n'
-                            'due to technical limitations will show only first 1000 videos', title='Playlist download')
-                playlist = self.playlist[:1000]
-            else:
-                playlist = self.playlist
-
-            window = PlaylistWindow(playlist)
+            window = PlaylistWindow(self.playlist)
             self.active_windows.append(window)
 
     def download_subtitles(self):
@@ -2537,8 +2529,10 @@ class AboutWindow:
                f'2019-2020'
 
         layout = [[sg.T(msg1)],
-                  [sg.T('https://github.com/pyIDM/pyIDM', key='home_page', font='any 10 underline', enable_events=True)],
-                  [sg.T('email: pyidm2019@gmail.com', key='email', font='any 10 underline', enable_events=True)],
+                  [sg.T('Home page:  '), sg.T('https://github.com/pyIDM/pyIDM', key='home_page', font='any 10 underline', enable_events=True)],
+                  [sg.T('Report a bug:'), sg.T('https://github.com/pyIDM/pyIDM/issues/new', key='new_issue', font='any 10 underline',
+                                               enable_events=True), sg.T('*requires github account', font='any 8')],
+                  [sg.T('Email:'), sg.T('info.pyidm@gmail.com', key='email', font='any 10 underline', enable_events=True)],
                   [sg.T(msg2)],
                   [sg.Ok()]]
 
@@ -2546,6 +2540,7 @@ class AboutWindow:
 
         # set cursor for links
         window['home_page'].set_cursor('hand2')
+        window['new_issue'].set_cursor('hand2')
         window['email'].set_cursor('hand2')
 
         self.window = window
@@ -2562,12 +2557,13 @@ class AboutWindow:
             self.window.close()
 
         elif event == 'home_page':
-            print('clicked homepage')
             webbrowser.open_new('https://github.com/pyIDM/pyIDM')
 
+        elif event == 'new_issue':
+            webbrowser.open_new('https://github.com/pyIDM/pyIDM/issues/new')
+
         elif event == 'email':
-            print('clicked email')
-            clipboard_write('pyidm2019@gmail.com')
+            clipboard_write('info.pyidm@gmail.com')
             sg.PopupOK('email copied to clipboard')
 
 
@@ -2585,10 +2581,6 @@ class PlaylistWindow:
         self.setup()
 
     def setup(self):
-        # # check if playlist is ready
-        # if not self.playlist:
-        #     sg.popup_ok('Playlist is empty, nothing to download :(', title='Playlist download')
-        #     return
 
         # technical limitation of tkinter, can not show more than 1000 item without glitches, or pl_window will not show
         if len(self.playlist) > 1000:
@@ -2609,41 +2601,12 @@ class PlaylistWindow:
             vid_names.append(vid.name)
         del vid_names  # no longer needed, free memory
 
-        # extract video quality (abr for audio and height for video) ----------------------------------------------
-        def extract_quality(text=''):
-            # example: '      ›  mp4 - 1080'
-            quality = text.rsplit(' - ', maxsplit=1)[-1]
-            try:
-                quality = int(quality)
-            except:
-                quality = 0
-            finally:
-                return quality
-
-        # lists for raw names
-        names_map = {'mp4_videos': [], 'other_videos': [], 'audio_streams': [], 'extra_streams': []}
-
-        for vid in playlist:
-            for key in names_map:
-                for name in vid.names_map[key]:
-                    # convert name to raw name ex: mp4 - 1080 - 30MB  to mp4 - 1080
-                    name = name.rsplit(' - ', maxsplit=1)[0]
-                    if name not in names_map[key]:
-                        names_map[key].append(name)
-
-        # sort names based on quality
-        for key in names_map:
-            names_map[key] = sorted(names_map[key], key=extract_quality, reverse=True)
-
-        # build master combo box
-        master_stream_menu = ['● Video streams:                     '] + names_map['mp4_videos'] + names_map['other_videos'] + \
-                             ['', '● Audio streams:                 '] + names_map['audio_streams'] + \
-                             ['', '● Extra streams:                 '] + names_map['extra_streams']
-
         # gui layout ------------------------------------------------------------------------------------------------
         video_checkboxes = []
         progress_bars = []
         stream_combos = []
+
+        master_stream_menu = self.create_master_menu()
 
         general_options_layout = [sg.Checkbox('Select All', enable_events=True, key='Select All'),
                                   sg.T('', size=(15, 1)),
@@ -2706,6 +2669,41 @@ class PlaylistWindow:
 
     def focus(self):
         self.window.BringToFront()
+
+    def create_master_menu(self):
+        # extract video quality (abr for audio and height for video) ----------------------------------------------
+        def extract_quality(text=''):
+            # example: '      ›  mp4 - 1080'
+            quality = text.rsplit(' - ', maxsplit=1)[-1]
+            try:
+                quality = int(quality)
+            except:
+                quality = 0
+            finally:
+                return quality
+
+        # lists for raw names
+        names_map = {'mp4_videos': [], 'other_videos': [], 'audio_streams': [], 'extra_streams': []}
+
+        for vid in self.playlist:
+            for key in names_map:
+                for name in vid.names_map[key]:
+                    # convert name to raw name ex: mp4 - 1080 - 30MB  to mp4 - 1080
+                    name = name.rsplit(' - ', maxsplit=1)[0]
+                    if name not in names_map[key]:
+                        names_map[key].append(name)
+
+        # sort names based on quality
+        for key in names_map:
+            names_map[key] = sorted(names_map[key], key=extract_quality, reverse=True)
+
+        # build master combo box
+        master_stream_menu = ['● Video streams:                     '] + names_map['mp4_videos'] + names_map[
+            'other_videos'] + \
+                             ['', '● Audio streams:                 '] + names_map['audio_streams'] + \
+                             ['', '● Extra streams:                 '] + names_map['extra_streams']
+
+        return master_stream_menu
 
     def update_video(self, num):
         # update some parameters for a selected video
@@ -2825,6 +2823,9 @@ class PlaylistWindow:
                         self.update_video(num)
                     else:
                         stream_combo(vid.selected_stream.name)
+
+                    # should update master playlist
+                    self.window['master_stream_combo'](values=self.create_master_menu(), value=master_stream_text)
 
         # animate progress bars while loading streams
         for num, bar in enumerate(self.progress_bars):
