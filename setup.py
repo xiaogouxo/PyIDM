@@ -34,7 +34,7 @@ setuptools.setup(
     version=version['__version__'],
     scripts=[],  # ['pyIDM.py'], no need since added an entry_points
     author="Mahmoud Elshahat",
-    author_email="pyidm2019@gmail.com",
+    author_email="info.pyidm@gmail.com",
     description="download manager",
     long_description=long_description,
     long_description_content_type="text/markdown",

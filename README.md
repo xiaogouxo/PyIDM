@@ -190,7 +190,7 @@ ChangeLog.txt is included in source code.
 
 # Feedback:
 your feedback is most welcomed by filling a [new issue](https://github.com/pyIDM/pyIDM/issues/new) <br>
-or email me at: pyidm2019@gmail.com <br>
+or email me at: info.pyidm@gmail.com <br>
 
 Author, <br>
 Mahmoud Elshahat, <br>
