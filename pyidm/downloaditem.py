@@ -215,6 +215,9 @@ class DownloadItem:
         self.subtitles = {}
         self.automatic_captions = {}
 
+        # accept html contents
+        self.accept_html = False  # if server sent html contents instead of bytes
+
         # properties names that will be saved on disk
         self.saved_properties = ['id', '_name', 'folder', 'url', 'eff_url', 'playlist_url', 'playlist_title', 'size',
                                  'resumable', 'selected_quality', '_segment_size', '_downloaded', '_status',

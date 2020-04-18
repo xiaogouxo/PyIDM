@@ -376,7 +376,7 @@ class Stream:
 
     @property
     def name(self):
-        return f'      ›  {self.extension} - {self.quality} - {size_format(self.size)}'  # ¤ » ›
+        return f'   › {self.extension} - {self.quality} - {size_format(self.size)} - id:{self.format_id}'  # ¤ » ›
 
     @property
     def raw_name(self):
@@ -649,6 +649,13 @@ def pre_process_hls(d):
     video_m3u8 = download_m3u8(d.eff_url)
     log('audio m3u8:        ', d.audio_url)
     audio_m3u8 = download_m3u8(d.audio_url)
+
+    # save master m3u8 file for debugging
+    if master_m3u8:
+        name = 'master.m3u8'
+        local_file = os.path.join(d.temp_folder, name)
+        with open(os.path.join(d.temp_folder, local_file), 'w') as f:
+            f.write(master_m3u8)
 
     # try again if received bad m3u8 files
     if not video_m3u8:

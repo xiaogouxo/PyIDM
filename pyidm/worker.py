@@ -258,7 +258,7 @@ class Worker:
         if content_type and 'text/html' in content_type:
             # some video encryption keys has content-type 'text/html'
             try:
-                if '<html>' in data.decode('utf-8'):
+                if '<html' in data.decode('utf-8') and not self.d.accept_html:
                     log('worker: received html contents, aborting', log_level=3)
 
                     # report server error to thread manager
