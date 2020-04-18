@@ -1,3 +1,26 @@
+2020.4.17:
+- Critical Bug fix for missing extensions in video filename and failed audio/video
+  merging.
+- Fixed Some "tvp.pl" and other links doesn't work issue #73.
+- Better hls videos processing.
+- Added 'srt' format to subtitle selection, issue #74
+- used art-work icons for all buttons including standard Popup windows.
+- Clickable links in "about window", issue #72
+- dynamic connections manager to avoid server's max. connections error.
+- fixed corrupted file contents if server sent an html instead of bytes, issue #75
+- fixed thread manager quitting while there is segments didn't finish downloading.
+- soft start, connections will be gradually increase over time to reach max.number
+  set by user, this prevent impact on servers/networks, and avoid "service not
+  available" response from server when exceeding multi-connection number set by
+  server.
+- dynamic tooltip for playlist and video quality comboboxes, "note these are only
+  combos that can be scrolled by mouse wheel"
+- added format id to every stream in video quality combobox.
+- Similar streams/video quality which have different language now will be shown.
+- better text display if it is longer than the widget, with 3 dots in the middle
+  of string.
+
+
 2020.4.8:
 - website authentication option, issue #65.
 - subtitles download,  issue #70
