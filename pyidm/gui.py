@@ -10,6 +10,7 @@ import gc
 import webbrowser
 
 import PySimpleGUI as sg
+import tkinter.font
 import os
 import time
 import copy
@@ -29,9 +30,10 @@ from .iconsbase64 import *
 # todo: this module needs some clean up
 
 # gui Settings
+default_font = 'Helvetica 10' # Helvetica font is guaranteed to work on all operating systems
 config.all_themes = natural_sort(sg.ListOfLookAndFeelValues())
-sg.SetOptions(icon=APP_ICON, font='Helvetica 10', auto_size_buttons=True, progress_meter_border_depth=0,
-              border_width=1)  # Helvetica font is guaranteed to work on all operating systems
+sg.SetOptions(icon=APP_ICON, font=default_font, auto_size_buttons=True, progress_meter_border_depth=0,
+              border_width=1)
 
 # transparent color for button which mimic current background, will be used as a parameter, ex. **transparent
 transparent = {}
@@ -66,7 +68,7 @@ class MainWindow:
         self.m_bar_lock = Lock()  # a lock to access a video quality progress bar from threads
         self._m_bar = 0  # main playlist progress par value
         self._s_bar = 0  # individual video streams progress bar value
-        self.stream_menu_selection = ''
+        # self.stream_menu_selection = ''
 
         # download
         self.pending = deque()
@@ -180,7 +182,7 @@ class MainWindow:
                 self.url_text_change()
 
             elif k == 'monitor':
-                self.window.Element('monitor').Update(v)
+                self.window['monitor'](v)
 
             elif k == 'visibility' and v == 'show':
                 self.window.BringToFront()
@@ -306,7 +308,7 @@ class MainWindow:
                    ],
 
                   # table
-                  [sg.Table(values=headings, headings=headings, num_rows=9, justification='left', auto_size_columns=False,
+                  [sg.Table(values=headings, headings=headings, num_rows=10, justification='left', auto_size_columns=False,
                             vertical_scroll_only=False, key='table', enable_events=True, font='any 9',
                             right_click_menu=table_right_click_menu, max_col_width=100, col_widths=col_widths,
                             row_height=20
@@ -497,6 +499,45 @@ class MainWindow:
         # use "undo='false'" disable tkinter caching to fix issue #59 "solve huge memory usage and app crash"
         self.window['log'].Widget.config(wrap='none', undo='false')
 
+        # bind mouse wheel for ('pl_menu' and 'stream_menu') only combo boxes, the rest combos are better without it
+        def handler1(event):
+            # pl_menu_mouse_wheel_handler
+            try:
+                i = event.widget.current()
+
+                i = i - 1 if event.delta > 0 else i + 1
+                if 0 <= i < len(self.playlist):
+                    event.widget.current(i)
+                    self.playlist_OnChoice(event.widget.get())
+            except Exception as e:
+                print(e)
+                pass
+
+        def handler2(event):
+            # stream_menu_mouse_wheel_handler
+            try:
+                i = event.widget.current()
+
+                i = i - 1 if event.delta > 0 else i + 1
+                if 0 <= i < len(self.video.stream_menu):
+                    event.widget.current(i)
+                    self.stream_OnChoice(event.widget.get())
+            except Exception as e:
+                print(e)
+                pass
+
+        def bind_mouse_wheel(combo, handler):
+            # bind combobox to mousewheel
+            # for windows
+            self.window[combo].Widget.bind("<MouseWheel>", handler, add="+")
+
+            # for linux
+            self.window[combo].Widget.bind("<ButtonPress-4>", handler, add="+")
+            self.window[combo].Widget.bind("<ButtonPress-5>", handler, add="+")
+
+        bind_mouse_wheel('pl_menu', handler1)
+        bind_mouse_wheel('stream_menu', handler2)
+
     def restart_window(self):
         # stor log temporarily
         log = self.window['log'].get()
@@ -566,7 +607,7 @@ class MainWindow:
             # download list / table
             table_values = [[self.format_cell_data(key, getattr(d, key, '')) for key in self.d_headers] for d in
                             self.d_list]
-            self.window.Element('table').Update(values=table_values[:])
+            self.window['table'](values=table_values[:])
 
             if self.d_list:
                 # select first row by default if nothing previously selected
@@ -671,6 +712,36 @@ class MainWindow:
         global transparent
         transparent = dict(button_color=('black', sg.theme_background_color()), border_width=0)
 
+    def fit_text(self, text, req_width):  # todo: replace all truncate usage with this method
+        """
+        truncate a text to a required width
+        :param text: text to be truncated
+        :param req_width: int, the required text width in characters
+        :return: truncated text
+        """
+
+        # create tkinter font object, must pass a root window
+        font = tkinter.font.Font(root=self.window.TKroot.master, font=default_font)
+
+        # convert width in characters to width in pixels, tkinter uses '0' zero character as a default unit
+        req_width = font.measure('0' * req_width)  # convert to pixels
+
+        # measure text in pixels
+        text_width = font.measure(text)
+
+        if text_width <= req_width:
+            return text
+
+        # iterate and uses less character count until we get the target width
+        length = len(text)
+        while True:
+            # will truncate text from the middle, see utils.truncate() for more info
+            processed_text = truncate(text, length)
+            if font.measure(processed_text) <= req_width or length <= 0:
+                return processed_text
+
+            length -= 1
+
     # endregion
 
     def run(self):
@@ -679,9 +750,10 @@ class MainWindow:
         timer2 = 0
         one_time = True
         while True:
+            # todo: we could use callback style for some of these if's
             event, values = self.window.Read(timeout=50)
             self.event, self.values = event, values
-            # if event != '__TIMEOUT__': print(event, values)
+            # if event not in ('__TIMEOUT__', 'table'): print(event, values)
 
             if event is None:
                 self.main_frameOnClose()
@@ -751,7 +823,7 @@ class MainWindow:
                 if values['folder']:
                     config.download_folder = os.path.abspath(values['folder'])
                 else:  # in case of empty entries
-                    self.window.Element('folder').Update(config.download_folder)
+                    self.window['folder'](config.download_folder)
 
             elif event == 'name':
                 self.d.name = validate_file_name(values['name'])
@@ -1093,7 +1165,15 @@ class MainWindow:
                 today = t.tm_yday  # today number in the year range (1 to 366)
 
                 try:
-                    days_since_last_update = today - config.last_update_check
+                    # need to count for negative values
+                    # example if config.last_update_check = 350 and today is 2 in new year, the result will be minus
+                    if today >= config.last_update_check:
+                        days_since_last_update = today - config.last_update_check
+                    else:
+                        # we can do: days_since_last_update = 360 - config.last_update_check + today, or
+                        # just simply check for update to be safe
+                        days_since_last_update = config.update_frequency
+
                     log('days since last check for update:', days_since_last_update, 'day(s).')
 
                     if days_since_last_update >= config.update_frequency:
@@ -1310,10 +1390,15 @@ class MainWindow:
 
     def download_btn(self, downloader=None):
 
-        if self.disabled:
-            sg.popup_ok('Nothing to download', 'it might be a web page or invalid url link',
+        if not self.d:
+            sg.popup_ok('Nothing to download', 'it might be invalid url link',
                         'check your link or click "Retry"')
-            return
+        elif self.d.type == 'text/html':
+            response = sg.popup_ok_cancel('Contents might be a web page / html, Download anyway?')
+            if response != 'OK':
+                return
+            else:
+                self.d.accept_html = True
 
         # make sure video streams loaded successfully before start downloading
         if self.video and not self.video.all_streams:
@@ -1511,7 +1596,7 @@ class MainWindow:
         """playlist progress bar"""
         self._m_bar = value if value <= 100 else 100
         try:
-            self.window['m_bar'].UpdateBar(value)
+            self.window['m_bar'].update_bar(value)
         except:
             pass
 
@@ -1525,7 +1610,7 @@ class MainWindow:
         """playlist progress bar"""
         self._s_bar = value if value <= 100 else 100
         try:
-            self.window['s_bar'].UpdateBar(value)
+            self.window['s_bar'].update_bar(value)
         except:
             pass
 
@@ -1539,6 +1624,8 @@ class MainWindow:
         """video playlist menu"""
         self._pl_menu = rows
         try:
+            # fit text into widget
+            rows = [self.fit_text(text, self.window['pl_menu'].Size[0]) for text in rows]
             self.window['pl_menu'](values=rows)
         except:
             pass
@@ -1553,6 +1640,8 @@ class MainWindow:
         """video streams menu"""
         self._stream_menu = rows
         try:
+            # fit text into widget
+            rows = [self.fit_text(text, self.window['stream_menu'].Size[0]) for text in rows]
             self.window['stream_menu'](values=rows)
         except:
             pass
@@ -1570,6 +1659,10 @@ class MainWindow:
 
             # animate bar
             self.animate_bar = False
+
+            # reset tooltips
+            self.set_tooltip(widget=self.window['pl_menu'], tooltip_text='')
+            self.set_tooltip(widget=self.window['stream_menu'], tooltip_text='')
         except:
             pass
 
@@ -1791,13 +1884,17 @@ class MainWindow:
             # set playlist label
             num = len(self.playlist)
 
+            # set video frame title ex: "Playlist (20) videos:"
             self.window['playlist_frame'](value=f'Playlist ({num} {"videos" if num > 1 else "video"}):')
 
             # update playlist menu items
             self.pl_menu = [str(i + 1) + '- ' + video.title for i, video in enumerate(self.playlist)]
 
-            # choose first item in playlist by triggering playlist_onchoice
-            self.playlist_OnChoice(self.pl_menu[0])
+            # choose first item in playlist
+            # self.playlist_OnChoice(self.pl_menu[0])
+            self.window['pl_menu'].Widget.current(0)
+            self.playlist_OnChoice()
+
         except Exception as e:
             log('update_pl_menu()> error', e)
 
@@ -1806,20 +1903,25 @@ class MainWindow:
             self.stream_menu = self.video.stream_menu
 
             # select first stream
-            selected_text = self.video.all_streams[0].name
-            self.window['stream_menu'](selected_text)
-            self.stream_OnChoice(selected_text)
+            # selected_text = self.video.all_streams[0].name
+            # set_text = self.stream_menu[1]
+            # self.window['stream_menu'](set_text)
+
+            # set current selection to first item in video streams ex: ['video streams:', 'mp4 - 1080 - 10MB', ... ]
+            self.window['stream_menu'].Widget.current(1)  # tkinter set current selected index
+            self.stream_OnChoice()
 
         except:
             pass
 
-    def playlist_OnChoice(self, selected_text):
-        if selected_text not in self.pl_menu:
-            return
+    def playlist_OnChoice(self, selected_text=None):
+        # if selected_text not in self.pl_menu:
+        #     return
 
         try:
-            index = self.pl_menu.index(selected_text)
-            self.video = self.playlist[index]
+            # index = self.pl_menu.index(selected_text)
+            selected_index = self.window['pl_menu'].Widget.current()  # tkinter return current selected index
+            self.video = self.playlist[selected_index]
 
             # set current download item as self.video
             self.d = self.video
@@ -1840,31 +1942,86 @@ class MainWindow:
                 self.s_bar = 100
                 self.animate_bar = False
 
+            # set tooltip
+            self.set_tooltip(widget=self.window['pl_menu'], tooltip_text=self.pl_menu[selected_index])
+
         except Exception as e:
             log('playlist_OnChoice()> error', e)
 
-    def stream_OnChoice(self, selected_text):
+    def stream_OnChoice(self, selected_text=None):
 
         try:
             # Find and update video selected stream, use index not selected text, to avoid selecting wrong stream
             #  in case of similar / repeated names in stream menu
             selected_index = self.window['stream_menu'].Widget.current()  # tkinter return current selected index
 
-            stream = self.video.select_stream(index=selected_index, update=True)
-
-            # reselect a previous valid value if selected text is not actual stream selection i.e. "Video Streams:" or empty line
-            if not stream:
-                self.window['stream_menu'](self.stream_menu_selection)
-            else:
-                self.stream_menu_selection = selected_text
+            # update video's selected stream
+            self.video.select_stream(index=selected_index, update=True)
 
             # display format Id
             self.window['format_id']('Format Id: ' + self.video.selected_stream.format_id)
 
             # update gui
             self.update_gui()
-        except:
-            pass
+
+            # set dynamic tooltip -----------------------------------------------------------------------------------
+            self.set_tooltip(widget=self.window['stream_menu'], tooltip_text=self.stream_menu[selected_index])
+
+        except Exception as e:
+            log('stream_OnChoice', e, log_level=3)
+
+    def set_tooltip(self, widget=None, tooltip_text=None):
+        """
+        change and Show tooltip without moving mouse pointer, correct tooltip glitches in case of dynamic changes
+        :param widget: PySimpleGUI Element object, example window['mywidget']
+        :param tooltip_text: text
+        :return: None
+        """
+
+        try:
+            # disable tooltip if no text
+            if not tooltip_text:
+                if widget.TooltipObject:
+                    # widget still bounded to ToolTip.enter/leave , we can unbind it or simply mask schedule function
+                    # for more details refer to PySimpleGUI "ToolTip" class
+                    # self.widget.bind("<Enter>", self.enter)
+                    # self.widget.bind("<Leave>", self.leave)
+                    widget.TooltipObject.schedule = lambda: None
+                return
+
+            # add leading and trailing space for tooltip to look more natural
+            tooltip_text = f' {tooltip_text} '
+
+            # first hide any existing tooltip if any.
+            if widget.TooltipObject:
+                # call leave() "unschedule and hide" will cancel any sched. tooltip and hide current
+                widget.TooltipObject.leave()
+
+            # set new tooltip
+            widget.set_tooltip(tooltip_text)
+
+            # get current mouse x, y
+            root = self.window.TKroot
+            x, y = root.winfo_pointerxy()
+
+            # find current widget under mouse
+            widget_under_mouse = root.winfo_containing(x, y)
+
+            # if our widget under mouse will show tooltip
+            if widget.Widget == widget_under_mouse:
+                # x,y position of our widget
+                w_x, w_y = widget_under_mouse.winfo_rootx(), widget_under_mouse.winfo_rooty()
+
+                # assign relative x, y to tooltip object
+                widget.TooltipObject.x = x - w_x
+                widget.TooltipObject.y = y - w_y
+
+                # show tooltip now
+                widget.TooltipObject.showtip()
+
+        except Exception as e:
+            log('set_tooltip()', e, log_level=3)
+
 
     def download_playlist(self):
         # check if playlist is ready
@@ -1970,7 +2127,7 @@ class MainWindow:
 
     # region General
     def url_text_change(self):
-        url = self.window.Element('url').get().strip()
+        url = self.window['url'].get().strip()
 
         if url == self.url:
             return
@@ -2290,7 +2447,7 @@ class DownloadWindow:
               f"live connections: {self.d.live_connections} - remaining parts: {self.d.remaining_parts}\n"
 
         try:
-            self.window.Element('out').Update(value=out)
+            self.window['out'](value=out)
 
             # progress bar mode depend on available downloaditem progress property
             if self.d.progress:
@@ -2623,7 +2780,7 @@ class PlaylistWindow:
                 vid.selected_stream = vid.all_streams[0]
 
             # video names with check boxes
-            video_checkbox = sg.Checkbox(truncate(vid.title, 62), size=(62, 1), tooltip=vid.title, font='any 8',
+            video_checkbox = sg.Checkbox(truncate(vid.title, 62), size=(55, 1), tooltip=vid.title, font='any 8',
                                          key=f'video {num}', enable_events=True)
             video_checkboxes.append(video_checkbox)
 
@@ -2633,7 +2790,7 @@ class PlaylistWindow:
 
             # streams / quality menu
             stream_combo = sg.Combo(values=vid.stream_menu, default_value=vid.stream_menu[1], font='any 8',
-                                    size=(25, 1), key=f'stream {num}', enable_events=True, pad=(5, 0))
+                                    size=(30, 1), key=f'stream {num}', enable_events=True, pad=(5, 0))
             stream_combos.append(stream_combo)
 
             # build one row from the above
