@@ -26,13 +26,14 @@ from . import video
 from .video import Video, check_ffmpeg, download_ffmpeg, unzip_ffmpeg, get_ytdl_options, process_video_info
 from .downloaditem import DownloadItem
 from .iconsbase64 import *
+from .traybar import SysTrayIcon
 
 # todo: this module needs some clean up
 
 # gui Settings
 default_font = 'Helvetica 10' # Helvetica font is guaranteed to work on all operating systems
 config.all_themes = natural_sort(sg.ListOfLookAndFeelValues())
-sg.SetOptions(icon=APP_ICON, font=default_font, auto_size_buttons=True, progress_meter_border_depth=0,
+sg.SetOptions(icon=APP_ICON2, font=default_font, auto_size_buttons=True, progress_meter_border_depth=0,
               border_width=1)
 
 # transparent color for button which mimic current background, will be used as a parameter, ex. **transparent
@@ -2676,22 +2677,28 @@ class AboutWindow:
         self.active = True  # if False, object will be removed from "active windows list"
 
         # create gui
-        msg1 = f'PyIDM is a python open source (Internet Download Manager) with multi-connections, high speed engine, \n ' \
+        msg1 = f'PyIDM is a python open source (Internet Download Manager) with multi-connections, high speed engine, \n' \
                f'it downloads general files and videos from youtube and tons of other streaming websites.\n' \
-               f'Developed in Python, based on "pyCuRL/libcurl", "youtube_dl", and "PySimpleGUI" \n ' \
-               f'your feedback is most welcomed on'
+               f'Developed in Python, based on "pyCuRL/libcurl", "youtube_dl", and "PySimpleGUI" \n' \
+               f'your feedback is most welcomed on:'
 
         msg2 = f'Author,\n' \
                f'Mahmoud Elshahat\n' \
                f'2019-2020'
 
         layout = [[sg.T(msg1)],
-                  [sg.T('Home page:  '), sg.T('https://github.com/pyIDM/pyIDM', key='home_page', font='any 10 underline', enable_events=True)],
-                  [sg.T('Report a bug:'), sg.T('https://github.com/pyIDM/pyIDM/issues/new', key='new_issue', font='any 10 underline',
+                  [sg.T('', font='any 1')],
+                  [sg.T('Home page:', size=(10, 1)), sg.T('https://github.com/pyIDM/pyIDM', key='home_page', font='any 10 underline', enable_events=True)],
+                  [sg.T('Issues:', size=(10, 1)),
+                   sg.T('https://github.com/pyIDM/pyIDM/issues', key='issues', font='any 10 underline',
+                        enable_events=True)],
+
+                  [sg.T('Report a bug:', size=(10, 1)), sg.T('https://github.com/pyIDM/pyIDM/issues/new', key='new_issue', font='any 10 underline',
                                                enable_events=True), sg.T('*requires github account', font='any 8')],
-                  [sg.T('Email:'), sg.T('info.pyidm@gmail.com', key='email', font='any 10 underline', enable_events=True)],
+                  [sg.T('Email:', size=(10, 1)), sg.T('info.pyidm@gmail.com', key='email', font='any 10 underline', enable_events=True)],
+                  [sg.T('', font='any 1')],
                   [sg.T(msg2)],
-                  [sg.Ok()]]
+                  [sg.Column([[sg.Ok()]], justification='right')]]
 
         window = sg.Window(f'about PyIDM', layout, finalize=True)
 
@@ -2715,6 +2722,9 @@ class AboutWindow:
 
         elif event == 'home_page':
             webbrowser.open_new('https://github.com/pyIDM/pyIDM')
+
+        elif event == 'issues':
+            webbrowser.open_new('https://github.com/pyIDM/pyIDM/issues?q=is%3Aissue+')
 
         elif event == 'new_issue':
             webbrowser.open_new('https://github.com/pyIDM/pyIDM/issues/new')
