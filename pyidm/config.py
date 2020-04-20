@@ -96,6 +96,10 @@ log_entry = ''  # one log line
 max_log_size = 1024 * 1024 * 5  # 5 MB
 log_level = DEFAULT_LOG_LEVEL  # standard=1, verbose=2, debug=3
 log_recorder_q = Queue()
+
+# systray
+close_action = 'close'  # close or minimize to systray
+close_warning = True
 # -------------------------------------------------------------------------------------
 
 # folders

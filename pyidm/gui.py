@@ -447,12 +447,26 @@ class MainWindow:
                 sg.B('', key='rollback_ytdl_update', image_data=delete_icon, **transparent,
                      tooltip=' rollback update '),
             ],
-            [sg.T('', size=(1, 12))]
+            [sg.T('', size=(1, 14))]  # fill lines
+        ]
+
+        systray = [
+            [sg.T(' ', size=(100, 1))],
+            [sg.T('SysTray:')],
+            [sg.T('*currently systray is available on windows only, support for other operating systems in progress.', font='any 9')],
+            [sg.T('', size=(1, 1))],
+            [sg.T('Action when closing Main Window:'), sg.Combo(values=['minimize', 'close'], size=(10, 1), enable_events=True,
+                   key='close_action', default_value=config.close_action), sg.T('to systray.')],
+            [sg.Checkbox('Show warning when closing Main Window', default=config.close_warning,
+                         key='close_warning', enable_events=True )],
+
+            [sg.T('', size=(1, 1))]
         ]
 
         layout = [
             [sg.T('', size=(70, 1)), ],
-            [sg.TabGroup([[sg.Tab('General ', general), sg.Tab('Network', network), sg.Tab('Update  ', update)]],
+            [sg.TabGroup([[sg.Tab('General ', general), sg.Tab('Network', network), sg.Tab('Update  ', update),
+                           sg.Tab('SysTray ', systray)]],
                          tab_location='lefttop')]
         ]
 
@@ -3067,21 +3081,6 @@ class SysTray:
         self.systray = None
         self._hover_text = None
 
-    def run(self):
-        try:
-            # first check operating system, if not windows will just quit
-            if config.operating_system == 'Windows':
-                menu_options = (("Start / Show", None, self.show_main_window), ("Minimize to Systray", None, self.hide_main_window),
-                                ("Close to Systray", None, self.close_main_window),)
-                self.systray = SysTrayIcon(self.tray_icon, "PyIDM", menu_options, on_quit=self.quit)
-                self.systray.start()
-            else:
-                log('Systray is not supported on:', config.operating_system)
-                return
-            self.active = True
-        except Exception as e:
-            log('systray: - run() - ', e)
-
     def show_main_window(self, systray):
         execute_command('un_hide')
         config.main_q.put('start_main_window')
@@ -3111,6 +3110,22 @@ class SysTray:
             return self._tray_icon
         except Exception as e:
             log('systray: tray_icon', e)
+
+    def run(self):
+        try:
+            # first check operating system, if not windows will just quit
+            if config.operating_system == 'Windows':
+                menu_options = (("Start / Show", None, self.show_main_window), ("Minimize to Systray", None, self.hide_main_window),
+                                ("Close to Systray", None, self.close_main_window),)
+                self.systray = SysTrayIcon(self.tray_icon, "PyIDM", menu_options, on_quit=self.quit)
+                self.systray.start()
+            else:
+                log('Systray is not supported on:', config.operating_system)
+                return
+            self.active = True
+        except Exception as e:
+            log('systray: - run() - ', e)
+            self.active = False
 
     def update(self, hover_text=None, icon=None):
 
