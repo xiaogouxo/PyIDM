@@ -36,7 +36,7 @@ from .utils import *
 from . import config
 from . import setting
 from . import video
-from .gui import MainWindow
+from .gui import MainWindow, SysTray
 
 
 def clipboard_listener():
@@ -108,12 +108,39 @@ def main():
     # run clipboard monitor thread
     Thread(target=clipboard_listener, daemon=True).start()
 
+    # run systray
+    systray = SysTray()
+    Thread(target=systray.run, daemon=True).start()
+
     # start gui main loop
     main_window = MainWindow(config.d_list)
-    main_window.run()
 
-    # set global termination flag
-    config.terminate = True
+    # create main run loop
+    while True:
+
+        if main_window.active:
+            main_window.run()
+            sleep_time = 0.01
+        else:
+            sleep_time = 0.5
+
+        # sleep a little to save cpu resources
+        time.sleep(sleep_time)
+
+        if systray.active:
+            state = 'PyIDM is running' if main_window.active else 'PyIDM is off'
+            systray.update(hover_text=state)
+
+        # read Main queue
+        for _ in range(config.main_q.qsize()):
+            value = config.main_q.get()
+            if value == 'start_main_window' and not main_window.active:
+                main_window = MainWindow(config.d_list)
+
+        # global termination flag
+        if config.terminate or (not main_window.active and not systray.active):
+            systray.shutdown()
+            break
 
     # Save setting to disk
     setting.save_setting()

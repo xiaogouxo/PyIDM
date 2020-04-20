@@ -120,6 +120,7 @@ active_downloads = set()  # indexes for active downloading items
 d_list = []
 
 # queues
+main_q = Queue()  # used by pyIDM.py
 main_window_q = Queue()  # queue for Main application window
 commands_q = Queue()  # queue to access MainWindow internal methods from threads
 error_q = Queue()  # used by workers to report server refuse connection errors

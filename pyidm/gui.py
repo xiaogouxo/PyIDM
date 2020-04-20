@@ -8,7 +8,6 @@
 """
 import gc
 import webbrowser
-
 import PySimpleGUI as sg
 import tkinter.font
 import os
@@ -26,7 +25,16 @@ from . import video
 from .video import Video, check_ffmpeg, download_ffmpeg, unzip_ffmpeg, get_ytdl_options, process_video_info
 from .downloaditem import DownloadItem
 from .iconsbase64 import *
-from .traybar import SysTrayIcon
+
+# imports for systray icon, currently systray run only on python
+if config.operating_system == 'Windows':
+    try:
+        from .traybar import SysTrayIcon
+        from PIL import Image
+        import io
+        import base64
+    except Exception as e:
+        log('import error', e, log_level=2)
 
 # todo: this module needs some clean up
 
@@ -43,6 +51,8 @@ transparent = {}
 class MainWindow:
     def __init__(self, d_list):
         """This is the main application user interface window"""
+        # active flage, if true this window will run in main application loop in "pyIDM.py"
+        self.active = True
 
         # current download_item
         self.d = DownloadItem()
@@ -93,6 +103,11 @@ class MainWindow:
 
         # side bar
         self.animate_bar = True
+
+        # timers
+        self.timer1 = 0
+        self.timer2 = 0
+        self.one_time = True
 
         # initial setup
         self.setup()
@@ -747,21 +762,19 @@ class MainWindow:
 
     def run(self):
         """main loop"""
-        timer1 = 0
-        timer2 = 0
-        one_time = True
-        while True:
+
+        if self.active:
             # todo: we could use callback style for some of these if's
             event, values = self.window.Read(timeout=50)
             self.event, self.values = event, values
             # if event not in ('__TIMEOUT__', 'table'): print(event, values)
 
             if event is None:
-                self.main_frameOnClose()
-                break
+                self.close()
+                # break
 
             # keyboard events ---------------------------------------------------
-            if event.startswith('Up:'): # up arrow example "Up:38"
+            elif event.startswith('Up:'): # up arrow example "Up:38"
                 # get current element with focus
                 focused_elem = self.window.find_element_with_focus()
 
@@ -769,7 +782,7 @@ class MainWindow:
                 if self.window['table'] == focused_elem and self.selected_row_num > 0:
                     self.select_row(self.selected_row_num - 1)
 
-            if event.startswith('Down:'):  # down arrow example "Down:40"
+            elif event.startswith('Down:'):  # down arrow example "Down:40"
                 # get current element with focus
                 focused_elem = self.window.find_element_with_focus()
 
@@ -778,9 +791,9 @@ class MainWindow:
                     self.select_row(self.selected_row_num + 1)
 
             # Mouse events MouseWheel:Up, MouseWheel:Down -----------------------
-            if event == 'MouseWheel:Up':
+            elif event == 'MouseWheel:Up':
                 pass
-            if event == 'MouseWheel:Down':
+            elif event == 'MouseWheel:Down':
                 pass
 
             # Main Tab ----------------------------------------------------------------------------------------
@@ -1133,8 +1146,8 @@ class MainWindow:
                     pass
 
             # Run every n seconds -----------------------------------------------------------------------------------
-            if time.time() - timer1 >= 0.5:
-                timer1 = time.time()
+            if time.time() - self.timer1 >= 0.5:
+                self.timer1 = time.time()
 
                 # gui update
                 self.update_gui()
@@ -1155,8 +1168,8 @@ class MainWindow:
             self.active_windows = [win for win in self.active_windows if win.active]  # update active list
 
             # run one time, reason this is here not in setup, is to minimize gui loading time
-            if one_time:
-                one_time = False
+            if self.one_time:
+                self.one_time = False
                 
                 # check availability of ffmpeg in the system or in same folder with this script
                 self.ffmpeg_check()
@@ -1184,8 +1197,8 @@ class MainWindow:
                 except Exception as e:
                     log('MainWindow.run()>', e)
 
-            if time.time() - timer2 >= 1:
-                timer2 = time.time()
+            if time.time() - self.timer2 >= 1:
+                self.timer2 = time.time()
                 # update notification
                 if self.new_version_available:
                     self.animate_update_note()
@@ -2186,21 +2199,38 @@ class MainWindow:
         except:
             pass
 
-    def main_frameOnClose(self):
-        # config.terminate = True
-
-        log('main frame closing')
-        self.window.Close()
-
-        # Terminate all downloads before quitting if any is a live
+    def un_hide(self):
+        # log('unhide main window')
         try:
-            for i in self.active_downloads:
-                d = self.d_list[i]
-                d.status = Status.cancelled
+            self.window.un_hide()
         except:
             pass
 
-        # config.clipboard_q.put(('status', Status.cancelled))
+    def hide(self):
+        # log('hiding main window')
+        self.window.hide()
+
+        # close all active windows
+        try:
+            for window in self.active_windows:
+                window.close()
+        except:
+            pass
+
+    def close(self):
+        # log('main window closing')
+        self.window.Close()
+        self.active = False
+
+        # close all active windows
+        try:
+            for window in self.active_windows:
+                window.close()
+        except:
+            pass
+
+        # Force python garbage collector to free up memory
+        gc.collect()
 
     def check_scheduled(self):
         t = time.localtime()
@@ -2387,6 +2417,7 @@ class MainWindow:
     # endregion
 
 
+# Note every window class must have self.active property and close method
 class DownloadWindow:
 
     def __init__(self, d=None):
@@ -2614,8 +2645,7 @@ class SubtitleWindow:
         event, values = self.window.read(timeout=10, timeout_key='_TIMEOUT_')
 
         if event in ('Close', None):
-            self.window.close()
-            self.active = False
+            self.close()
             return
 
         if event == 'Download':
@@ -2669,6 +2699,10 @@ class SubtitleWindow:
         else:
             # enable download button again
             self.window['Download'](disabled=False)
+
+    def close(self):
+        self.window.close()
+        self.active = False
 
 
 class AboutWindow:
@@ -3025,4 +3059,73 @@ class PlaylistWindow:
 
         self.window.close()
 
+
+class SysTray:
+    def __init__(self):
+        self.active = False  # if systray works correctly
+        self._tray_icon = os.path.join(config.sett_folder, 'systray.ico')  # path to icon
+        self.systray = None
+        self._hover_text = None
+
+    def run(self):
+        try:
+            # first check operating system, if not windows will just quit
+            if config.operating_system == 'Windows':
+                menu_options = (("Start / Show", None, self.show_main_window), ("Minimize to Systray", None, self.hide_main_window),
+                                ("Close to Systray", None, self.close_main_window),)
+                self.systray = SysTrayIcon(self.tray_icon, "PyIDM", menu_options, on_quit=self.quit)
+                self.systray.start()
+            else:
+                log('Systray is not supported on:', config.operating_system)
+                return
+            self.active = True
+        except Exception as e:
+            log('systray: - run() - ', e)
+
+    def show_main_window(self, systray):
+        execute_command('un_hide')
+        config.main_q.put('start_main_window')
+
+    def hide_main_window(self, systray):
+        execute_command('hide')
+
+    def close_main_window(self, systray):
+        execute_command('close')
+
+    @property
+    def tray_icon(self):
+        try:
+            if not os.path.isfile(self._tray_icon):
+                # read base64 icon string into io buffer
+                buffer = io.BytesIO(base64.b64decode(APP_ICON2))
+
+                # open buffer by Pillow
+                img = Image.open(buffer)
+
+                # save file to settings folder
+                img.save(self._tray_icon, format='ICO')
+
+                # free memory
+                buffer.close()
+
+            return self._tray_icon
+        except Exception as e:
+            log('systray: tray_icon', e)
+
+    def update(self, hover_text=None, icon=None):
+
+        if hover_text and hover_text != self._hover_text:
+            self._hover_text = hover_text
+            self.systray.update(hover_text=hover_text)
+        if icon:
+            self.systray.update(icon=icon)
+
+    def shutdown(self):
+        self.systray.shutdown()
+
+    def quit(self, systray):
+        """callback when selecting quit from systray menu"""
+        # set global terminate flag
+        config.terminate = True
+        self.active = False
 

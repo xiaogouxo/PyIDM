@@ -694,7 +694,7 @@ def process_thumbnail(url):
 
     # check if pillow module installed and working
     try:
-        # dummy operation will kick in error if module not PIL found
+        # dummy operation will kick in error if module PIL not found
         _ = Image.Image()
     except:
         log('pillow module is missing try to install it to display video thumbnails')
