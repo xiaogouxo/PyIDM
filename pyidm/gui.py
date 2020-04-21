@@ -53,6 +53,7 @@ class MainWindow:
         """This is the main application user interface window"""
         # active flage, if true this window will run in main application loop in "pyIDM.py"
         self.active = True
+        self.hidden = False
 
         # current download_item
         self.d = DownloadItem()
@@ -455,10 +456,19 @@ class MainWindow:
             [sg.T('SysTray:')],
             [sg.T('*currently systray is available on windows only, support for other operating systems in progress.', font='any 9')],
             [sg.T('', size=(1, 1))],
-            [sg.T('Action when closing Main Window:'), sg.Combo(values=['minimize', 'close'], size=(10, 1), enable_events=True,
-                   key='close_action', default_value=config.close_action), sg.T('to systray.')],
-            [sg.Checkbox('Show warning when closing Main Window', default=config.close_warning,
-                         key='close_warning', enable_events=True )],
+            # [sg.T('Action when closing Main Window:')],
+            # [sg.T(' ', size=(30, 1)),
+            [sg.Frame(title='Action when closing Main Window:', layout=[
+                [sg.T(' '), sg.Radio('Close App to systray', group_id='close_action', key='radio_close', enable_events=True),
+                 sg.T('*Shutdown Main process, any activities / downloads will be cancelled', font='any 8')],
+
+                [sg.T(' '), sg.Radio('Minimize App to systray', group_id='close_action', key='radio_minimize', enable_events=True),
+                 sg.T('*Run in background, all activities / downloads will continue to run', font='any 8')],
+
+                [sg.T(' '), sg.Radio('Quit (and close systray)', group_id='close_action', key='radio_quit', enable_events=True),
+                 sg.T('*Shutdown down completely, including systray', font='any 8', size=(100, 1))],
+
+            ])],
 
             [sg.T('', size=(1, 1))]
         ]
@@ -511,14 +521,18 @@ class MainWindow:
         return window
 
     def start_window(self):
+        self.active = True
+        self.hidden = False
+        config.terminate = False
+
         self.window = self.create_window()
         self.window.Finalize()
 
         # expand elements to fit
         elements = ['url', 'name', 'folder', 'm_bar', 'pl_menu', 'file_properties', 'update_note',
                     'stream_menu', 'log']  # elements to be expanded
-        for e in elements:
-            self.window[e].expand(expand_x=True)
+        for element in elements:
+            self.window[element].expand(expand_x=True)
 
         # bind keys events for table, it is tkinter specific
         self.window['table'].Widget.bind("<Button-3>", self.table_right_click)  # right click
@@ -567,6 +581,12 @@ class MainWindow:
 
         bind_mouse_wheel('pl_menu', handler1)
         bind_mouse_wheel('stream_menu', handler2)
+
+        # systray radio buttons, assign default value
+        self.window[f'radio_{config.close_action}'](True)
+
+        # un hide active windows, if any
+        self.un_hide_active_windows()
 
     def restart_window(self):
         # stor log temporarily
@@ -622,6 +642,8 @@ class MainWindow:
             print(e)
 
     def update_gui(self):
+        if self.hidden or not self.active :
+            return
 
         # update Elements
         try:
@@ -777,15 +799,18 @@ class MainWindow:
     def run(self):
         """main loop"""
 
-        if self.active:
+        try:
             # todo: we could use callback style for some of these if's
             event, values = self.window.Read(timeout=50)
             self.event, self.values = event, values
             # if event not in ('__TIMEOUT__', 'table'): print(event, values)
 
             if event is None:
-                self.close()
-                # break
+                # close or hide active windows
+                if config.close_action == 'minimize':
+                    self.hide()
+                else:
+                    self.close()
 
             # keyboard events ---------------------------------------------------
             elif event.startswith('Up:'): # up arrow example "Up:38"
@@ -1148,6 +1173,11 @@ class MainWindow:
             elif event in ['update_pyIDM']:
                 Thread(target=self.update_app, daemon=True).start()
 
+            # systray -------------------------------------------------
+            elif event in ('radio_close', 'radio_minimize', 'radio_quit'):
+                config.close_action = event.replace('radio_', '')
+                print(event, config.close_action)
+
             # log ---------------------------------------------------------------------------------------------------
             elif event == 'log_level':
                 config.log_level = int(values['log_level'])
@@ -1223,6 +1253,9 @@ class MainWindow:
             if time.time() - self.statusbar_timer >= 10:
                 self.statusbar_timer = time.time()
                 self.set_status('')
+
+        except Exception as e:
+            log('Main window - Run()>', e)
 
     # region headers
     def refresh_headers(self, url):
@@ -2050,7 +2083,6 @@ class MainWindow:
         except Exception as e:
             log('set_tooltip()', e, log_level=3)
 
-
     def download_playlist(self):
         # check if playlist is ready
         if not self.playlist:
@@ -2213,35 +2245,57 @@ class MainWindow:
         except:
             pass
 
-    def un_hide(self):
-        # log('unhide main window')
+    def un_hide_active_windows(self):
         try:
-            self.window.un_hide()
+            # un hide all active windows
+            for obj in self.active_windows:
+                obj.window.un_hide()
+        except:
+            pass
+
+    def hide_active_windows(self):
+        try:
+            # hide all active windows
+            for obj in self.active_windows:
+                obj.window.hide()
         except:
             pass
 
     def hide(self):
-        # log('hiding main window')
-        self.window.hide()
+        """close main window and hide other windows"""
+        if config.operating_system != 'Windows':
+            self.close()
+            return
 
-        # close all active windows
-        try:
-            for window in self.active_windows:
-                window.close()
-        except:
-            pass
+        if not self.hidden:
+            self.active = False
+            self.hidden = True
+            notify('PyIDM still running in background', timeout=2)
+
+            # hide active windows
+            self.hide_active_windows()
+
+            # close main window
+            self.window.close()
 
     def close(self):
-        # log('main window closing')
-        self.window.Close()
+        """close window and stop updating"""
         self.active = False
+        self.hidden = True
+        config.terminate = True
 
-        # close all active windows
+        if config.close_action == 'quit':
+            config.shutdown = True
+
+        # close active windows
         try:
-            for window in self.active_windows:
-                window.close()
+            for obj in self.active_windows:
+                obj.close()
         except:
             pass
+
+        # log('main window closing')
+        self.window.close()
 
         # Force python garbage collector to free up memory
         gc.collect()
@@ -2525,6 +2579,7 @@ class DownloadWindow:
     def run(self):
         self.event, self.values = self.window.Read(timeout=self.timeout)
         if self.event in ('cancel', None):
+            log('download window received', self.event)
             if self.d.status not in (Status.error, Status.completed):
                 self.d.status = Status.cancelled
             self.close()
@@ -2541,7 +2596,6 @@ class DownloadWindow:
         self.window.BringToFront()
 
     def close(self):
-        self.event = None
         self.active = False
         self.window.Close()
 
@@ -3081,15 +3135,17 @@ class SysTray:
         self.systray = None
         self._hover_text = None
 
-    def show_main_window(self, systray):
-        execute_command('un_hide')
+    @staticmethod
+    def show_main_window(systray):
         config.main_q.put('start_main_window')
 
-    def hide_main_window(self, systray):
-        execute_command('hide')
+    @staticmethod
+    def minimize_to_systray(systray):
+        config.main_q.put('minimize_to_systray')
 
-    def close_main_window(self, systray):
-        execute_command('close')
+    @staticmethod
+    def close_to_systray(systray):
+        config.main_q.put('close_to_systray')
 
     @property
     def tray_icon(self):
@@ -3115,12 +3171,12 @@ class SysTray:
         try:
             # first check operating system, if not windows will just quit
             if config.operating_system == 'Windows':
-                menu_options = (("Start / Show", None, self.show_main_window), ("Minimize to Systray", None, self.hide_main_window),
-                                ("Close to Systray", None, self.close_main_window),)
+                menu_options = (("Start / Show", None, self.show_main_window), ("Minimize to Systray", None, self.minimize_to_systray),
+                                ("Close to Systray", None, self.close_to_systray),)
                 self.systray = SysTrayIcon(self.tray_icon, "PyIDM", menu_options, on_quit=self.quit)
                 self.systray.start()
             else:
-                log('Systray is not supported on:', config.operating_system)
+                log('Systray is not supported on:', config.operating_system, 'yet!')
                 return
             self.active = True
         except Exception as e:
@@ -3136,11 +3192,15 @@ class SysTray:
             self.systray.update(icon=icon)
 
     def shutdown(self):
-        self.systray.shutdown()
+        try:
+            self.systray.shutdown()
+        except:
+            pass
 
     def quit(self, systray):
         """callback when selecting quit from systray menu"""
         # set global terminate flag
-        config.terminate = True
         self.active = False
+        config.terminate = True
+        config.shutdown = True
 

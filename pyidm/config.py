@@ -52,7 +52,8 @@ operating_system = platform.system()
 operating_system_info = f'{platform.platform()} - {platform.machine()}'   # i.e. Win7-64 and Vista-32
 
 # application exit flag
-terminate = False 
+terminate = False  # for main window and downloads
+shutdown = False  # complete shutdown flag
 
 # settings parameters
 
@@ -98,8 +99,8 @@ log_level = DEFAULT_LOG_LEVEL  # standard=1, verbose=2, debug=3
 log_recorder_q = Queue()
 
 # systray
-close_action = 'close'  # close or minimize to systray
-close_warning = True
+close_action = 'close'  # close, minimize, to systray, or quit and close systray
+# close_warning = True
 # -------------------------------------------------------------------------------------
 
 # folders
@@ -134,7 +135,7 @@ settings_keys = ['current_theme', 'monitor_clipboard', 'show_download_window', '
                  'segment_size', 'show_thumbnail', 'speed_limit', 'max_concurrent_downloads', 'max_connections',
                  'update_frequency', 'last_update_check', 'proxy', 'proxy_type', 'raw_proxy', 'enable_proxy',
                  'log_level', 'download_folder', 'process_big_playlist_on_demand', 'manually_select_dash_audio',
-                 'use_referer', 'referer_url']
+                 'use_referer', 'referer_url', 'close_action']
 
 # -------------------------------------------------------------------------------------
 

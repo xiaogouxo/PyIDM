@@ -29,13 +29,36 @@ from . import config
 from .iconsbase64 import thumbnail_icon
 
 
-def notify(msg, title='', timeout=5):
-    # show os notification at tray icon area
-    # title=f'{APP_NAME}'
+def notify(message='', title='', timeout=5, app_icon='', ticker='', toast=False,  app_name=config.APP_TITLE):
+    """
+    show os notification at systray area
+
+    :param title: Title of the notification
+    :param message: Message of the notification
+    :param app_name: Name of the app launching this notification
+    :param app_icon: Icon to be displayed along with the message
+    :param timeout: time to display the message for, defaults to 10
+    :param ticker: text to display on status bar as the notification arrives
+    :param toast: simple Android message instead of full notification
+
+    :type title: str
+    :type message: str
+    :type app_name: str
+    :type app_icon: str
+    :type timeout: int
+    :type ticker: str
+    :type toast: bool
+
+    .. note::
+       When called on Windows, ``app_icon`` has to be a path to
+       a file in .ICO format.
+    """
+
     try:
-        plyer.notification.notify(title=title, message=msg, app_name=config.APP_TITLE)
+        plyer.notification.notify(title=title, message=message, app_name=app_name, app_icon='', timeout=timeout,
+                                  ticker='', toast=False)
     except Exception as e:
-        handle_exceptions(f'plyer notification: {e}')
+        log(f'plyer notification: {e}')
 
 
 def handle_exceptions(error):
@@ -83,7 +106,7 @@ def set_curl_options(c):
     c.setopt(pycurl.LOW_SPEED_TIME, 30)
 
     # verbose
-    if config.log_level >= 3:
+    if config.log_level >= 4:
         c.setopt(pycurl.VERBOSE, 1)
     else:
         c.setopt(pycurl.VERBOSE, 0)
@@ -664,7 +687,7 @@ def log_recorder():
 
     while True:
         time.sleep(0.1)
-        if config.terminate:
+        if config.shutdown:
             break
 
         # read log messages from queue

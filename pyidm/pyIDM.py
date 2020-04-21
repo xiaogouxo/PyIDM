@@ -58,7 +58,7 @@ def clipboard_listener():
             old_data = new_data
 
         # monitor global termination flag
-        if config.terminate:
+        if config.shutdown:
             break
 
         time.sleep(0.2)
@@ -93,6 +93,7 @@ def main():
     # quit if there is previous instance of this script already running
     if not singleApp():
         print('previous instance already running')
+        config.shutdown = True
         return
 
     log('current working directory:', config.current_directory)
@@ -128,18 +129,23 @@ def main():
         time.sleep(sleep_time)
 
         if systray.active:
-            state = 'PyIDM is running' if main_window.active else 'PyIDM is off'
+            state = 'PyIDM is running' if not config.terminate else 'PyIDM is off'
             systray.update(hover_text=state)
 
         # read Main queue
         for _ in range(config.main_q.qsize()):
             value = config.main_q.get()
             if value == 'start_main_window' and not main_window.active:
-                main_window = MainWindow(config.d_list)
+                main_window.start_window()
+            elif value == 'minimize_to_systray':
+                main_window.hide()
+            elif value == 'close_to_systray':
+                main_window.close()
 
-        # global termination flag
-        if config.terminate or (not main_window.active and not systray.active):
+        # global shutdown flag
+        if config.shutdown or (not main_window.active and not systray.active):
             systray.shutdown()
+            config.shutdown = True
             break
 
     # Save setting to disk
