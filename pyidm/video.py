@@ -576,7 +576,7 @@ def pre_process_hls(d):
 
     # parse m3u8 lines
     def parse_m3u8_line(line):
-        """extract attributes from m3u8 lines, source youtube-dl"""
+        """extract attributes from m3u8 lines, source youtube-dl, utils.py"""
         info = {}
         for (key, val) in re.findall(r'(?P<key>[A-Z0-9-]+)=(?P<val>"[^"]+"|[^",]+)(?:,|$)', line):
             if val.startswith('"'):
@@ -585,66 +585,42 @@ def pre_process_hls(d):
         return info
 
     # some servers will change the contents of m3u8 file dynamically, not sure how often
-    # ex: https://dplaynordics-vod-46.akamaized.net/dplaydni/116512/0/hls/9522050004/playlist.m3u8?hdnts=st=1586495396~exp=1586581796~acl=/dplaydni/116512/0/hls/9522050004/*~hmac=98d5f6e98cd7f91aaab5f2760dcc329e733fc7cd31e200c4bb4538705f66c261
+    # ex: https://www.dplay.co.uk/show/help-my-house-is-haunted/video/the-skirrid-inn/EHD_259618B
     # solution is to download master manifest again, then get the updated media url
     # X-STREAM: must have BANDWIDTH, X-MEDIA: must have TYPE, GROUP-ID, NAME=="language name"
     # tbr for videos calculated by youtube-dl == BANDWIDTH/1000
-    def get_correct_m3u8_url(master_m3u8_doc, media='video'):
-        if not master_m3u8_doc:
-            return False
 
-        lines = master_m3u8_doc.splitlines()
-        for i, line in enumerate(lines):
-            found = False
+    def refresh_urls(m3u8_doc, m3u8_url):
+        # using youtube-dl internal function
+        extract_m3u8_formats = ytdl.extractor.common.InfoExtractor._parse_m3u8_formats
 
-            # skip non media lines
-            if '#EXT-X-MEDIA' not in line and '#EXT-X-STREAM-INF' not in line:
-                continue
+        # get formats list [{'format_id': 'hls-160000mp4a.40.2-spa', 'url': 'http://ex.com/exp=15...'}, ...]
+        # what we need is format_id and url
+        formats = extract_m3u8_formats(None, m3u8_doc, m3u8_url, m3u8_id='hls')  # not sure about  m3u8_id='hls'
+        for item in formats:
+            url = item.get('url')
+            # url = urljoin(d.manifest_url, url)
+            format_id = item.get('format_id')
 
-            # get a dictionary of attributes from line
-            # examples:
-            # {'TYPE': 'AUDIO', 'GROUP-ID': '160000mp4a.40.2', 'LANGUAGE': 'eng', 'NAME': 'eng'}
-            # {'BANDWIDTH': '233728', 'AVERAGE-BANDWIDTH': '233728', 'RESOLUTION': '320x180', 'FRAME-RATE': '25.000', 'VIDEO-RANGE': 'SDR', 'CODECS': 'avc1.42C015,mp4a.40.2', 'AUDIO': '64000mp4a.40.2'}
-            info = parse_m3u8_line(line)
+            # get format id without m3u8-id "hls-"
+            stripped_format_id = format_id.replace('hls-', '') if format_id.startswith('hls-') else format_id
 
-            if media == 'video':
+            # video check
+            if d.format_id == format_id or stripped_format_id in d.format_id:
+                # print('old video url, new video url:\n', d.eff_url, '\n', url)
+                d.eff_url = url
 
-                if d.resolution == info.get('RESOLUTION') != None  or str(int(d.tbr * 1000)) == info.get('BANDWIDTH') != None or \
-                        info.get('TYPE') == 'VIDEO' and info.get('GROUP-ID') in d.format_id:
-
-                    print("d.resolution,  info.get('RESOLUTION'):", d.resolution, info.get('RESOLUTION'))
-                    print("str(d.tbr * 1000), info.get('BANDWIDTH'):", str(int(d.tbr * 1000)), info.get('BANDWIDTH'))
-                    print("info.get('TYPE'), info.get('GROUP-ID'), d.format_id:", info.get('TYPE'), info.get('GROUP-ID'),
-                          d.format_id)
-
-                    found = True
-                    log('found video match line', line)
-                else:
-                    found = False
-
-            if media == 'audio':
-                if info.get('TYPE') == 'AUDIO' and info.get('GROUP-ID') in d.audio_format_id:
-                    print("d.audio_format_id, info.get('GROUP-ID'):", d.audio_format_id, info.get('GROUP-ID'))
-                    found = True
-                    log('found audio match line', line)
-                else:
-                    found = False
-
-            if found:
-                # url maybe in same line with "URI" notation or at the next line
-                match = re.search(r'URI="(.*)"', line)
-                if match:
-                    url = match.group(1)
-                elif not lines[i + 1].startswith('#'):
-                    url = lines[i + 1]
-                else:
-                    return False
-
-                correct_url = urljoin(d.manifest_url, url)
-                return correct_url
+            # audio check
+            if d.audio_format_id == format_id or stripped_format_id in d.audio_format_id:
+                # print('old video url, new video url:\n', d.audio_url, '\n', url)
+                d.audio_url = url
 
     log('master manifest:   ', d.manifest_url)
     master_m3u8 = download_m3u8(d.manifest_url)
+
+    # get fresh urls
+    refresh_urls(master_m3u8, d.manifest_url)
+
     log('video m3u8:        ', d.eff_url)
     video_m3u8 = download_m3u8(d.eff_url)
     log('audio m3u8:        ', d.audio_url)
@@ -656,28 +632,6 @@ def pre_process_hls(d):
         local_file = os.path.join(d.temp_folder, name)
         with open(os.path.join(d.temp_folder, local_file), 'w') as f:
             f.write(master_m3u8)
-
-    # try again if received bad m3u8 files
-    if not video_m3u8:
-        eff_url = get_correct_m3u8_url(master_m3u8, media='video')
-        log('correct video m3u8:', eff_url)
-        if not eff_url:
-            log('pre_process_hls()> Failed to get correct video m3u8 url, quitting!')
-            return False
-        else:
-            d.eff_url = eff_url
-            video_m3u8 = download_m3u8(d.eff_url)
-
-    if 'dash' in d.subtype_list and not audio_m3u8:
-        eff_url = get_correct_m3u8_url(master_m3u8, media='audio')
-        log('correct audio m3u8:', eff_url)
-
-        if not eff_url:
-            log('pre_process_hls()> Failed to get correct audio m3u8 url, quitting!')
-            return False
-        else:
-            d.audio_url = eff_url
-            audio_m3u8 = download_m3u8(d.audio_url)
 
     # save remote m3u8 files to disk
     with open(os.path.join(d.temp_folder, 'remote_video.m3u8'), 'w') as f:
