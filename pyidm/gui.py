@@ -1222,11 +1222,11 @@ class MainWindow:
                 self.ffmpeg_check()
 
                 # print last check for update
-                if config.last_update_check < 0:
+                if config.update_frequency < 0:
                     log('check for update is disabled!')
 
             # check for update block, negative values for config.last_update_check mean never check for update
-            if config.last_update_check >= 0 and time.time() - self.check_for_update_timer >= 60:
+            if config.update_frequency >= 0 and time.time() - self.check_for_update_timer >= 60:
                 self.check_for_update_timer = time.time()
 
                 t = time.localtime()
