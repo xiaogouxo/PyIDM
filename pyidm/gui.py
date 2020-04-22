@@ -538,8 +538,8 @@ class MainWindow:
 
         # bind keys events for table, it is tkinter specific
         self.window['table'].Widget.bind("<Button-3>", self.table_right_click)  # right click
-        self.window['table'].bind('<Double-Button-1>', '_double_clicked')  # double click
-        self.window['table'].bind('<Return>', '_enter_key')  # Enter key
+        self.window['table'].bind('<Double-Button-1>', '_double_clicked')  # will generate event "table_double_clicked"
+        self.window['table'].bind('<Return>', '_enter_key')  # will generate event "table_enter_key"
 
         # log text, disable word wrap
         # use "undo='false'" disable tkinter caching to fix issue #59 "solve huge memory usage and app crash"
@@ -556,8 +556,7 @@ class MainWindow:
                     event.widget.current(i)
                     self.playlist_OnChoice(event.widget.get())
             except Exception as e:
-                print(e)
-                pass
+                log('playlist menu handler', e, log_level=3)
 
         def handler2(event):
             # stream_menu_mouse_wheel_handler
@@ -565,17 +564,15 @@ class MainWindow:
                 i = event.widget.current()
 
                 i = i - 1 if event.delta > 0 else i + 1
-                if 0 <= i < len(self.video.stream_menu):
+                if 0 <= i < len(self.video.stream_menu if self.video else ''):
                     event.widget.current(i)
                     self.stream_OnChoice(event.widget.get())
             except Exception as e:
-                print(e)
-                pass
+                log('stream menu handler', e, log_level=3)
 
         def bind_mouse_wheel(combo, handler):
             # bind combobox to mousewheel
-            # for windows
-            self.window[combo].Widget.bind("<MouseWheel>", handler, add="+")
+            self.window[combo].Widget.bind("<MouseWheel>", handler, add="+")  # for windows
 
             # for linux
             self.window[combo].Widget.bind("<ButtonPress-4>", handler, add="+")
