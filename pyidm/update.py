@@ -64,7 +64,8 @@ def get_changelog():
     # url = new_release_url
 
     # get BytesIO object
-    buffer = download(url)
+    log('check for PyIDM latest version ...')
+    buffer = download(url, verbose=False)
 
     if buffer:
         # convert to string
@@ -91,7 +92,8 @@ def check_for_ytdl_update():
     url = 'https://github.com/ytdl-org/youtube-dl/raw/master/youtube_dl/version.py'
 
     # get BytesIO object
-    buffer = download(url)
+    log('check for youtube-dl latest version on Github...')
+    buffer = download(url, verbose=False)
 
     if buffer:
         # convert to string

@@ -109,6 +109,7 @@ class MainWindow:
         self.timer1 = 0
         self.timer2 = 0
         self.one_time = True
+        self.check_for_update_timer = time.time() - 55  # run interval is 60 seconds, use 'time.time() - 55' to make first start after 5 seconds
 
         # initial setup
         self.setup()
@@ -432,25 +433,6 @@ class MainWindow:
 
         ]
 
-        update = [
-            [sg.T(' ', size=(100, 1))],
-            [sg.T('Check for update every:'),
-             sg.Combo([1, 7, 30], default_value=config.update_frequency, size=(4, 1),
-                      key='update_frequency', enable_events=True), sg.T('day(s).')],
-            [
-                sg.B('', key='update_pyIDM', image_data=refresh_icon, **transparent, tooltip='check for update'),
-                sg.T(f'PyIDM version = {config.APP_VERSION}', size=(50, 1), key='pyIDM_version_note'),
-            ],
-            [
-                sg.B('', key='update_youtube_dl', image_data=refresh_icon, **transparent,
-                     tooltip=' check for update '),
-                sg.T('Youtube-dl version = 00.00.00', size=(50, 1), key='youtube_dl_update_note'),
-                sg.B('', key='rollback_ytdl_update', image_data=delete_icon, **transparent,
-                     tooltip=' rollback update '),
-            ],
-            [sg.T('', size=(1, 14))]  # fill lines
-        ]
-
         systray = [
             [sg.T(' ', size=(100, 1))],
             [sg.T('SysTray:')],
@@ -473,10 +455,30 @@ class MainWindow:
             [sg.T('', size=(1, 1))]
         ]
 
+        update = [
+            [sg.T(' ', size=(100, 1))],
+            [sg.T('Check for update:'),
+             sg.Combo(list(config.update_frequency_map.keys()), default_value=[k for k, v in config.update_frequency_map.items() if v == config.update_frequency][0],
+                      size=(15, 1), key='update_frequency', enable_events=True)],
+            [
+                sg.B('', key='update_pyIDM', image_data=refresh_icon, **transparent, tooltip='check for update'),
+                sg.T(f'PyIDM version = {config.APP_VERSION}', size=(50, 1), key='pyIDM_version_note'),
+            ],
+            [
+                sg.B('', key='update_youtube_dl', image_data=refresh_icon, **transparent,
+                     tooltip=' check for update '),
+                sg.T('Youtube-dl version = 00.00.00', size=(50, 1), key='youtube_dl_update_note'),
+                sg.B('', key='rollback_ytdl_update', image_data=delete_icon, **transparent,
+                     tooltip=' rollback youtube-dl update '),
+            ],
+            [sg.T('', size=(1, 14))]  # fill lines
+        ]
+
+        # layout ----------------------------------------------------------------------------------------------------
         layout = [
             [sg.T('', size=(70, 1)), ],
-            [sg.TabGroup([[sg.Tab('General ', general), sg.Tab('Network', network), sg.Tab('Update  ', update),
-                           sg.Tab('SysTray ', systray)]],
+            [sg.TabGroup([[sg.Tab('General ', general), sg.Tab('Network', network), sg.Tab('SysTray ', systray),
+                           sg.Tab('Update  ', update)]],
                          tab_location='lefttop')]
         ]
 
@@ -1161,7 +1163,8 @@ class MainWindow:
             # update -------------------------------------------------
             elif event == 'update_frequency':
                 selected = values['update_frequency']
-                config.update_frequency = selected  # config.update_frequency_map[selected]
+                config.update_frequency = config.update_frequency_map[selected]  # selected
+                print('config.update_frequency:', config.update_frequency)
 
             elif event == 'update_youtube_dl':
                 self.update_ytdl()
@@ -1218,28 +1221,42 @@ class MainWindow:
                 # check availability of ffmpeg in the system or in same folder with this script
                 self.ffmpeg_check()
 
-                # check_for_update
+                # print last check for update
+                if config.last_update_check < 0:
+                    log('check for update is disabled!')
+
+            # check for update block, negative values for config.last_update_check mean never check for update
+            if config.last_update_check >= 0 and time.time() - self.check_for_update_timer >= 60:
+                self.check_for_update_timer = time.time()
+
                 t = time.localtime()
                 today = t.tm_yday  # today number in the year range (1 to 366)
 
-                try:
-                    # need to count for negative values
-                    # example if config.last_update_check = 350 and today is 2 in new year, the result will be minus
-                    if today >= config.last_update_check:
-                        days_since_last_update = today - config.last_update_check
-                    else:
-                        # we can do: days_since_last_update = 360 - config.last_update_check + today, or
-                        # just simply check for update to be safe
-                        days_since_last_update = config.update_frequency
+                if config.last_update_check == 0:  # no setting.cfg file found / fresh start
+                    config.last_update_check = today
+                else:
+                    try:
+                        if today < config.last_update_check:  # new year
+                            days_since_last_update = today + 366 - config.last_update_check
+                        else:
+                            days_since_last_update = today - config.last_update_check
 
-                    log('days since last check for update:', days_since_last_update, 'day(s).')
-
-                    if days_since_last_update >= config.update_frequency:
-                        Thread(target=self.check_for_update, daemon=True).start()
-                        Thread(target=self.check_for_ytdl_update, daemon=True).start()
-                        config.last_update_check = today
-                except Exception as e:
-                    log('MainWindow.run()>', e)
+                        if days_since_last_update >= config.update_frequency:
+                            log('days since last check for update:', days_since_last_update, 'day(s).')
+                            log('asking user permission to check for update')
+                            response = sg.PopupOKCancel('PyIDM reminder to check for updates!',
+                                                        f'days since last check: {days_since_last_update} day(s).',
+                                                        'you can change frequency or disable check for update from settings\n', title='Reminder')
+                            if response == 'OK':
+                                Thread(target=self.check_for_update, daemon=True).start()
+                                # Thread(target=self.check_for_ytdl_update, daemon=True).start()
+                                config.last_update_check = today
+                            else:
+                                config.last_update_check = 0
+                                log('check for update cancelled by user, next reminder will be after',
+                                    config.update_frequency, 'day(s).')
+                    except Exception as e:
+                        log('MainWindow.run()>', e)
 
             if time.time() - self.timer2 >= 1:
                 self.timer2 = time.time()
@@ -2456,13 +2473,14 @@ class MainWindow:
 
     def check_for_ytdl_update(self):
         config.ytdl_LATEST_VERSION = update.check_for_ytdl_update()
+        log('youtube-dl, latest version = ', config.ytdl_LATEST_VERSION, ' - current version = ', config.ytdl_VERSION)
 
     def update_ytdl(self):
         current_version = config.ytdl_VERSION
         latest_version = config.ytdl_LATEST_VERSION or update.check_for_ytdl_update()
         if latest_version:
             config.ytdl_LATEST_VERSION = latest_version
-            log('youtube-dl update, latest version = ', latest_version, ' - current version = ', current_version)
+            log('youtube-dl, latest version = ', latest_version, ' - current version = ', current_version)
 
             if latest_version != current_version:
                 # select log tab
