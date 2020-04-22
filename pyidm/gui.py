@@ -1639,11 +1639,10 @@ class MainWindow:
                     run_command(cmd)
             else:
                 # linux
-                cmd = f'xdg-open "folder"'
-                # os.system(cmd)
+                cmd = f'xdg-open "{folder}"'
                 run_command(cmd)
         except Exception as e:
-            handle_exceptions(e)
+            log('Main window> open_file_location>', e, log_level=3)
 
     def refresh_link_btn(self):
         if self.selected_row_num is None:
@@ -2637,6 +2636,7 @@ class SubtitleWindow:
         self.selected_subs = {}
         self.threads = []
         self.threads_num = 0
+        self.enable_download = True
 
         self.setup()
 
@@ -2693,19 +2693,6 @@ class SubtitleWindow:
         # set focus on first checkbox, button focus is not looking good
         self.window['lang_0'].set_focus()
 
-    def update_subtitles(self):
-        d = self.d
-        subtitles = {}
-
-        # download master m3u8 file
-        m3u8_doc = download_m3u8(d.eff_url)
-
-        if m3u8_doc:
-            log('parsing subs')
-            subtitles = parse_subtitles(m3u8_doc, d.manifest_url)
-
-        return subtitles
-
     def focus(self):
         self.window.BringToFront()
 
@@ -2758,35 +2745,36 @@ class SubtitleWindow:
 
         if event == 'Download':
             # disable download button
-            self.window['Download'](disabled=True)
+            if self.enable_download:
+                self.enable_download = False
 
-            # reset selected subtitles
-            self.selected_subs.clear()
+                # reset selected subtitles
+                self.selected_subs.clear()
 
-            # get selected subs,
-            # subtitles = {language1:[sub1, sub2, ...], language2: [sub1, ...]}, where sub = {'url': 'xxx', 'ext': 'xxx'}
-            for i, lang in enumerate(self.subtitles):
-                if values[f'lang_{i}']:  # selected language checkbox, true if selected
-                    # get selected extension
-                    ext = values[f'ext_{i}']
+                # get selected subs,
+                # subtitles = {language1:[sub1, sub2, ...], language2: [sub1, ...]}, where sub = {'url': 'xxx', 'ext': 'xxx'}
+                for i, lang in enumerate(self.subtitles):
+                    if values[f'lang_{i}']:  # selected language checkbox, true if selected
+                        # get selected extension
+                        ext = values[f'ext_{i}']
 
-                    # language subs list
-                    lang_subs = self.subtitles[lang]
+                        # language subs list
+                        lang_subs = self.subtitles[lang]
 
-                    # get url
-                    url = [sub['url'] for sub in lang_subs if sub['ext'] == ext][0]
-                    name = f'{os.path.splitext(self.d.target_file)[0]}_{lang}.{ext}'
+                        # get url
+                        url = [sub['url'] for sub in lang_subs if sub['ext'] == ext][0]
+                        name = f'{os.path.splitext(self.d.target_file)[0]}_{lang}.{ext}'
 
-                    self.selected_subs[name] = url
+                        self.selected_subs[name] = url
 
-            # download selected self.subtitles in separate threads
-            self.threads = []
-            for file_name, url in self.selected_subs.items():
-                log('downloading subtitle', file_name)
-                t = Thread(target=self.download_subtitle, args=(url, file_name))
-                self.threads.append(t)
-                t.start()
-            self.threads_num = len(self.threads)
+                # download selected self.subtitles in separate threads
+                self.threads = []
+                for file_name, url in self.selected_subs.items():
+                    log('downloading subtitle', file_name)
+                    t = Thread(target=self.download_subtitle, args=(url, file_name))
+                    self.threads.append(t)
+                    t.start()
+                self.threads_num = len(self.threads)
 
         # check download threads and update progress bar
         if self.threads:
@@ -2802,11 +2790,27 @@ class SubtitleWindow:
                 self.set_cursor()
 
                 # notify user
-                sg.popup_ok('Done downloading subtitles at:', self.d.folder)
+                window = sg.Window('Subtitles', [[sg.T(f'Done downloading subtitles at: {self.d.folder}')], [sg.Ok(), sg.B('Show me')]])
+                event, values = window()
+                if event == 'Show me':
+                    try:
+                        if config.operating_system == 'Windows':
+
+                            os.startfile(self.d.folder)
+
+                        else:
+                            # linux
+                            cmd = f'xdg-open "{self.d.folder}"'
+                            run_command(cmd)
+                    except Exception as e:
+                        log(e)
+
+                window.close()
+
 
         else:
             # enable download button again
-            self.window['Download'](disabled=False)
+            self.enable_download = True
 
     def close(self):
         self.window.close()
