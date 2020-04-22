@@ -22,7 +22,8 @@ from .config import Status
 from . import update
 from .brain import brain
 from . import video
-from .video import Video, check_ffmpeg, download_ffmpeg, unzip_ffmpeg, get_ytdl_options, process_video_info
+from .video import Video, check_ffmpeg, download_ffmpeg, unzip_ffmpeg, get_ytdl_options, process_video_info, \
+    download_m3u8, parse_subtitles
 from .downloaditem import DownloadItem
 from .iconsbase64 import *
 
@@ -2116,6 +2117,17 @@ class MainWindow:
             self.active_windows.append(window)
 
     def download_subtitles(self):
+        # for hls videos: if there is no subtitle, will try to find one
+        if not self.d.subtitles and 'hls' in self.d.subtype_list:
+            log('trying to get a subtitle')
+
+            # download master m3u8 file
+            m3u8_doc = download_m3u8(self.d.manifest_url)
+
+            if m3u8_doc:
+                log('parsing subs')
+                self.d.subtitles = parse_subtitles(m3u8_doc, self.d.manifest_url)
+
         if not (self.d.subtitles or self.d.automatic_captions):
             sg.PopupOK("No Sub's available")
             return
@@ -2680,6 +2692,19 @@ class SubtitleWindow:
 
         # set focus on first checkbox, button focus is not looking good
         self.window['lang_0'].set_focus()
+
+    def update_subtitles(self):
+        d = self.d
+        subtitles = {}
+
+        # download master m3u8 file
+        m3u8_doc = download_m3u8(d.eff_url)
+
+        if m3u8_doc:
+            log('parsing subs')
+            subtitles = parse_subtitles(m3u8_doc, d.manifest_url)
+
+        return subtitles
 
     def focus(self):
         self.window.BringToFront()

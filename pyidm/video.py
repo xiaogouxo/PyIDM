@@ -556,40 +556,11 @@ def pre_process_hls(d):
         except:
             return False
 
-    # download m3u8 files ----------------------------------------------------------------------------------------
-    def download_m3u8(url):
-        # download the manifest from m3u8 file descriptor located at url
-        buffer = download(url, verbose=False)  # get BytesIO object
-
-        if buffer:
-            # convert to string
-            buffer = buffer.getvalue().decode()
-
-            # verify file is m3u8 format
-            if '#EXT' in repr(buffer):
-                return buffer
-
-        log('pre_process_hls()> received invalid m3u8 file from server')
-        if config.log_level >= 3:
-            log('\n---------------------------------------\n', buffer, '\n---------------------------------------\n')
-        return None
-
-    # parse m3u8 lines
-    def parse_m3u8_line(line):
-        """extract attributes from m3u8 lines, source youtube-dl, utils.py"""
-        info = {}
-        for (key, val) in re.findall(r'(?P<key>[A-Z0-9-]+)=(?P<val>"[^"]+"|[^",]+)(?:,|$)', line):
-            if val.startswith('"'):
-                val = val[1:-1]
-            info[key] = val
-        return info
-
     # some servers will change the contents of m3u8 file dynamically, not sure how often
     # ex: https://www.dplay.co.uk/show/help-my-house-is-haunted/video/the-skirrid-inn/EHD_259618B
     # solution is to download master manifest again, then get the updated media url
     # X-STREAM: must have BANDWIDTH, X-MEDIA: must have TYPE, GROUP-ID, NAME=="language name"
     # tbr for videos calculated by youtube-dl == BANDWIDTH/1000
-
     def refresh_urls(m3u8_doc, m3u8_url):
         # using youtube-dl internal function
         extract_m3u8_formats = ytdl.extractor.common.InfoExtractor._parse_m3u8_formats
@@ -626,12 +597,16 @@ def pre_process_hls(d):
     log('audio m3u8:        ', d.audio_url)
     audio_m3u8 = download_m3u8(d.audio_url)
 
-    # save master m3u8 file for debugging
+    # save master m3u8 file for debugging, and update subtitles
     if master_m3u8:
         name = 'master.m3u8'
         local_file = os.path.join(d.temp_folder, name)
         with open(os.path.join(d.temp_folder, local_file), 'w') as f:
             f.write(master_m3u8)
+
+        # if there is no subtitles will check m3u8 file for any
+        if not d.subtitles:
+            d.subtitles = parse_subtitles(master_m3u8, d.manifest_url)
 
     # save remote m3u8 files to disk
     with open(os.path.join(d.temp_folder, 'remote_video.m3u8'), 'w') as f:
@@ -786,6 +761,95 @@ def convert_audio(d):
         return False
     else:
         return True
+
+
+# parse m3u8 lines
+def parse_m3u8_line(line):
+    """extract attributes from m3u8 lines, source youtube-dl, utils.py"""
+    # get a dictionary of attributes from line
+    # examples:
+    # {'TYPE': 'AUDIO', 'GROUP-ID': '160000mp4a.40.2', 'LANGUAGE': 'eng', 'NAME': 'eng'}
+    # {'BANDWIDTH': '233728', 'AVERAGE-BANDWIDTH': '233728', 'RESOLUTION': '320x180', 'FRAME-RATE': '25.000', 'VIDEO-RANGE': 'SDR', 'CODECS': 'avc1.42C015,mp4a.40.2', 'AUDIO': '64000mp4a.40.2'}
+
+    info = {}
+    for (key, val) in re.findall(r'(?P<key>[A-Z0-9-]+)=(?P<val>"[^"]+"|[^",]+)(?:,|$)', line):
+        if val.startswith('"'):
+            val = val[1:-1]
+        info[key] = val
+    return info
+
+
+def parse_subtitles(m3u8_doc, m3u8_url):
+    # check subtitles in master m3u8, for some reasons youtube-dl doesn't recognize subtitles in m3u8 files
+    # link: https://www.dplay.co.uk/show/ghost-loop/video/dead-and-breakfast/EHD_297528B
+    # github issue: https://github.com/pyIDM/pyIDM/issues/77
+    # if youtube-dl fixes this problem in future, there is no need for this batch
+    subtitles = {}
+    lines = m3u8_doc.splitlines()
+    for i, line in enumerate(lines):
+        info = parse_m3u8_line(line)
+
+        # example line with subtitle: #EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="100wvtt.vtt",LANGUAGE="en",NAME="en",AUTOSELECT=YES,DEFAULT=NO,FORCED=NO,URI="exp=1587480854~ac....."
+        # example parsed info: {'TYPE': 'SUBTITLES', 'GROUP-ID': '100wvtt.vtt', 'LANGUAGE': 'en', 'NAME': 'en', 'AUTOSELECT': 'YES', 'DEFAULT': 'NO', 'FORCED': 'NO', 'URI': 'exp=1587480854~ac.....'}
+        if info.get('TYPE', '').lower() in ('subtitle', 'subtitles'):
+            # subtitles = {language1:[sub1, sub2, ...], language2: [sub1, ...]}, where sub = {'url': 'http://x.com/s2', 'ext': 'vtt'}
+            language = info.get('LANGUAGE') or info.get('NAME') or f'sub{i}'
+            url = info.get('URI')
+            if not url: continue
+
+            # get absolute url
+            url = urljoin(m3u8_url, url)
+
+            # url might refer to another m3u8 file :(
+            sub_m3u8 = download_m3u8(url)
+            if sub_m3u8:
+                # will exract first url we see
+                lines = sub_m3u8.splitlines()
+                sub_url = ''
+                for i, line in enumerate(lines):
+                    if line.startswith('#EXT-X-MEDIA'):
+                        info = parse_m3u8_line(line)
+                        sub_url = info.get('URI')
+                    elif line.startswith('#EXTINF'):
+                        sub_url = lines[i + 1]
+
+                    if sub_url:
+                        url = urljoin(m3u8_url, sub_url)
+                        break
+                    else:
+                        continue
+
+            # get extension
+            group_id = info.get('GROUP-ID', '')  # 'GROUP-ID': '100wvtt.vtt'
+            ext = os.path.splitext(group_id)[-1] if group_id else 'vtt'
+            # remove "." from extension
+            ext = ext.replace('.', '')
+
+            # add sub
+            subtitles.setdefault(language, [])  # set default key value if not exist
+            subtitles[language].append({'url': url, 'ext': ext})
+            print("{'url': url, 'ext': ext}:", {'url': url, 'ext': ext})
+
+    return subtitles
+
+
+# download m3u8 files ----------------------------------------------------------------------------------------
+def download_m3u8(url):
+    # download the manifest from m3u8 file descriptor located at url
+    buffer = download(url, verbose=False)  # get BytesIO object
+
+    if buffer:
+        # convert to string
+        buffer = buffer.getvalue().decode()
+
+        # verify file is m3u8 format
+        if '#EXT' in repr(buffer):
+            return buffer
+
+    log('received invalid m3u8 file from server')
+    if config.log_level >= 3:
+        log('\n---------------------------------------\n', buffer, '\n---------------------------------------\n')
+    return None
 
 
 
