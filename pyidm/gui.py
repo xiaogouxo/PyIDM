@@ -952,9 +952,11 @@ class MainWindow:
                                f'Total size: {size_format(d.total_size)} \n' \
                                f'Status: {d.status} \n' \
                                f'Resumable: {d.resumable} \n' \
-                               f'Type: {d.type} \n' \
+                               f'Type: {d.type} - {"-".join(d.subtype_list)}\n' \
                                f'Protocol: {d.protocol} \n' \
-                               f'Webpage url: {d.url}'
+                               f'Selected quality: {d.selected_quality}\n' \
+                               f'Webpage url: {d.url}\n' \
+                               f'Playlist url: {d.playlist_url}'
 
                         sg.popup_scrolled(text, title='File properties')
                 except Exception as e:
@@ -1343,9 +1345,9 @@ class MainWindow:
         """
 
         if d is None:
-            return
+            return 'cancelled'
 
-        # check for ffmpeg availability in case this is a dash video
+        # check for ffmpeg availability in case this is a dash video or hls video
         if 'dash' in d.subtype_list or 'hls' in d.subtype_list:
             # log('Dash video detected')
             if not self.ffmpeg_check():
@@ -1445,7 +1447,7 @@ class MainWindow:
         # ------------------------------------------------------------------
 
         else:  # new file
-            print('new file')
+            log('fresh file download')
             # generate unique id number for each download
             d.id = len(self.d_list)
 
@@ -1861,6 +1863,9 @@ class MainWindow:
                 if info.get('_type') == 'playlist' or 'entries' in info:
                     log('youtube-func()> start processing playlist')
 
+                    # set playlist url
+                    self.d.playlist_url = self.d.url
+
                     # videos info
                     pl_info = list(info.get('entries'))
 
@@ -1898,6 +1903,7 @@ class MainWindow:
                     processed_videos = 0
 
                     if self.playlist:
+                        # create threads to get videos info
                         while True:
                             # big playlist
                             if config.process_big_playlist_on_demand and playlist_length > config.big_playlist_length:

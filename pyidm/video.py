@@ -233,7 +233,7 @@ class Video(DownloadItem):
             raise TypeError('value must be a Stream object')
 
         self._selected_stream = stream
-        self.selected_quality = stream.raw_name
+        self.selected_quality = stream.name
 
         self.update_param()
 
