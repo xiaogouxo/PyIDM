@@ -277,7 +277,16 @@ def time_format(t, tail=''):
         return t
 
 
-def log(*args, log_level=1, start='>> ', end='\n'):
+def log(*args, log_level=1, start='>> ', end='\n', showpopup=False):
+    """
+    print messages to stdout and log widget in main menu thru main window queue
+    :param args: comma separated messages to be printed
+    :param log_level: used to filter messages
+    :param start: prefix appended to start of string
+    :param end: tail of string
+    :param showpopup: if true will show popup gui message
+    :return:
+    """
     if log_level > config.log_level:
         return
 
@@ -293,6 +302,10 @@ def log(*args, log_level=1, start='>> ', end='\n'):
         config.log_entry = text
         config.log_recorder_q.put(text + end)
         config.main_window_q.put(('log', text + end))
+
+        # show popup
+        if showpopup:
+            popup(text)
     except Exception as e:
         print(e)
 

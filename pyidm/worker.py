@@ -251,6 +251,9 @@ class Worker:
 
             self.report_not_completed()
 
+            # report server error to thread manager
+            error_q.put(error)
+
     def write(self, data):
         """write to file"""
 

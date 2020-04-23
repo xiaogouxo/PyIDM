@@ -553,7 +553,8 @@ def pre_process_hls(d):
     if not os.path.isdir(d.temp_folder):
         try:
             os.makedirs(d.temp_folder)
-        except:
+        except Exception as e:
+            log('HLS pre processing Failed:', e, log_level=2)
             return False
 
     # some servers will change the contents of m3u8 file dynamically, not sure how often

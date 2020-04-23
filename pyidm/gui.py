@@ -323,8 +323,8 @@ class MainWindow:
                             [sg.ProgressBar(100, size=(20, 10), key='si_bar'), sg.T(' ', size=(10, 1), key='si_percent')]])]
 
         table_right_click_menu = ['Table', ['!Options for selected file:', '---', 'Open File', 'Open File Location',
-                                            '▶ Watch while downloading', 'copy webpage url', 'copy download url',
-                                            '⏳ Schedule download', '⏳ Cancel schedule!', 'properties']]
+                                            '▶ Watch while downloading', 'copy webpage url', 'copy direct url',
+                                            'copy playlist url', '⏳ Schedule download', '⏳ Cancel schedule!', 'properties']]
         headings = ['i', 'name', '%', 'speed', 'left', 'done', 'size', 'status']
         col_widths = [6, 30, 10, 10, 10, 10, 10, 10]
 
@@ -575,7 +575,7 @@ class MainWindow:
                 i = i - 1 if event.delta > 0 else i + 1
                 if 0 <= i < len(self.playlist):
                     event.widget.current(i)
-                    self.playlist_OnChoice(event.widget.get())
+                    self.playlist_on_choice()
             except Exception as e:
                 log('playlist menu handler', e, log_level=3)
 
@@ -587,7 +587,7 @@ class MainWindow:
                 i = i - 1 if event.delta > 0 else i + 1
                 if 0 <= i < len(self.video.stream_menu if self.video else ''):
                     event.widget.current(i)
-                    self.stream_OnChoice(event.widget.get())
+                    self.stream_on_choice()
             except Exception as e:
                 log('stream menu handler', e, log_level=3)
 
@@ -883,10 +883,10 @@ class MainWindow:
                 self.download_playlist()
 
             elif event == 'pl_menu':
-                self.playlist_OnChoice(values['pl_menu'])
+                self.playlist_on_choice()
 
             elif event == 'stream_menu':
-                self.stream_OnChoice(values['stream_menu'])
+                self.stream_on_choice()
 
             elif event == 'subtitles':
                 try:
@@ -936,8 +936,11 @@ class MainWindow:
             elif event == 'copy webpage url':
                 clipboard_write(self.selected_d.url)
 
-            elif event == 'copy download url':
+            elif event == 'copy direct url':
                 clipboard_write(self.selected_d.eff_url)
+
+            elif event == 'copy playlist url':
+                clipboard_write(self.selected_d.playlist_url)
 
             elif event == 'properties':
                 # right click properties
@@ -1998,7 +2001,7 @@ class MainWindow:
             # choose first item in playlist
             # self.playlist_OnChoice(self.pl_menu[0])
             self.window['pl_menu'].Widget.current(0)
-            self.playlist_OnChoice()
+            self.playlist_on_choice()
 
         except Exception as e:
             log('update_pl_menu()> error', e)
@@ -2007,21 +2010,15 @@ class MainWindow:
         try:
             self.stream_menu = self.video.stream_menu
 
-            # select first stream
-            # selected_text = self.video.all_streams[0].name
-            # set_text = self.stream_menu[1]
-            # self.window['stream_menu'](set_text)
-
             # set current selection to first item in video streams ex: ['video streams:', 'mp4 - 1080 - 10MB', ... ]
             self.window['stream_menu'].Widget.current(1)  # tkinter set current selected index
-            self.stream_OnChoice()
+
+            self.stream_on_choice()
 
         except:
             pass
 
-    def playlist_OnChoice(self, selected_text=None):
-        # if selected_text not in self.pl_menu:
-        #     return
+    def playlist_on_choice(self):
 
         try:
             # index = self.pl_menu.index(selected_text)
@@ -2053,7 +2050,7 @@ class MainWindow:
         except Exception as e:
             log('playlist_OnChoice()> error', e)
 
-    def stream_OnChoice(self, selected_text=None):
+    def stream_on_choice(self):
 
         try:
             # Find and update video selected stream, use index not selected text, to avoid selecting wrong stream

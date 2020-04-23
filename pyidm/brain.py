@@ -46,10 +46,11 @@ def brain(d=None, downloader=None):
             success = pre_process_hls(d)
             if not success:
                 d.status = Status.error
+                log('HLS pre-processing failed, check log for more info', showpopup=True)
                 return
         except Exception as e:
-            log('pre_process_hls()> error', e)
             d.status = Status.error
+            log('pre_process_hls()> error: ', e, showpopup=True)
             return
     else:
         # for non hls videos and normal files
@@ -120,6 +121,12 @@ def thread_manager(d):
     # reverse job_list to process segments in proper order use pop()
     job_list.reverse()
 
+    # error track, if receive many errors with no downloaded data for certain time, abort
+    downloaded = 0
+    total_errors = 0
+    max_errors = 100
+    timeout = 30  # sec
+
     while True:
         time.sleep(0.1)  # a sleep time to while loop to make the app responsive
 
@@ -136,6 +143,7 @@ def thread_manager(d):
         if time.time() - error_timer >= 1:
             error_timer = time.time()
             errors_num = config.error_q.qsize()
+
             if errors_num >= 10:
                 limited_connections = limited_connections - 1 if limited_connections > 1 else 1
                 log('Thread Manager: receiving server errors, connections limited to:', limited_connections)
@@ -147,6 +155,18 @@ def thread_manager(d):
                 if limited_connections < config.max_connections:
                     limited_connections = limited_connections + 1
                     log('Thread Manager: trying', limited_connections, 'connections.')
+
+            total_errors += errors_num
+            log('Total server errors:', total_errors)
+
+            # reset total errors if received any data
+            if downloaded != d.downloaded:
+                downloaded = d.downloaded
+                total_errors = 0
+
+            if total_errors >= max_errors:
+                d.status = Status.error
+                log('Thread manager: too many errors received from server,\n  maybe network problem or expired link', showpopup=True)
 
         # speed limit
         if allowable_connections:
@@ -239,8 +259,8 @@ def file_manager(d, keep_segments=False):
                 d.status = Status.processing
                 success = convert_audio(d)
                 if not success:
-                    log('file_manager()>  convert_audio() failed, file:', d.target_file)
                     d.status = Status.error
+                    log('file_manager()>  convert_audio() failed, file:', d.target_file, showpopup=True)
                     break
                 else:
                     d.delete_tempfiles()
@@ -253,8 +273,8 @@ def file_manager(d, keep_segments=False):
 
                 success = post_process_hls(d)
                 if not success:
-                    log('file_manager()>  post_process_hls() failed, file:', d.target_file)
                     d.status = Status.error
+                    log('file_manager()>  post_process_hls() failed, file: \n', d.name, showpopup=True)
                     break
 
             # handle dash video
@@ -276,9 +296,8 @@ def file_manager(d, keep_segments=False):
                     d.delete_tempfiles()
 
                 else:  # error merging
-                    msg = f'failed to merge audio for file: {d.target_file}'
-                    popup(msg, title='merge error')
                     d.status = Status.error
+                    log('failed to merge audio for file: \n', d.name, showpopup=True)
                     break
 
             else:
