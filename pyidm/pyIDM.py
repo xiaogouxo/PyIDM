@@ -47,8 +47,8 @@ def clipboard_listener():
 
         new_data = clipboard_read()
 
-        if new_data == 'any one there?':  # a possible message coming from new instance of this script
-            clipboard_write('yes')  # it will be read by singleApp() as an exit signal
+        if new_data == f'PyIDM "{config.APP_VERSION}", any one there?':  # a possible message coming from new instance of this script
+            clipboard_write('hey, get lost!')  # it will be read by singleApp() as an exit signal
             config.main_q.put('start_main_window')
             config.main_window_q.put(('visibility', 'show'))  # restore main window if minimized
 
@@ -68,12 +68,12 @@ def clipboard_listener():
 def singleApp():
     """send a message thru clipboard to check if an app instance already running"""
     original = clipboard_read()  # get original clipboard value
-    clipboard_write('any one there?')
+    clipboard_write(f'PyIDM "{config.APP_VERSION}", any one there?')
     time.sleep(0.3)
     answer = clipboard_read()
     clipboard_write(original)  # restore clipboard original value
 
-    if answer == 'yes':
+    if answer == 'hey, get lost!':
         return False
     else:
         return True
