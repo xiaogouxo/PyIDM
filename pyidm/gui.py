@@ -2896,9 +2896,8 @@ class AboutWindow:
         window = sg.Window(f'about PyIDM', layout, finalize=True)
 
         # set cursor for links
-        window['home_page'].set_cursor('hand2')
-        window['new_issue'].set_cursor('hand2')
-        window['email'].set_cursor('hand2')
+        for key in ('home_page', 'issues', 'new_issue', 'email'):
+            window[key].set_cursor('hand2')
 
         self.window = window
 
@@ -2924,7 +2923,7 @@ class AboutWindow:
 
         elif event == 'email':
             clipboard_write('info.pyidm@gmail.com')
-            sg.PopupOK('email copied to clipboard')
+            sg.PopupOK('Email "info.pyidm@gmail.com" has been copied to clipboard\n')
 
 
 class PlaylistWindow:
