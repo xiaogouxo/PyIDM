@@ -52,9 +52,8 @@ transparent = {}
 class MainWindow:
     def __init__(self, d_list):
         """This is the main application user interface window"""
-        # active flage, if true this window will run in main application loop in "pyIDM.py"
-        self.active = True
-        self.hidden = False
+
+        self.active = True  # active flag, if true this window will run in main application loop in "pyIDM.py"
 
         # current download_item
         self.d = DownloadItem()
@@ -81,10 +80,9 @@ class MainWindow:
         self.m_bar_lock = Lock()  # a lock to access a video quality progress bar from threads
         self._m_bar = 0  # main playlist progress par value
         self._s_bar = 0  # individual video streams progress bar value
-        # self.stream_menu_selection = ''
 
         # download
-        self.pending = deque()
+        self.pending = deque()  # todo: use normal queue
         self.disabled = True  # for download button
 
         # download list
@@ -100,23 +98,42 @@ class MainWindow:
         # thumbnail
         self.current_thumbnail = None
 
-        # timers
-        self.statusbar_timer = 0
-
         # side bar
         self.animate_bar = True
 
         # timers
+        self.statusbar_timer = 0
         self.timer1 = 0
         self.timer2 = 0
         self.one_time = True
         self.check_for_update_timer = time.time() - 55  # run interval is 60 seconds, use 'time.time() - 55' to make first start after 5 seconds
 
+        self.total_speed = ''
+
         # initial setup
         self.setup()
 
+    @staticmethod
+    def startup_checks():
+        # start log recorder
+        Thread(target=log_recorder, daemon=True).start()
+
+        log('Starting PyIDM version:', config.APP_VERSION, 'Frozen' if config.FROZEN else 'Non-Frozen')
+        log('operating system:', config.operating_system_info)
+
+        log('current working directory:', config.current_directory)
+        os.chdir(config.current_directory)
+
+        if video.ytdl:
+            log('youtube-dl ready')
+
     def setup(self):
         """initial setup"""
+        self.startup_checks()
+
+        # empty main window's queue
+        for _ in range(config.main_window_q.qsize()):
+            _ = config.main_window_q.get()
 
         # set global theme
         self.change_theme()
@@ -204,6 +221,7 @@ class MainWindow:
                 self.window['monitor'](v)
 
             elif k == 'visibility' and v == 'show':
+                # self.un_hide()
                 self.window.BringToFront()
                 sg.popup_ok('application is already running', title=config.APP_NAME)
 
@@ -525,11 +543,13 @@ class MainWindow:
 
     def start_window(self):
         self.active = True
-        self.hidden = False
         config.terminate = False
 
         self.window = self.create_window()
         self.window.Finalize()
+
+        # override x button
+        self.window.TKroot.protocol('WM_DELETE_WINDOW', self.close_callback)
 
         # expand elements to fit
         elements = ['url', 'name', 'folder', 'm_bar', 'pl_menu', 'file_properties', 'update_note',
@@ -589,10 +609,11 @@ class MainWindow:
         self.un_hide_active_windows()
 
     def restart_window(self):
-        # stor log temporarily
-        log = self.window['log'].get()
-
         try:
+            # store log temporarily
+            log = ''
+            log = self.window['log'].get()
+
             self.window.Close()
         except:
             pass
@@ -609,6 +630,9 @@ class MainWindow:
             # get the last value of bars after restart
             self.m_bar = self._m_bar
             self.s_bar = self._s_bar
+
+            # reset current thumbnail is required for show_thumbnail() to preview the last video thumbnail
+            self.current_thumbnail = None
         else:
             self.pl_menu = ['Playlist']
             self.stream_menu = ['Video quality']
@@ -642,7 +666,7 @@ class MainWindow:
             print(e)
 
     def update_gui(self):
-        if self.hidden or not self.active :
+        if not self.active:
             return
 
         # update Elements
@@ -686,7 +710,8 @@ class MainWindow:
             for i in self.active_downloads:
                 d = self.d_list[i]
                 total_speed += d.speed
-            self.window['total_speed'](f'⬇ {size_format(total_speed, "/s")}')
+            self.total_speed = f'⬇ {size_format(total_speed, "/s")}'
+            self.window['total_speed'](self.total_speed)
 
             # thumbnail
             if self.video:
@@ -1177,7 +1202,6 @@ class MainWindow:
             # systray -------------------------------------------------
             elif event in ('radio_close', 'radio_minimize', 'radio_quit'):
                 config.close_action = event.replace('radio_', '')
-                print(event, config.close_action)
 
             # log ---------------------------------------------------------------------------------------------------
             elif event == 'log_level':
@@ -1758,7 +1782,7 @@ class MainWindow:
                 # reset thumbnail
                 self.window['main_thumbnail'](data=thumbnail_icon)
 
-            elif thumbnail != self.current_thumbnail and config.show_thumbnail:
+            elif config.show_thumbnail and thumbnail != self.current_thumbnail:
                 # new thumbnail
                 self.window['main_thumbnail'](data=thumbnail)
 
@@ -2270,6 +2294,26 @@ class MainWindow:
         except:
             pass
 
+    def close_callback(self):
+        """This callback override main window close"""
+        if config.close_action == 'minimize':
+            self.hide()
+        else:
+            # closing window and terminate downloads
+            self.active = False
+            config.terminate = True
+
+            # cancel pending jobs
+            # root = self.window.TKroot
+            # root.after_cancel(self.window.TKAfterID)
+            # self.window.close()
+
+            # for some reasons close method gives some errors and tooltip activate after window is closed
+            # triggering an AutoClose_alarm_callback, will close window without issues, but using protected member
+            # is not recommended, todo: find a way to trigger PySimpleGUI event manually and simulate None event for window close
+            self.window._AutoCloseAlarmCallback()
+            self.close()  # not necessarily required
+
     def un_hide_active_windows(self):
         try:
             # un hide all active windows
@@ -2292,21 +2336,24 @@ class MainWindow:
             self.close()
             return
 
-        if not self.hidden:
-            self.active = False
-            self.hidden = True
-            notify('PyIDM still running in background', timeout=2)
+        notify('PyIDM still running in background', timeout=2)
 
-            # hide active windows
-            self.hide_active_windows()
+        # hide active windows
+        self.hide_active_windows()
 
-            # close main window
-            self.window.close()
+        # hide main window
+        self.window.hide()
+
+    def un_hide(self):
+        # show main window
+        self.window.un_hide()
+
+        # un hide active windows
+        self.un_hide_active_windows()
 
     def close(self):
         """close window and stop updating"""
         self.active = False
-        self.hidden = True
         config.terminate = True
 
         if config.close_action == 'quit':

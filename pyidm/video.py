@@ -833,7 +833,6 @@ def parse_subtitles(m3u8_doc, m3u8_url):
     return subtitles
 
 
-# download m3u8 files ----------------------------------------------------------------------------------------
 def download_m3u8(url):
     # download the manifest from m3u8 file descriptor located at url
     buffer = download(url, verbose=False)  # get BytesIO object

@@ -687,7 +687,7 @@ def log_recorder():
 
     while True:
         time.sleep(0.1)
-        if config.shutdown:
+        if config.terminate:
             break
 
         # read log messages from queue

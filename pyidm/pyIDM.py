@@ -49,6 +49,7 @@ def clipboard_listener():
 
         if new_data == 'any one there?':  # a possible message coming from new instance of this script
             clipboard_write('yes')  # it will be read by singleApp() as an exit signal
+            config.main_q.put('start_main_window')
             config.main_window_q.put(('visibility', 'show'))  # restore main window if minimized
 
         if config.monitor_clipboard and new_data != old_data:
@@ -79,25 +80,12 @@ def singleApp():
 
 
 def main():
-    # echo stdout, stderr to our gui
-    # sys.stdout.write = echo_stdout(sys.stdout.write)
-    # sys.stderr.write = echo_stderr(sys.stderr.write)
-
-    # start log recorder
-    Thread(target=log_recorder, daemon=True).start()
-
-    log('Starting PyIDM version:', config.APP_VERSION, 'Frozen' if config.FROZEN else 'Non-Frozen')
-    # log('starting application')
-    log('operating system:', config.operating_system_info)
 
     # quit if there is previous instance of this script already running
     if not singleApp():
         print('previous instance already running')
         config.shutdown = True
         return
-
-    log('current working directory:', config.current_directory)
-    os.chdir(config.current_directory)
 
     # import youtube-dl in a separate thread
     Thread(target=video.import_ytdl, daemon=True).start()
@@ -119,31 +107,36 @@ def main():
     # create main run loop
     while True:
 
-        if main_window.active:
+        if main_window and main_window.active:
             main_window.run()
             sleep_time = 0.01
         else:
+            main_window = None
             sleep_time = 0.5
 
         # sleep a little to save cpu resources
         time.sleep(sleep_time)
 
         if systray.active:
-            state = 'PyIDM is running' if not config.terminate else 'PyIDM is off'
+            state = f'PyIDM is active \n{main_window.total_speed}' if not config.terminate else 'PyIDM is off'
             systray.update(hover_text=state)
 
         # read Main queue
         for _ in range(config.main_q.qsize()):
             value = config.main_q.get()
-            if value == 'start_main_window' and not main_window.active:
-                main_window.start_window()
+            if value == 'start_main_window':
+                if not main_window:
+                    main_window = MainWindow(config.d_list)
+                    # main_window.active = True
+                else:
+                    main_window.un_hide()
             elif value == 'minimize_to_systray':
                 main_window.hide()
             elif value == 'close_to_systray':
                 main_window.close()
 
         # global shutdown flag
-        if config.shutdown or (not main_window.active and not systray.active):
+        if config.shutdown or (not main_window and not systray.active):
             systray.shutdown()
             config.shutdown = True
             break
