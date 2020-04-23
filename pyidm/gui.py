@@ -496,8 +496,8 @@ class MainWindow:
         # layout ----------------------------------------------------------------------------------------------------
         layout = [
             [sg.T('', size=(70, 1)), ],
-            [sg.TabGroup([[sg.Tab('General ', general), sg.Tab('Network', network), sg.Tab('SysTray ', systray),
-                           sg.Tab('Update  ', update)]],
+            [sg.TabGroup([[sg.Tab('General   ', general), sg.Tab('Network  ', network), sg.Tab('SysTray  ', systray),
+                           sg.Tab('Update    ', update)]],
                          tab_location='lefttop')]
         ]
 
