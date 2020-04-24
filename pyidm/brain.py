@@ -46,7 +46,6 @@ def brain(d=None, downloader=None):
             success = pre_process_hls(d)
             if not success:
                 d.status = Status.error
-                log('HLS pre-processing failed, check log for more info', showpopup=True)
                 return
         except Exception as e:
             d.status = Status.error
@@ -121,11 +120,10 @@ def thread_manager(d):
     # reverse job_list to process segments in proper order use pop()
     job_list.reverse()
 
-    # error track, if receive many errors with no downloaded data for certain time, abort
+    # error track, if receive many errors with no downloaded data, abort
     downloaded = 0
     total_errors = 0
     max_errors = 100
-    timeout = 30  # sec
 
     while True:
         time.sleep(0.1)  # a sleep time to while loop to make the app responsive

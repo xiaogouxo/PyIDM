@@ -554,7 +554,7 @@ def pre_process_hls(d):
         try:
             os.makedirs(d.temp_folder)
         except Exception as e:
-            log('HLS pre processing Failed:', e, log_level=2)
+            log('HLS pre processing Failed:', e, showpopup=True)
             return False
 
     # some servers will change the contents of m3u8 file dynamically, not sure how often
@@ -578,25 +578,47 @@ def pre_process_hls(d):
             stripped_format_id = format_id.replace('hls-', '') if format_id.startswith('hls-') else format_id
 
             # video check
-            if d.format_id == format_id or stripped_format_id in d.format_id:
+            if d.format_id and (d.format_id == format_id or stripped_format_id in d.format_id):
                 # print('old video url, new video url:\n', d.eff_url, '\n', url)
                 d.eff_url = url
 
             # audio check
-            if d.audio_format_id == format_id or stripped_format_id in d.audio_format_id:
+            if d.audio_format_id and (d.audio_format_id == format_id or stripped_format_id in d.audio_format_id):
                 # print('old video url, new video url:\n', d.audio_url, '\n', url)
                 d.audio_url = url
 
+    def not_supported(m3u8_doc):
+        # return msg if there is un supported protocol found in the m3u8 file
+
+        if m3u8_doc:
+            # SAMPLE-AES is not supported by ffmpeg, and mostly this will be a protected DRM stream, which shouldn't be downloaded
+            if '#EXT-X-KEY:METHOD=SAMPLE-AES' in m3u8_doc:
+                return 'Error: SAMPLE-AES encryption is not supported'
+
+        return None
+
     log('master manifest:   ', d.manifest_url)
     master_m3u8 = download_m3u8(d.manifest_url)
+
+    if not master_m3u8:
+        log("Failed to get master m3u8 file", showpopup=True)
+        return False
 
     # get fresh urls
     refresh_urls(master_m3u8, d.manifest_url)
 
     log('video m3u8:        ', d.eff_url)
     video_m3u8 = download_m3u8(d.eff_url)
-    log('audio m3u8:        ', d.audio_url)
-    audio_m3u8 = download_m3u8(d.audio_url)
+
+    # abort if no video_m3u8
+    if not video_m3u8:
+        log("Failed to get valid m3u8 file", showpopup=True)
+        return False
+
+    audio_m3u8 = None
+    if 'dash' in d.subtype_list:
+        log('audio m3u8:        ', d.audio_url)
+        audio_m3u8 = download_m3u8(d.audio_url)
 
     # save master m3u8 file for debugging, and update subtitles
     if master_m3u8:
@@ -605,10 +627,6 @@ def pre_process_hls(d):
         with open(os.path.join(d.temp_folder, local_file), 'w') as f:
             f.write(master_m3u8)
 
-        # if there is no subtitles will check m3u8 file for any
-        if not d.subtitles:
-            d.subtitles = parse_subtitles(master_m3u8, d.manifest_url)
-
     # save remote m3u8 files to disk
     with open(os.path.join(d.temp_folder, 'remote_video.m3u8'), 'w') as f:
         f.write(video_m3u8)
@@ -616,6 +634,13 @@ def pre_process_hls(d):
     if 'dash' in d.subtype_list:
         with open(os.path.join(d.temp_folder, 'remote_audio.m3u8'), 'w') as f:
             f.write(audio_m3u8)
+
+    # check if m3u8 file has unsupported protocols
+    for m3u8_doc in (video_m3u8, audio_m3u8):
+        x = not_supported(m3u8_doc)
+        if x:
+            log(x, showpopup=True)
+            return False
 
     # ---------------------------------------------------------------------------------------------------------
 
@@ -632,59 +657,61 @@ def pre_process_hls(d):
         seg_name = 'v' if type_ == 'video' else 'a'
 
         url_list = []
-        local_lines = []
-        local_lines2 = []
+        lines_with_local_paths = []
+        lines_with_abs_urls = []
         lines = file.splitlines()
 
         # iterate over all m3u8 file lines
         for i, line in enumerate(lines[:]):
             url = ''
-            line2 = line
+            line_with_abs_url = line
+            line_with_local_path = line
 
             # lines doesn't start with # is a media links
             if line and not line.startswith('#'):
-                # get absolute url from relative paths
-                url = urljoin(base_url, line)
-                line2 = url
-
-                # build line for local m3u8 file with reference to local segment file
-                line = os.path.join(d.temp_folder, f'{seg_name}{i}')
+                url = line
 
             # handle buried urls inside lines ex: # '#EXT-X-KEY:METHOD=AES-128,URI="https://content-aus...62a9",IV=0x0000'
             elif line.startswith('#'):
                 match = re.search(r'URI="(.*)"', line)
                 if match:
                     url = match.group(1)
-                    # get absolute url from relative paths
-                    url = urljoin(base_url, url)
 
-                    line2 = line.replace(match.group(1), url)
-                    line = line.replace(match.group(1), os.path.join(d.temp_folder, f'{seg_name}{i}'))
+            if url:
+                # get absolute url, and append it to url list for later use to build segments
+                if url.startswith('skd://'):
+                    # replace skd:// with https://
+                    abs_url = url.replace('skd://', 'https://')
+                else:
+                    abs_url = urljoin(base_url, url)
+                url_list.append(abs_url)
 
-            # process line and convert '\' to '/'
-            line = line.replace('\\', '/')
-            line2 = line2.replace('\\', '/')
+                # build line with absolute url instead of relative url
+                line_with_abs_url = line.replace(url, abs_url)
 
-            local_lines2.append(line2)
-            local_lines.append(line)
+                # build line with local file path instead of url
+                line_with_local_path = line.replace(url, os.path.join(d.temp_folder, f'{seg_name}{i + 1}'))
+                line_with_local_path = line_with_local_path.replace('\\', '/')  # required for ffmpeg to work properly
 
-            url_list.append(url)
+            # append to list
+            lines_with_abs_urls.append(line_with_abs_url)
+            lines_with_local_paths.append(line_with_local_path)
 
         # write m3u8 file with absolute paths for debugging
         name = 'remote_video2.m3u8' if type_ == 'video' else 'remote_audio2.m3u8'
-        local_file = os.path.join(d.temp_folder, name)
-        with open(os.path.join(d.temp_folder, local_file), 'w') as f:
-            f.write('\n'.join(local_lines2))
+        file_path = os.path.join(d.temp_folder, name)
+        with open(os.path.join(d.temp_folder, file_path), 'w') as f:
+            f.write('\n'.join(lines_with_abs_urls))
 
         # write local m3u8 file
         name = 'local_video.m3u8' if type_ == 'video' else 'local_audio.m3u8'
-        local_file = os.path.join(d.temp_folder, name)
-        with open(os.path.join(d.temp_folder, local_file), 'w') as f:
-            f.write('\n'.join(local_lines))
+        file_path = os.path.join(d.temp_folder, name)
+        with open(os.path.join(d.temp_folder, file_path), 'w') as f:
+            f.write('\n'.join(lines_with_local_paths))
 
         # create segments
         seg_name = 'v' if type_ == 'video' else 'a'
-        d._segments += [Segment(name=os.path.join(d.temp_folder, f'{seg_name}{i}'), num=i, range=None, size=0,
+        d._segments += [Segment(name=os.path.join(d.temp_folder, f'{seg_name}{i + 1}'), num=i, range=None, size=0,
                                 url=seg_url, tempfile=d.temp_file, merge=False)
                         for i, seg_url in enumerate(url_list) if seg_url]
 
