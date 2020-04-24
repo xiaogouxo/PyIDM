@@ -100,7 +100,11 @@ log_recorder_q = Queue()
 
 # systray
 close_action = 'close'  # close, minimize, to systray, or quit and close systray
-# close_warning = True
+
+# youtube-dl abort flag, will be used by decorated YoutubeDl.urlopen(), see video.import_ytdl()
+ytdl_abort = False
+
+
 # -------------------------------------------------------------------------------------
 
 # folders

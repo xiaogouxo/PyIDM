@@ -29,6 +29,8 @@ class Logger(object):
         log(msg)
 
     def error(self, msg):
+        # filter an error message when quitting youtube-dl by setting config.ytdl_abort
+        if msg == "ERROR: 'NoneType' object has no attribute 'headers'": return
         log(msg)
 
     def warning(self, msg):
@@ -536,6 +538,21 @@ def import_ytdl():
         # calculate loading time
         load_time = time.time() - start
         log(f'youtube-dl load_time= {int(load_time)} seconds')
+
+        # override urlopen in YoutubeDl for interrupting youtube-dl session anytime
+        def foo(func):
+            def newfunc(self, *args):
+                # print('urlopen started ............................................')
+                if config.ytdl_abort:
+                    # print('urlopen aborted ............................................')
+                    return None
+                data = func(self, *args)
+                return data
+
+            return newfunc
+
+        ytdl.YoutubeDL.urlopen = foo(ytdl.YoutubeDL.urlopen)
+
     except Exception as e:
         log('import_ytdl()> error', e)
 

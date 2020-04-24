@@ -1831,6 +1831,9 @@ class MainWindow:
         # reset video controls
         self.reset_video_controls()
 
+        # reset abort flag
+        config.ytdl_abort = False
+
         # main progress bar initial indication
         self.m_bar = 10
         self.set_cursor('busy')
@@ -2281,6 +2284,9 @@ class MainWindow:
         self.disable()
         self.reset_video_controls()
         self.window['status_code']('')
+
+        # abort youtube-dl current operation
+        config.ytdl_abort = True
 
         # Force python garbage collector to free up memory
         gc.collect()
@@ -3102,7 +3108,7 @@ class PlaylistWindow:
 
         # while True:
         event, values = window.read(timeout=100)
-        if event in (None, 'Cancel'):
+        if event in (None, 'Cancel') or config.terminate:
             self.close()
 
         elif event == 'OK':
@@ -3169,39 +3175,36 @@ class PlaylistWindow:
             num = int(event.split()[-1])
             self.update_video(num)
 
-        # update stream menu for processed videos, in case stream menu not yet loaded
-        for num, vid in enumerate(playlist):
-            stream_combo = window[f'stream {num}']
-            if vid.all_streams:
-                if stream_combo.Values != vid.stream_menu:
-                    stream_combo(values=vid.stream_menu)
+        if self.active:
+            # update stream menu for processed videos, in case stream menu not yet loaded
+            for num, vid in enumerate(playlist):
+                stream_combo = window[f'stream {num}']
+                if vid.all_streams:
+                    if stream_combo.Values != vid.stream_menu:
+                        stream_combo(values=vid.stream_menu)
 
-                    # set current selection to match master combo selection
-                    master_stream_text = values['master_stream_combo']
+                        # set current selection to match master combo selection
+                        master_stream_text = values['master_stream_combo']
 
-                    stream = vid.select_stream(raw_name=master_stream_text)
-                    if stream:
-                        stream_combo(master_stream_text)
-                        self.update_video(num)
-                    else:
-                        stream_combo(vid.selected_stream.name)
+                        stream = vid.select_stream(raw_name=master_stream_text)
+                        if stream:
+                            stream_combo(master_stream_text)
+                            self.update_video(num)
+                        else:
+                            stream_combo(vid.selected_stream.name)
 
-                    # should update master playlist
-                    self.window['master_stream_combo'](values=self.create_master_menu(), value=master_stream_text)
+                        # should update master playlist
+                        self.window['master_stream_combo'](values=self.create_master_menu(), value=master_stream_text)
 
-        # animate progress bars while loading streams
-        for num, bar in enumerate(self.progress_bars):
-            vid = playlist[num]
-            if vid.name in self.active_threads and not vid.processed:
-                bar(visible=True)
-                bar.expand(expand_x=True)
-                bar.Widget['value'] += 10
-            else:
-                bar(visible=False)
-
-        # check terminate flag
-        if config.terminate:
-            self.close()
+            # animate progress bars while loading streams
+            for num, bar in enumerate(self.progress_bars):
+                vid = playlist[num]
+                if vid.name in self.active_threads and not vid.processed:
+                    bar(visible=True)
+                    bar.expand(expand_x=True)
+                    bar.Widget['value'] += 10
+                else:
+                    bar(visible=False)
 
     def download_selected_videos(self):
         for vid in self.selected_videos:
