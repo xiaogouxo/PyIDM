@@ -40,9 +40,9 @@ if config.operating_system == 'Windows':
 # todo: this module needs some clean up
 
 # gui Settings
-default_font = 'Helvetica 10' # Helvetica font is guaranteed to work on all operating systems
+default_font = 'Helvetica 10'  # Helvetica font is guaranteed to work on all operating systems
 config.all_themes = natural_sort(sg.ListOfLookAndFeelValues())
-sg.SetOptions(icon=APP_ICON2, font=default_font, auto_size_buttons=True, progress_meter_border_depth=0,
+sg.SetOptions(icon=APP_ICON, font=default_font, auto_size_buttons=True, progress_meter_border_depth=0,
               border_width=1)
 
 # transparent color for button which mimic current background, will be used as a parameter, ex. **transparent
@@ -399,8 +399,8 @@ class MainWindow:
              sg.Text(f'Current value: {size_format(config.segment_size)}', size=(30, 1), key='seg_current_value'),
              sg.T('*ex: 512 KB or 5 MB', font='any 8')],
 
-            [sg.Checkbox('process big playlist info on demand', default=config.process_big_playlist_on_demand,
-                         enable_events=True, key='process_big_playlist_on_demand')],
+            [sg.Checkbox('Playlist: Fetch all videos info in advance - *not recommended!!* -', default=config.process_playlist,
+                         enable_events=True, key='process_playlist')],
 
             [sg.Checkbox('Manually select audio format for dash videos', default=config.manually_select_dash_audio,
                          enable_events=True, key='manually_select_dash_audio')]
@@ -1060,8 +1060,8 @@ class MainWindow:
             elif event == 'auto_close_download_window':
                 config.auto_close_download_window = values['auto_close_download_window']
 
-            elif event == 'process_big_playlist_on_demand':
-                config.process_big_playlist_on_demand = values['process_big_playlist_on_demand']
+            elif event == 'process_playlist':
+                config.process_playlist = values['process_playlist']
 
             elif event == 'manually_select_dash_audio':
                 config.manually_select_dash_audio = values['manually_select_dash_audio']
@@ -1894,13 +1894,11 @@ class MainWindow:
                     # update playlist menu, only videos names, there is no videos qualities yet
                     self.update_pl_menu()
 
-                    # user notification for big playlists
-                    if playlist_length > config.big_playlist_length and config.process_big_playlist_on_demand:
+                    # user notification for big playlist
+                    if config.process_playlist and playlist_length > config.big_playlist_length:
                         popup(f'Big playlist detected with {playlist_length} videos \n'
                               f'To avoid wasting time and resources, videos info will be processed only when \n'
-                              f'selected in main Tab or playlist window\n\n'
-                              f'You can override this behaviour and fetch all videos information in advance by \n'
-                              f'disabling "process big playlist info on demand" option in settings\n',
+                              f'selected in main Tab or playlist window\n',
                               title='big playlist detected')
 
                     # process videos info
@@ -1911,8 +1909,7 @@ class MainWindow:
                     if self.playlist:
                         # create threads to get videos info
                         while True:
-                            # big playlist
-                            if config.process_big_playlist_on_demand and playlist_length > config.big_playlist_length:
+                            if not config.process_playlist or playlist_length > config.big_playlist_length:
                                 break
 
                             time.sleep(0.01)
@@ -2946,6 +2943,8 @@ class PlaylistWindow:
         self.stream_combos = []
         self.progress_bars = []
 
+        self.timer1 = 0
+
         self.setup()
 
     def setup(self):
@@ -2988,7 +2987,7 @@ class PlaylistWindow:
         for num, vid in enumerate(playlist):
             # set selected stream
             if vid.all_streams:
-                vid.selected_stream = vid.all_streams[0]
+                vid.select_stream(index=0)
 
             # video names with check boxes
             video_checkbox = sg.Checkbox(truncate(vid.title, 62), size=(55, 1), tooltip=vid.title, font='any 8',
@@ -3016,7 +3015,7 @@ class PlaylistWindow:
         layout = [
             [sg.T(f'Total Videos: {len(playlist)}')],
             general_options_layout,
-            [sg.T('*note: select videos first to load streams menu if not available!!', font='any 8')],
+            [sg.T('NOTE: Select videos first to load stream menu'), sg.T('◀◀', key='note')],  #
             [sg.Frame(title='Videos:', layout=[video_layout])],
             [sg.Col([[sg.OK(), sg.Cancel()]], justification='right')]
         ]
@@ -3056,8 +3055,8 @@ class PlaylistWindow:
         for vid in self.playlist:
             for key in names_map:
                 for name in vid.names_map[key]:
-                    # convert name to raw name ex: mp4 - 1080 - 30MB  to mp4 - 1080
-                    name = name.rsplit(' - ', maxsplit=1)[0]
+                    # convert name to raw name ex:    › mp4 - 1080 - 29.9 MB - id:137   to      › mp4 - 1080
+                    name = ' - '.join(name.split(' - ')[:2])
                     if name not in names_map[key]:
                         names_map[key].append(name)
 
@@ -3163,11 +3162,13 @@ class PlaylistWindow:
             # update all videos stream menus from master stream menu
             for num, stream_combo in enumerate(self.stream_combos):
                 vid = playlist[num]
-                stream = vid.select_stream(raw_name=master_text)
-                if stream:
+                match_stream_name = [text for text in vid.stream_menu if master_text in text]
+                if match_stream_name:
+                    match_stream_name = match_stream_name[0]
+                    vid.select_stream(name=match_stream_name)
                     # set a matching stream name, note: for example, if master_text is "mp4 - 1080",
-                    # then matching could be "mp4 - 1080 - 40MB" with size included
-                    stream_combo([text for text in vid.stream_menu if master_text in text][0])
+                    # then matching could be "mp4 - 1080 - 30 MB - id:137" with size and format id included
+                    stream_combo(match_stream_name)
                     self.update_video(num)
 
         # video checkbox or stream menu events
@@ -3205,6 +3206,13 @@ class PlaylistWindow:
                     bar.Widget['value'] += 10
                 else:
                     bar(visible=False)
+
+            # animate note widget
+            if time.time() - self.timer1 >= 1:
+                self.timer1 = time.time()
+                note = self.window['note']
+                note.Visible = not note.Visible
+                note(visible=note.Visible)
 
     def download_selected_videos(self):
         for vid in self.selected_videos:

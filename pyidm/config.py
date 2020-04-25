@@ -65,8 +65,8 @@ show_download_window = True
 auto_close_download_window = True
 segment_size = DEFAULT_SEGMENT_SIZE  # in bytes
 show_thumbnail = True  # auto preview video thumbnail at main tab
-process_big_playlist_on_demand = True  # fetch videos info only if selected, since big playlist consume time/resources.
-big_playlist_length = 50  # define minimum number of videos in big playlist
+process_playlist = False  # fetch videos info only if selected, since big playlist consume time/resources.
+big_playlist_length = 50  # minimum number of videos in big playlist, it will ignore "process_playlist"
 manually_select_dash_audio = False  # if True, will prompt user to select audio format for dash video
 
 # connection / network
@@ -138,8 +138,8 @@ error_q = Queue()  # used by workers to report server refuse connection errors
 settings_keys = ['current_theme', 'monitor_clipboard', 'show_download_window', 'auto_close_download_window',
                  'segment_size', 'show_thumbnail', 'speed_limit', 'max_concurrent_downloads', 'max_connections',
                  'update_frequency', 'last_update_check', 'proxy', 'proxy_type', 'raw_proxy', 'enable_proxy',
-                 'log_level', 'download_folder', 'process_big_playlist_on_demand', 'manually_select_dash_audio',
-                 'use_referer', 'referer_url', 'close_action']
+                 'log_level', 'download_folder', 'manually_select_dash_audio',
+                 'use_referer', 'referer_url', 'close_action', 'process_playlist']
 
 # -------------------------------------------------------------------------------------
 
