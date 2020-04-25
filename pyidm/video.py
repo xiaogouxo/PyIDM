@@ -110,9 +110,9 @@ class Video(DownloadItem):
     def setup(self):
         url = self.vid_info.get('url', None) or self.vid_info.get('webpage_url', None) or self.vid_info.get('id', None)
         if url:
-            self.url = url
+            self.eff_url = url
 
-        self.webpage_url = url  # self.vid_info.get('webpage_url')
+        # self.webpage_url = url  # self.vid_info.get('webpage_url')
         self.name = self.title = validate_file_name(self.vid_info.get('title', f'video{int(time.time())}'))
 
         # thumbnail
@@ -201,9 +201,8 @@ class Video(DownloadItem):
         :param update: if True it will update selected stream
         :return: stream
         """
+        stream = None
         try:
-            stream = None
-
             if index:
                 stream = self.stream_menu_map[index]
 
