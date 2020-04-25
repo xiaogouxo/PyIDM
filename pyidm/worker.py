@@ -34,15 +34,6 @@ class Worker:
         self.speed_limit = 0
         self.headers = {}
 
-    def debug(self, *args, log_level=3):  # todo: to be removed
-        args = [repr(arg) for arg in args]
-        msg = '>> ' + ' '.join(args)
-
-        try:
-            log(msg, log_level=log_level)
-        except Exception as e:
-            log(e)
-
     def __repr__(self):
         return f"worker_{self.tag}"
 
@@ -83,7 +74,7 @@ class Worker:
                 # in this case we will overwrite previous download, reset startsize and remove value from d.downloaded
                 self.mode = 'wb'
                 self.d.downloaded -= self.start_size
-                self.debug(self.seg.num, 'overwrite the previous download, start size =', self.start_size)
+                log(self.seg.num, 'overwrite the previous download, start size =', self.start_size, log_level=3)
                 self.start_size = 0
                 return
 
@@ -93,13 +84,13 @@ class Worker:
 
         elif self.current_filesize == self.seg.size:  # segment is completed before
             # self.report_completed()
-            self.debug('worker', self.tag, ': File', self.seg.num, 'already completed before')
+            log('worker', self.tag, ': File', self.seg.num, 'already completed before', log_level=3)
             self.seg.downloaded = True
 
         # in case the server sent extra bytes from last session by mistake, truncate file
         elif self.current_filesize > self.seg.size:
-            self.debug(f"found seg {self.seg.num} over-sized {self.current_filesize}, "
-                       f"will be truncated to: {self.seg.size}")
+            log(f"found seg {self.seg.num} over-sized {self.current_filesize}, "
+                       f"will be truncated to: {self.seg.size}", log_level=3)
 
             # truncate file
             with open(self.seg.name, 'rb+') as f:
@@ -115,13 +106,13 @@ class Worker:
             self.mode = 'ab'  # open file for append
 
             # report
-            self.debug('Seg', self.seg.num, 'resuming, new range:', self.resume_range,
-                       'current file size:', self.current_filesize)
+            log('Seg', self.seg.num, 'resuming, new range:', self.resume_range,
+                       'current file size:', self.current_filesize, log_level=3)
 
         elif not self.seg.range:
             self.mode = 'wb'
             self.d.downloaded -= self.start_size
-            self.debug(self.seg.num, 'overwrite the previous download, start size =', self.start_size)
+            log(self.seg.num, 'overwrite the previous download, start size =', self.start_size, log_level=3)
             self.start_size = 0
 
     def verify(self):
@@ -133,9 +124,9 @@ class Worker:
             return False
 
     def report_not_completed(self):
-        self.debug('worker', self.tag, 'did not complete', os.path.basename(self.seg.name), 'done',
+        log('worker', self.tag, 'did not complete', os.path.basename(self.seg.name), 'done',
                    self.current_filesize, 'target size:', self.seg.size, 'left:',
-                   self.seg.size - self.current_filesize, 'url:', self.seg.url)
+                   self.seg.size - self.current_filesize, 'url:', self.seg.url, log_level=3)
 
         # put back to jobs queue to try again
         jobs_q.put(self.seg)

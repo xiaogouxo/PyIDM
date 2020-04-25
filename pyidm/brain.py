@@ -154,7 +154,8 @@ def thread_manager(d):
                     log('Thread Manager: trying', limited_connections, 'connections.')
 
             total_errors += errors_num
-            log('----------------------------------- Server errors -----------------------------------:', total_errors)
+            if total_errors:
+                log('--------------------------------- Server errors ---------------------------------:', total_errors)
 
             # reset total errors if received any data
             if downloaded != d.downloaded:
@@ -240,7 +241,7 @@ def file_manager(d, keep_segments=False):
                             trgt_file.write(src_file.read())
 
                 seg.completed = True
-                log('>> completed segment: ',  os.path.basename(seg.name))
+                log('completed segment: ',  os.path.basename(seg.name))
 
                 if not keep_segments:
                     delete_file(seg.name)
