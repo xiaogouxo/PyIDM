@@ -639,15 +639,7 @@ def open_file(file):
         elif config.operating_system == 'Darwin':
             run_command(f'open "{file}"', verbose=False)
     except Exception as e:
-        print('MainWindow.open_file(): ', e)
-
-
-def clipboard_read():
-    return clipboard.paste()
-
-
-def clipboard_write(value):
-    clipboard.copy(value)
+        log('open_file(): ', e, log_level=2)
 
 
 def compare_versions(x, y):
@@ -823,8 +815,8 @@ __all__ = [
     'notify', 'handle_exceptions', 'get_headers', 'download', 'size_format', 'time_format', 'log',
     'validate_file_name', 'size_splitter', 'delete_folder', 'get_seg_size',
     'run_command', 'print_object', 'update_object', 'truncate', 'sort_dictionary', 'popup', 'compare_versions',
-    'translate_server_code', 'validate_url', 'open_file', 'clipboard_read', 'clipboard_write', 'delete_file',
+    'translate_server_code', 'validate_url', 'open_file', 'delete_file',
     'rename_file', 'load_json', 'save_json', 'echo_stdout', 'echo_stderr', 'log_recorder', 'natural_sort',
-    'process_thumbnail', 'parse_bytes', 'set_curl_options', 'execute_command'
+    'process_thumbnail', 'parse_bytes', 'set_curl_options', 'execute_command', 'clipboard'
 
 ]

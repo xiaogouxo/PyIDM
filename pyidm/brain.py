@@ -93,7 +93,6 @@ def brain(d=None, downloader=None):
 
 
 def thread_manager(d):
-    q = d.q
 
     error_timer = 0
 
@@ -129,8 +128,8 @@ def thread_manager(d):
         time.sleep(0.1)  # a sleep time to while loop to make the app responsive
 
         # getting jobs which might be returned from workers as failed
-        for _ in range(q.jobs.qsize()):
-            job = q.jobs.get()
+        for _ in range(config.jobs_q.qsize()):
+            job = config.jobs_q.get()
             job_list.append(job)
 
         # allowable connections
@@ -155,7 +154,7 @@ def thread_manager(d):
                     log('Thread Manager: trying', limited_connections, 'connections.')
 
             total_errors += errors_num
-            log('Total server errors:', total_errors)
+            log('----------------------------------- Server errors -----------------------------------:', total_errors)
 
             # reset total errors if received any data
             if downloaded != d.downloaded:
@@ -193,7 +192,7 @@ def thread_manager(d):
 
         # update d param
         d.live_connections = len(live_threads)
-        d.remaining_parts = len(live_threads) + len(job_list) + q.jobs.qsize()
+        d.remaining_parts = len(live_threads) + len(job_list) + config.jobs_q.qsize()
 
         # Monitor active threads and add the offline to a free_workers
         for t in live_threads:
@@ -212,7 +211,7 @@ def thread_manager(d):
 
     # update d param
     d.live_connections = 0
-    d.remaining_parts = len(live_threads) + len(job_list) + q.jobs.qsize()
+    d.remaining_parts = len(live_threads) + len(job_list) + config.jobs_q.qsize()
     log(f'thread_manager {d.num}: quitting')
 
 

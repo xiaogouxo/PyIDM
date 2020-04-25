@@ -11,7 +11,7 @@
 import os
 import pycurl
 
-from .config import Status, error_q
+from .config import Status, error_q, jobs_q
 from .utils import log, set_curl_options, delete_file, get_headers
 
 
@@ -19,7 +19,6 @@ class Worker:
     def __init__(self, tag=0, d=None):
         self.tag = tag
         self.d = d
-        self.q = d.q
         self.seg = None
         self.resume_range = None
 
@@ -35,7 +34,7 @@ class Worker:
         self.speed_limit = 0
         self.headers = {}
 
-    def debug(self, *args, log_level=3):
+    def debug(self, *args, log_level=3):  # todo: to be removed
         args = [repr(arg) for arg in args]
         msg = '>> ' + ' '.join(args)
 
@@ -139,7 +138,7 @@ class Worker:
                    self.seg.size - self.current_filesize, 'url:', self.seg.url)
 
         # put back to jobs queue to try again
-        self.q.jobs.put(self.seg)
+        jobs_q.put(self.seg)
 
     def report_completed(self):
         # self.debug('worker', self.tag, 'completed', self.seg.name)

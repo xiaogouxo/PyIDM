@@ -20,62 +20,8 @@ from .utils import validate_file_name, get_headers, translate_server_code, size_
     delete_file, delete_folder, save_json, load_json
 from . import config
 
-# lock used with downloaded property
+# lock used with "DownloadItem.downloaded" property
 lock = Lock()
-
-
-# define a class to hold all the required queues
-class Communication:
-    """it serve as communication between threads"""
-
-    def __init__(self):
-        # queues
-        self.d_window = Queue()  # download window, required for log messages
-        self.jobs = Queue()  # required for failed worker jobs
-
-        # self.worker = []
-        # self.data = []
-        # self.brain = Queue()  # brain queue
-        # self.thread_mngr = Queue()
-        # self.completed_jobs = Queue()
-
-    @staticmethod
-    def clear(q):
-        """clear individual queue"""
-        try:
-            while True:
-                q.get_nowait()  # it will raise an exception when empty
-        except:
-            pass
-
-    def reset(self):
-        """clear all queues"""
-        self.clear(self.d_window)
-        self.clear(self.jobs)
-        # self.clear(self.brain)
-        # self.clear(self.thread_mngr)
-        # self.clear(self.completed_jobs)
-
-        # for q in self.worker:
-        #     self.clear(q)
-        #
-        # for q in self.data:
-        #     self.clear(q)
-
-    def log(self, *args):
-        """print log msgs to download window"""
-        s = ''
-        for arg in args:
-            s += str(arg)
-            s += ' '
-        s = s[:-1]  # remove last space
-
-        if s[-1] != '\n':
-            s += '\n'
-
-        # print(s, end='')
-
-        self.d_window.put(('log', s))
 
 
 class Segment:
@@ -129,7 +75,7 @@ class DownloadItem:
 
         # type and subtypes
         self.type = ''  # general, video, audio
-        self.subtype_list = []  # it might contains one or more og "general, video, audio, hls, dash, fragmented"
+        self.subtype_list = []  # it might contains one or more eg "video, audio, hls, dash, fragmented"
 
         self._segment_size = config.segment_size
 
@@ -137,8 +83,6 @@ class DownloadItem:
         self._downloaded = 0
         self._status = config.Status.cancelled
         self.remaining_parts = 0
-
-        self.q = Communication()  # queue
 
         # connection status
         self.status_code = 0

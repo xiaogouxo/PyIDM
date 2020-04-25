@@ -336,7 +336,8 @@ class MainWindow:
         del_all_btn = sg.Button('', key='Delete All', tooltip=' Delete All items from list ', image_data=deleteall_icon, **transparent)
 
         # selected download item's preview panel, "si" = selected item
-        si_layout = [sg.Image(data=thumbnail_icon, key='si_thumbnail', right_click_menu=table_right_click_menu, tooltip=' Double click to open, right click for options '),
+        si_layout = [sg.Image(data=thumbnail_icon, key='si_thumbnail', right_click_menu=table_right_click_menu,
+                              enable_events=True),
                      sg.Col([[sg.T('', size=(100, 5), key='si_out', font='any 8', enable_events=True, tooltip=' Show download window ')],
                             [sg.ProgressBar(100, size=(16, 10), key='si_bar'), sg.T(' ', size=(7, 1), key='si_percent'),
                              *[copy.copy(x) for x in (resume_btn, stop_btn, folder_btn)],
@@ -576,11 +577,11 @@ class MainWindow:
         self.window['table'].bind('<Double-Button-1>', '_double_clicked')  # will generate event "table_double_clicked"
         self.window['table'].bind('<Return>', '_enter_key')  # will generate event "table_enter_key"
 
-        # bind double click for thumbnail to open video si_thumbnail
-        self.window['si_thumbnail'].bind('<Double-Button-1>', '_double_clicked')  # will generate event "si_thumbnail_double_clicked"
+        # change cursor for thumbnail to open video
+        self.window['si_thumbnail'].set_cursor('hand2')
 
         # log text, disable word wrap
-        # use "undo='false'" disable tkinter caching to fix issue #59 "solve huge memory usage and app crash"
+        # use "undo='false'" disable tkinter caching to fix issue #59 "solve huge memory usage and app crash
         self.window['log'].Widget.config(wrap='none', undo='false')
 
         # bind mouse wheel for ('pl_menu' and 'stream_menu') only combo boxes, the rest combos are better without it
@@ -845,7 +846,8 @@ class MainWindow:
             # todo: we could use callback style for some of these if's
             event, values = self.window.Read(timeout=50)
             self.event, self.values = event, values
-            if event not in ('__TIMEOUT__', 'table'): print(event, values)
+            if event not in ('__TIMEOUT__', 'table'):
+                log(event, values, log_level=4)
 
             if event is None:
                 # close or hide active windows
@@ -908,10 +910,10 @@ class MainWindow:
             elif event == 'copy url':
                 url = values['url']
                 if url:
-                    clipboard_write(url)
+                    clipboard.copy(url)
 
             elif event == 'paste url':
-                self.window['url'](clipboard_read().strip())
+                self.window['url'](clipboard.paste().strip())
                 self.url_text_change()
 
             # video events
@@ -974,24 +976,21 @@ class MainWindow:
                     pass
 
             elif event in ('table_double_clicked', 'table_enter_key', 'Open File', '▶ Watch while downloading',
-                           'si_thumbnail_double_clicked') and self.selected_d:
+                           'si_thumbnail') and self.selected_d:
                 if self.selected_d.status == Status.completed:
                     open_file(self.selected_d.target_file)
                 else:
                     open_file(self.selected_d.temp_file)
 
             # table right click menu event
-            elif event == 'Open File Location':
-                self.open_file_location()
-
             elif event == 'copy webpage url':
-                clipboard_write(self.selected_d.url)
+                clipboard.copy(self.selected_d.url)
 
             elif event == 'copy direct url':
-                clipboard_write(self.selected_d.eff_url)
+                clipboard.copy(self.selected_d.eff_url)
 
             elif event == 'copy playlist url':
-                clipboard_write(self.selected_d.playlist_url)
+                clipboard.copy(self.selected_d.playlist_url)
 
             elif event == 'properties':
                 # right click properties
@@ -1036,7 +1035,7 @@ class MainWindow:
             elif event == 'Refresh':
                 self.refresh_link_btn()
 
-            elif event == 'Folder':
+            elif event in ('Folder', 'Open File Location'):
                 self.open_file_location()
 
             elif event in ('D.Window', 'si_out'):
@@ -1724,7 +1723,7 @@ class MainWindow:
                 cmd = f'xdg-open "{folder}"'
                 run_command(cmd)
         except Exception as e:
-            log('Main window> open_file_location>', e, log_level=3)
+            log('Main window> open_file_location>', e, log_level=2)
 
     def refresh_link_btn(self):
         if self.selected_row_num is None:
@@ -2628,7 +2627,6 @@ class DownloadWindow:
 
     def __init__(self, d=None):
         self.d = d
-        self.q = d.q
         self.window = None
         self.active = True
         self.event = None
@@ -2987,7 +2985,7 @@ class AboutWindow:
             webbrowser.open_new('https://github.com/pyIDM/pyIDM/issues/new')
 
         elif event == 'email':
-            clipboard_write('info.pyidm@gmail.com')
+            clipboard.copy('info.pyidm@gmail.com')
             sg.PopupOK('Email "info.pyidm@gmail.com" has been copied to clipboard\n')
 
 
