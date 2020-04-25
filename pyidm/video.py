@@ -683,6 +683,11 @@ def pre_process_hls(d):
             line_with_abs_url = line
             line_with_local_path = line
 
+            # remove ads in m3u8 file
+            if line.startswith('#ANVATO-SEGMENT-INFO') and 'type=ad' in line \
+                    or line.startswith('#UPLYNK-SEGMENT') and line.endswith(',ad'):
+                continue
+
             # lines doesn't start with # is a media links
             if line and not line.startswith('#'):
                 url = line
