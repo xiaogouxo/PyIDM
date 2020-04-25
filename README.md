@@ -86,9 +86,9 @@ Required python packages:
 - [pycurl](http://pycurl.io/docs/latest/index.html): is a Python interface to libcurl / curl as our download engine,
 - [PySimpleGUI](https://github.com/PySimpleGUI/PySimpleGUI): a beautiful gui builder, 
 - [youtube_dl](https://github.com/ytdl-org/youtube-dl): famous youtube downloader, limited use for meta information extraction only but videos are downloaded using pycurl 
-- certifi: required by 'pycurl' for validating the trustworthiness of SSL certificates,
-- pyperclip: A cross-platform clipboard module for monitoring url copied to clipboard, requires "xclip or xsel to be available on linux"
-- plyer: for systray area notification.
+- [certifi](https://github.com/certifi/python-certifi): required by 'pycurl' for validating the trustworthiness of SSL certificates,
+- [pyperclip](https://github.com/asweigart/pyperclip): A cross-platform clipboard module for monitoring url copied to clipboard, requires "xclip or xsel to be available on linux"
+- [plyer](https://github.com/kivy/plyer): for systray area notification.
 
 
 ** please read notes below
