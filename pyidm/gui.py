@@ -316,43 +316,57 @@ class MainWindow:
         return layout
 
     def create_downloads_tab(self):
-
-        # selected download item's preview panel, "si" = selected item
-        si_layout = [sg.Image(data=thumbnail_icon, key='si_thumbnail'),
-                     sg.Col([[sg.T('', size=(100, 5), key='si_out', font='any 8')],
-                            [sg.ProgressBar(100, size=(20, 10), key='si_bar'), sg.T(' ', size=(10, 1), key='si_percent')]])]
-
         table_right_click_menu = ['Table', ['!Options for selected file:', '---', 'Open File', 'Open File Location',
                                             '▶ Watch while downloading', 'copy webpage url', 'copy direct url',
-                                            'copy playlist url', '⏳ Schedule download', '⏳ Cancel schedule!', 'properties']]
+                                            'copy playlist url', '⏳ Schedule download', '⏳ Cancel schedule!',
+                                            'properties']]
+
+        # buttons
+        resume_btn = sg.Button('', key='Resume', tooltip=' Resume download ', image_data=resume_icon, **transparent)
+        stop_btn = sg.Button('', key='Cancel', tooltip=' Stop download ', image_data=stop_icon, **transparent)
+        refresh_btn = sg.Button('', key='Refresh', tooltip=' Refresh link ', image_data=refresh_icon, **transparent)
+        folder_btn = sg.Button('', key='Folder', tooltip=' open file location ', image_data=folder_icon, **transparent)
+        sched_btn = sg.B('', key='schedule_item', tooltip=' Schedule current item ', image_data=sched_icon, **transparent)
+        del_btn = sg.Button('', key='Delete', tooltip=' Delete item from list ', image_data=deleteall_icon, **transparent)
+        # sg.Button('', key='D.Window', tooltip=' Show download window ', image_data=dwindow_icon, **transparent)
+
+        resume_all_btn = sg.Button('', key='Resume All', tooltip=' Resume All ', image_data=resumeall_icon, **transparent)
+        stop_all_btn = sg.Button('', key='Stop All', tooltip=' Stop All ', image_data=stopall_icon, **transparent)
+        sched_all_btn = sg.B('', key='Schedule All', tooltip=' Schedule All ', image_data=sched_icon, **transparent)
+        del_all_btn = sg.Button('', key='Delete All', tooltip=' Delete All items from list ', image_data=deleteall_icon, **transparent)
+
+        # selected download item's preview panel, "si" = selected item
+        si_layout = [sg.Image(data=thumbnail_icon, key='si_thumbnail', right_click_menu=table_right_click_menu, tooltip=' Double click to open, right click for options '),
+                     sg.Col([[sg.T('', size=(100, 5), key='si_out', font='any 8', enable_events=True, tooltip=' Show download window ')],
+                            [sg.ProgressBar(100, size=(16, 10), key='si_bar'), sg.T(' ', size=(7, 1), key='si_percent'),
+                             *[copy.copy(x) for x in (resume_btn, stop_btn, folder_btn)],
+                             ]])]
+
+        # for table
         headings = ['i', 'name', '%', 'speed', 'left', 'done', 'size', 'status']
         col_widths = [6, 30, 10, 10, 10, 10, 10, 10]
 
-        layout = [[sg.Button('', key='Resume', tooltip=' Resume download ', image_data=resume_icon, **transparent),
-                   sg.Button('', key='Cancel', tooltip=' Stop download ', image_data=stop_icon, **transparent),
-                   sg.Button('', key='Refresh', tooltip=' Refresh link ', image_data=refresh_icon, **transparent),
-                   sg.Button('', key='Folder', tooltip=' open file location ', image_data=folder_icon, **transparent),
-                   sg.Button('', key='D.Window', tooltip=' Show download window ', image_data=dwindow_icon, **transparent),
-                   sg.Button('', key='Delete', tooltip=' Delete item from list ', image_data=delete_icon, **transparent),
+        layout = [
+            [
+                resume_btn, stop_btn, refresh_btn, folder_btn, sched_btn, del_btn,
 
-                   sg.T(' ' * 60), sg.T(''),
+                sg.T(' ', size=(25, 1)),
+                sg.Text('>', key='show_buttons', tooltip=' Show Master Buttons ', enable_events=True, size=(5, 1)),
 
-                   sg.Button('', key='Resume All', tooltip=' Resume All ', image_data=resumeall_icon, **transparent),
-                   sg.Button('', key='Stop All', tooltip=' Stop All ', image_data=stopall_icon, **transparent),
-                   sg.B('', key='Schedule All', tooltip=' Schedule All ', image_data=sched_icon, **transparent),
-                   sg.Button('', key='Delete All', tooltip=' Delete All items from list ', image_data=deleteall_icon, **transparent),
+                sg.Column([[resume_all_btn, stop_all_btn, sched_all_btn, del_all_btn]], key='master_buttons',
+                          pad=(0, 0), visible=False),
 
-                   ],
+            ],
 
-                  # table
-                  [sg.Table(values=headings, headings=headings, num_rows=10, justification='left', auto_size_columns=False,
-                            vertical_scroll_only=False, key='table', enable_events=True, font='any 9',
-                            right_click_menu=table_right_click_menu, max_col_width=100, col_widths=col_widths,
-                            row_height=20
-                            )],
+            # table
+            [sg.Table(values=headings, headings=headings, num_rows=9, justification='left', auto_size_columns=False,
+                      vertical_scroll_only=False, key='table', enable_events=True, font='any 9',
+                      right_click_menu=table_right_click_menu, max_col_width=100, col_widths=col_widths,
+                      row_height=21
+                      )],
 
-                  si_layout
-                  ]
+            si_layout
+        ]
 
         return layout
 
@@ -561,6 +575,9 @@ class MainWindow:
         self.window['table'].Widget.bind("<Button-3>", self.table_right_click)  # right click
         self.window['table'].bind('<Double-Button-1>', '_double_clicked')  # will generate event "table_double_clicked"
         self.window['table'].bind('<Return>', '_enter_key')  # will generate event "table_enter_key"
+
+        # bind double click for thumbnail to open video si_thumbnail
+        self.window['si_thumbnail'].bind('<Double-Button-1>', '_double_clicked')  # will generate event "si_thumbnail_double_clicked"
 
         # log text, disable word wrap
         # use "undo='false'" disable tkinter caching to fix issue #59 "solve huge memory usage and app crash"
@@ -828,7 +845,7 @@ class MainWindow:
             # todo: we could use callback style for some of these if's
             event, values = self.window.Read(timeout=50)
             self.event, self.values = event, values
-            # if event not in ('__TIMEOUT__', 'table'): print(event, values)
+            if event not in ('__TIMEOUT__', 'table'): print(event, values)
 
             if event is None:
                 # close or hide active windows
@@ -837,8 +854,8 @@ class MainWindow:
                 else:
                     self.close()
 
-            # keyboard events ---------------------------------------------------
-            elif event.startswith('Up:'): # up arrow example "Up:38"
+            # keyboard events --------------------------------------------------
+            elif event.startswith('Up'):  # up arrow example "Up:38"
                 # get current element with focus
                 focused_elem = self.window.find_element_with_focus()
 
@@ -853,6 +870,25 @@ class MainWindow:
                 # for table, change selected row
                 if self.window['table'] == focused_elem and self.selected_row_num < len(self.window['table'].Values)-1:
                     self.select_row(self.selected_row_num + 1)
+
+            elif event.startswith('Delete'):  # Delete:46
+                # get current element with focus
+                focused_elem = self.window.find_element_with_focus()
+
+                # for table, change selected row
+                if self.window['table'] == focused_elem and self.selected_d:
+                    self.delete_btn()
+
+            elif event.startswith('Escape'):  # Escape:27
+
+                # get current element with focus
+
+                focused_elem = self.window.find_element_with_focus()
+
+                # for table, change selected row
+
+                if self.window['table'] == focused_elem and self.selected_d:
+                    self.cancel_btn()
 
             # Mouse events MouseWheel:Up, MouseWheel:Down -----------------------
             elif event == 'MouseWheel:Up':
@@ -910,6 +946,21 @@ class MainWindow:
                 self.retry()
 
             # downloads tab events -----------------------------------------------------------------------------------
+            elif event == 'show_buttons':
+                # switch text direction
+                txt = self.window['show_buttons']
+                if txt.DisplayText == '>>>':
+                    txt('>')
+                    self.set_tooltip(txt, ' Show Master Buttons ')
+                    self.window['master_buttons'](visible=False)
+                elif txt.DisplayText == '>':
+                    txt('>>>')
+                    self.set_tooltip(txt, ' Hide Master Buttons ')
+                    self.window['master_buttons'](visible=True)
+
+
+                # sg.Text
+
             elif event == 'table':
                 # todo: investigate this event keeps triggering
                 # I think because update_gui() keeps updating table contents, it will trigger 'table' event continuously
@@ -922,8 +973,8 @@ class MainWindow:
                     # log("MainWindow.run:if event == 'table': ", e)
                     pass
 
-            elif event in ('table_double_clicked', 'table_enter_key', 'Open File', '▶ Watch while downloading') and \
-                    self.selected_d:
+            elif event in ('table_double_clicked', 'table_enter_key', 'Open File', '▶ Watch while downloading',
+                           'si_thumbnail_double_clicked') and self.selected_d:
                 if self.selected_d.status == Status.completed:
                     open_file(self.selected_d.target_file)
                 else:
@@ -957,16 +1008,18 @@ class MainWindow:
                                f'Resumable: {d.resumable} \n' \
                                f'Type: {d.type} - {"-".join(d.subtype_list)}\n' \
                                f'Protocol: {d.protocol} \n' \
-                               f'Selected quality: {d.selected_quality}\n' \
-                               f'Webpage url: {d.url}\n' \
-                               f'Playlist url: {d.playlist_url}'
+                               f'Selected quality: {d.selected_quality}\n\n' \
+                               f'Webpage url: {d.url}\n\n' \
+                               f'Playlist url: {d.playlist_url}\n\n' \
+                               f'Direct video url: {d.eff_url}\n\n' \
+                               f'Direct audio url: {d.audio_url}\n\n'
 
                         sg.popup_scrolled(text, title='File properties')
                 except Exception as e:
                     log('gui> properties>', e)
 
-            elif event == '⏳ Schedule download':
-                print('schedule clicked')
+            elif event in ('⏳ Schedule download', 'schedule_item'):
+                # print('schedule clicked')
                 response = self.ask_for_sched_time(msg=self.selected_d.name)
                 if response:
                     self.selected_d.sched = response
@@ -986,7 +1039,7 @@ class MainWindow:
             elif event == 'Folder':
                 self.open_file_location()
 
-            elif event == 'D.Window':
+            elif event in ('D.Window', 'si_out'):
                 # create download window
                 if self.selected_d:
                     if config.auto_close_download_window and self.selected_d.status != Status.downloading:
@@ -1949,14 +2002,19 @@ class MainWindow:
                         log('youtube func: missing formats, re-downloading webpage')
 
                     # to avoid missing formats will call youtube-dl again with process=True 're-downloading webpage'
+                    print('url 1984', self.d.url)
                     info = ydl.extract_info(self.d.url, download=False, process=True)
+                    print('url 1986', self.d.url)
                     vid = Video(self.d.url, vid_info=info)
+                    print('url 1988', self.d.url)
 
                     # add to playlist
                     self.playlist = [vid]
+                    print('url 1992', self.d.url)
 
                     # get thumbnail
                     vid.get_thumbnail()
+                    print('url 1996', self.d.url)
 
                     # report done processing
                     vid.processed = True
@@ -1978,6 +2036,7 @@ class MainWindow:
 
             # job completed
             self.m_bar = 100
+            print('url 2018', self.d.url)
             log(f'youtube_func()> done fetching information in {round(time.time() - timer1, 1)} seconds .............')
 
         except Exception as e:
@@ -2608,7 +2667,7 @@ class DownloadWindow:
             [sg.T('', size=(100, 1),  font='any 8', key='log2', relief=sg.RELIEF_RAISED)],
         ]
 
-        self.window = sg.Window(title=self.d.name, layout=layout, finalize=True, margins=(2, 2), size=(460, 205))
+        self.window = sg.Window(title=self.d.name, layout=layout, finalize=True, margins=(2, 2), size=(460, 205), return_keyboard_events=True)
         self.window['progress_bar'].expand()
         self.window['percent'].expand()
 
@@ -2657,7 +2716,7 @@ class DownloadWindow:
 
     def run(self):
         self.event, self.values = self.window.Read(timeout=self.timeout)
-        if self.event in ('cancel', None):
+        if self.event in ('cancel', None) or self.event.startswith('Escape'):  # escape button
             log('download window received', self.event)
             if self.d.status not in (Status.error, Status.completed):
                 self.d.status = Status.cancelled
