@@ -131,12 +131,15 @@ def main():
                 else:
                     main_window.un_hide()
             elif value == 'minimize_to_systray':
-                main_window.hide()
+                if main_window:
+                    main_window.hide()
             elif value == 'close_to_systray':
-                main_window.close()
+                if main_window:
+                    main_window.close()
 
         # global shutdown flag
         if config.shutdown or (not main_window and not systray.active):
+            print('config.shutdown, systray.active', config.shutdown, systray.active)
             systray.shutdown()
             config.shutdown = True
             break

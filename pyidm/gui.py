@@ -30,7 +30,7 @@ from .iconsbase64 import *
 # imports for systray icon, currently systray run only on python
 if config.operating_system == 'Windows':
     try:
-        from .traybar import SysTrayIcon
+        from .wintray import SysTrayIcon
         from PIL import Image
         import io
         import base64
@@ -2001,19 +2001,14 @@ class MainWindow:
                         log('youtube func: missing formats, re-downloading webpage')
 
                     # to avoid missing formats will call youtube-dl again with process=True 're-downloading webpage'
-                    print('url 1984', self.d.url)
                     info = ydl.extract_info(self.d.url, download=False, process=True)
-                    print('url 1986', self.d.url)
                     vid = Video(self.d.url, vid_info=info)
-                    print('url 1988', self.d.url)
 
                     # add to playlist
                     self.playlist = [vid]
-                    print('url 1992', self.d.url)
 
                     # get thumbnail
                     vid.get_thumbnail()
-                    print('url 1996', self.d.url)
 
                     # report done processing
                     vid.processed = True
@@ -2035,7 +2030,6 @@ class MainWindow:
 
             # job completed
             self.m_bar = 100
-            print('url 2018', self.d.url)
             log(f'youtube_func()> done fetching information in {round(time.time() - timer1, 1)} seconds .............')
 
         except Exception as e:
@@ -3310,6 +3304,7 @@ class SysTray:
 
     @property
     def tray_icon(self):
+        """path to icon file"""
         try:
             if not os.path.isfile(self._tray_icon):
                 # read base64 icon string into io buffer
@@ -3336,10 +3331,10 @@ class SysTray:
                                 ("Close to Systray", None, self.close_to_systray),)
                 self.systray = SysTrayIcon(self.tray_icon, "PyIDM", menu_options, on_quit=self.quit)
                 self.systray.start()
+                self.active = True
             else:
                 log('Systray is not supported on:', config.operating_system, 'yet!')
                 return
-            self.active = True
         except Exception as e:
             log('systray: - run() - ', e)
             self.active = False
