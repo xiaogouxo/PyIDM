@@ -8,7 +8,8 @@
 """
 
 # check and update application
-# import io
+import hashlib
+import json
 import py_compile
 import shutil
 import sys
@@ -16,12 +17,12 @@ import zipfile
 import queue
 import time
 from threading import Thread
+from distutils.dir_util import copy_tree
 
 from . import config
 import os
 
-from . import video
-from .utils import log, download, run_command, delete_folder
+from .utils import log, download, run_command, delete_folder, version_value, delete_file
 import webbrowser
 
 
@@ -81,8 +82,106 @@ def get_changelog():
 
 
 def update():
+    if config.FROZEN:
+        try:
+            done = download_update_batch()
+            if not done:
+                log('Update Failed, check log for more info', showpopup=True)
+                return False
+
+            # try to install update batch
+            done = install_update_batch()
+            if not done:
+                log("Couldn't install updates while application running, please restart PyIDM\n\n",
+                    'IMPORTANT: when you restart PyIDM it might take around 30 seconds installing updates\n',
+                    'before it loads completely\n '
+                    'If you see error message just ignore it and start the application again\n', showpopup=True)
+                return False
+            else:
+                log('Update finished successfully, Please restart PyIDM', showpopup=True)
+                return True
+        except Exception as e:
+            log('update()> error', e)
+    else:
+        open_update_link()
+
+
+def open_update_link():
     url = config.LATEST_RELEASE_URL if config.FROZEN else config.APP_URL
     webbrowser.open_new(url)
+
+
+def download_update_batch():
+    """for frozen windows app, will download only the updated files from server"""
+
+    # first download updateinfo.json file to get the link for update batch file
+    url = 'https://github.com/pyIDM/pyIDM/releases/download/extra/updateinfo.json'
+
+    # get latest version url
+    log('getting latest update batch url')
+    buffer = download(url, verbose=False)
+    if buffer:
+        log('decode buffer')
+        buffer = buffer.getvalue().decode()  # convert to string
+        log('read json information')
+        try:
+            info = json.loads(buffer)
+        except:
+            log('download_update_batch().json, Failed to read info from downloaded file')
+            return False
+
+        url = info.get('url')
+        minimum_version = info.get('minimum_version')
+        original_hash = info.get('sha256')
+
+        if version_value(config.APP_VERSION) < version_value(minimum_version):
+            log('Minimum version allowed to receive this update is:', minimum_version, '\n',
+                'Please download the full version instead')
+            return False
+
+        log('downloading "update files", please wait...')
+        target_path = os.path.join(config.current_directory, 'PyIDM_update_files.zip')
+        buffer = download(url, file_name=target_path)
+
+        if not buffer:
+            log('downloading "update files", Failed!!!')
+            return False
+
+        # check download integrity / hash
+        log('Integrity check ....')
+        download_hash = hashlib.sha256(buffer.read()).hexdigest()
+
+        # close buffer
+        buffer.close()
+
+        if download_hash.lower() != original_hash.lower():
+            log('Integrity check failed, update batch has different hash, quitting...')
+            log('download_hash, original_hash:')
+            log('\n', download_hash, '\n', original_hash)
+            return False
+
+        # unzipping downloaded file
+        log('unzipping downloaded file')
+        with zipfile.ZipFile(target_path, 'r') as zip_ref:  # extract zip file
+            zip_ref.extractall(config.current_directory)
+
+        log('delete zip file')
+        delete_file(target_path, verbose=True)
+        return True
+
+
+def install_update_batch():
+    try:
+        log('overwrite old PyIDM files')
+        update_batch_path = os.path.join(config.current_directory, 'PyIDM_update_files')
+        copy_tree(update_batch_path, config.current_directory)
+
+        log('delete temp files')
+        delete_folder(update_batch_path)
+        return True
+    except Exception as e:
+        log('install_update_batch()> error', e)
+        return False
 
 
 def check_for_ytdl_update():

@@ -2550,12 +2550,15 @@ class MainWindow:
         layout = [
             [sg.T('New version available:')],
             [sg.Multiline(self.new_version_description, size=(70, 10))],
-            [sg.B('Update'), sg.Cancel()]
+            [sg.B('Update'), sg.B('website'), sg.Cancel()]
         ]
         window = sg.Window('Update Application', layout, finalize=True, keep_on_top=True)
         event, _ = window()
         if event == 'Update':
-            update.update()
+            Thread(target=update.update).start()
+            self.select_tab('Log')
+        elif event == 'website':
+            update.open_update_link()
 
         window.close()
 

@@ -7,6 +7,7 @@
     :license: GNU LGPLv3, see LICENSE for more details.
 """
 import base64
+import datetime
 import os
 import io
 import pycurl
@@ -183,10 +184,13 @@ def get_headers(url, verbose=False):
 
 
 def download(url, file_name=None, verbose=True):
-    """simple file download, return False if failed,
-    :param url: text url link
-    :param file_name: if specified it will save file to disk, otherwise it will buffer to memory
-    it will return True / buffer or False"""
+    """
+    simple file download, into bytesio buffer and store it on disk if file_name is given
+    :param url: string url/link
+    :param file_name: string type for file path
+    :param verbose: bool, log events if true
+    :return: bytesIo buffer or None
+    """
 
     if not url:
         log('download()> url not valid:', url)
@@ -202,34 +206,37 @@ def download(url, file_name=None, verbose=True):
         # set special curl options
         c.setopt(pycurl.URL, url)
 
-    file = None
-    buffer = None
-
-    # pycurl
+    # pycurl initialize
     c = pycurl.Curl()
     set_options()
 
-    if file_name:
-        file = open(file_name, 'wb')
-        c.setopt(c.WRITEDATA, file)
-    else:
-        buffer = io.BytesIO()
-        c.setopt(c.WRITEDATA, buffer)
+    # create buffer to hold download data
+    buffer = io.BytesIO()
+    c.setopt(c.WRITEDATA, buffer)
 
     try:
+        # run libcurl
         c.perform()
+
+        if file_name:
+            # save file name
+            with open(file_name, 'wb') as file:
+                # after PyCurl done writing download data into buffer the current "cursor" position is at end of buffer
+                # bring position back to start of the buffer
+                buffer.seek(0)
+                file.write(buffer.read())
+                file.close()
+
+        # reset buffer stream position
+        buffer.seek(0)
+        return buffer
 
     except Exception as e:
         log('download():', e)
-        return False
+        return None
     finally:
+        # close curl
         c.close()
-        if file:
-            file.close()
-
-    # log('download(): done downloading')
-
-    return buffer
 
 
 def size_format(size, tail=''):
@@ -809,6 +816,20 @@ def execute_command(command='', *args, **kwargs):
     config.commands_q.put((command, args, kwargs))
 
 
+def version_value(text):
+    """
+    convert date based version number into date object for comparision purpose
+    :param text: version with dot separated digits i.e. "2020.4.27"
+    :return: datetime.date
+    """
+
+    try:
+        # calculate how many days as a value
+        year, month, day = [int(x) for x in text.split('.')]
+        # return year * 366 + month * 30.5 + day
+        return datetime.date(year, month, day)
+    except:
+        return 0
 
 
 __all__ = [
@@ -817,6 +838,6 @@ __all__ = [
     'run_command', 'print_object', 'update_object', 'truncate', 'sort_dictionary', 'popup', 'compare_versions',
     'translate_server_code', 'validate_url', 'open_file', 'delete_file',
     'rename_file', 'load_json', 'save_json', 'echo_stdout', 'echo_stderr', 'log_recorder', 'natural_sort',
-    'process_thumbnail', 'parse_bytes', 'set_curl_options', 'execute_command', 'clipboard'
+    'process_thumbnail', 'parse_bytes', 'set_curl_options', 'execute_command', 'clipboard', 'version_value'
 
 ]
