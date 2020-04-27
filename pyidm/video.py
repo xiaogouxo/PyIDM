@@ -55,6 +55,10 @@ def get_ytdl_options():
         ydl_opts['username'] = config.username
         ydl_opts['password'] = config.password
 
+    # cookies: https://github.com/ytdl-org/youtube-dl/blob/master/README.md#how-do-i-pass-cookies-to-youtube-dl
+    if config.use_cookies:
+        ydl_opts['cookiefile'] = config.cookie_file_path
+
     # subtitle
     # ydl_opts['listsubtitles'] = True  # this is has a problem with playlist
     # ydl_opts['allsubtitles'] = True  # has no effect

@@ -98,6 +98,10 @@ max_log_size = 1024 * 1024 * 5  # 5 MB
 log_level = DEFAULT_LOG_LEVEL  # standard=1, verbose=2, debug=3
 log_recorder_q = Queue()
 
+# use_cookies
+use_cookies = False
+cookie_file_path = ''
+
 # systray
 close_action = 'close'  # close, minimize, to systray, or quit and close systray
 

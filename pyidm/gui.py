@@ -460,9 +460,13 @@ class MainWindow:
                                          disabled=not config.use_web_auth, password_char='*')],
             [sg.T('', font='any 1')],  # spacer
 
-            [sg.Checkbox('Referee url:', default=config.use_referer, key='use_referer', enable_events=True),
-             sg.I(default_text=config.referer_url, size=(60, 1), font='any 9', key='referer_url',
+            [sg.Checkbox('Referee url:   ', default=config.use_referer, key='use_referer', enable_events=True),
+             sg.I(default_text=config.referer_url, size=(55, 1), font='any 9', key='referer_url',
                   enable_events=True, disabled=not config.use_referer)],
+
+            [sg.Checkbox('Use Cookies:', default=config.use_cookies, key='use_cookies', enable_events=True),
+             sg.I(default_text=config.cookie_file_path, size=(55, 1), font='any 9', key='cookie_file_path',
+                  enable_events=True, disabled=not config.use_cookies), sg.FileBrowse('Browse')],
 
 
         ]
@@ -1221,6 +1225,17 @@ class MainWindow:
                 else:
                     self.window['referer_url'](disabled=True)
                     config.referer_url = ''
+
+            elif event in ('use_cookies', 'cookie_file_path'):
+                config.use_cookies = values['use_cookies']
+                if config.use_cookies:
+                    self.window['cookie_file_path'](disabled=False)
+                    config.cookie_file_path = self.window['cookie_file_path'].get()
+                else:
+                    self.window['cookie_file_path'](disabled=True)
+                    config.cookie_file_path = ''
+
+                print(config.cookie_file_path)
 
             elif event in ('username', 'password', 'use_web_auth'):
                 if values['use_web_auth']:
@@ -2361,10 +2376,15 @@ class MainWindow:
             self.active = False
             config.terminate = True
 
+            if config.close_action == 'quit':
+                config.shutdown = True
+
             # cancel pending jobs
             # root = self.window.TKroot
             # root.after_cancel(self.window.TKAfterID)
-            # self.window.close()
+            # self.window._Close()
+            # root.quit()
+            # self.window.RootNeedsDestroying = True
 
             # for some reasons close method gives some errors and tooltip activate after window is closed
             # triggering an AutoClose_alarm_callback, will close window without issues, but using protected member
@@ -2413,9 +2433,6 @@ class MainWindow:
         """close window and stop updating"""
         self.active = False
         config.terminate = True
-
-        if config.close_action == 'quit':
-            config.shutdown = True
 
         # close active windows
         try:

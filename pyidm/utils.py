@@ -86,6 +86,10 @@ def set_curl_options(c):
     if config.referer_url:
         c.setopt(pycurl.REFERER, config.referer_url)
 
+    # cookies
+    if config.use_cookies:
+        c.setopt(pycurl.COOKIEFILE, config.cookie_file_path)
+
     # website authentication
     if config.username or config.password:
         c.setopt(pycurl.USERNAME, config.username)
