@@ -8,6 +8,8 @@
 """
 import gc
 import webbrowser
+from urllib.parse import urljoin
+
 import PySimpleGUI as sg
 import tkinter.font
 import os
@@ -185,6 +187,9 @@ class MainWindow:
         self.reset()
         self.reset_video_controls()
 
+        # update table one time at least
+        self.update_table()
+
     def read_q(self):
         # read incoming messages from queue
         for _ in range(config.main_window_q.qsize()):
@@ -309,7 +314,7 @@ class MainWindow:
         resume_all_btn = sg.Button('', key='Resume All', tooltip=' Resume All ', image_data=resumeall_icon, **transparent)
         stop_all_btn = sg.Button('', key='Stop All', tooltip=' Stop All ', image_data=stopall_icon, **transparent)
         sched_all_btn = sg.B('', key='Schedule All', tooltip=' Schedule All ', image_data=sched_icon, **transparent)
-        del_all_btn = sg.Button('', key='Delete All', tooltip=' Delete All items from list ', image_data=deleteall_icon, **transparent)
+        del_all_btn = sg.Button('', key='delete_all', tooltip=' Delete All items from list ', image_data=deleteall_icon, **transparent)
 
         # selected download item's preview panel, "si" = selected item
         si_layout = [sg.Image(data=thumbnail_icon, key='si_thumbnail', right_click_menu=table_right_click_menu,
@@ -663,6 +668,14 @@ class MainWindow:
         except Exception as e:
             print(e)
 
+    @property
+    def active_tab(self):
+        # notebook
+        nb = self.window['tab_group'].Widget
+
+        # return active tab name
+        return nb.tab(nb.select(), "text")
+
     def update_log(self):
         """
         read config.log_q and display text in log tab
@@ -707,6 +720,19 @@ class MainWindow:
                 except:
                     pass
 
+    def update_table(self):
+        table_values = [[self.format_cell_data(key, getattr(d, key, '')) for key in self.d_headers] for d in
+                        self.d_list]
+        self.window['table'](values=table_values[:])
+
+        if self.d_list:
+            # select first row by default if nothing previously selected
+            if not self.selected_row_num:
+                self.selected_row_num = 0
+
+            # re-select the previously selected row in the table
+            self.window['table'](select_rows=(self.selected_row_num,))
+
     def update_gui(self):
         """
         Periodically update gui widgets
@@ -729,17 +755,8 @@ class MainWindow:
             self.window['file_properties'](file_properties)
 
             # download list / table
-            table_values = [[self.format_cell_data(key, getattr(d, key, '')) for key in self.d_headers] for d in
-                            self.d_list]
-            self.window['table'](values=table_values[:])
-
-            if self.d_list:
-                # select first row by default if nothing previously selected
-                if not self.selected_row_num:
-                    self.selected_row_num = 0
-
-                # re-select the previously selected row in the table
-                self.window['table'](select_rows=(self.selected_row_num,))
+            if self.active_tab == 'Downloads':
+                self.update_table()
 
             # update active and pending downloads
             self.window['active_downloads'](f' {len(self.active_downloads)} ▼  |  {len(self.pending)} ⏳')
@@ -1098,7 +1115,7 @@ class MainWindow:
             elif event == 'Delete':
                 self.delete_btn()
 
-            elif event == 'Delete All':
+            elif event == 'delete_all':
                 self.delete_all_downloads()
 
             # Settings tab -------------------------------------------------------------------------------------------
@@ -1961,22 +1978,31 @@ class MainWindow:
                 # 50% done
                 self.m_bar = 50
 
-                # check results if _type is a playlist / multi_video
-                if info.get('_type') == 'playlist' or 'entries' in info:
+                # check results if _type is a playlist / multi_video -------------------------------------------------
+                result_type = info.get('_type', 'video')
+                if result_type in ('playlist', 'multi_video') or 'entries' in info:
                     log('youtube-func()> start processing playlist')
-
-                    # set playlist url
-                    self.d.playlist_url = self.d.url
 
                     # videos info
                     pl_info = list(info.get('entries'))
 
+                    playlist_url = self.d.url
+
                     # create initial playlist with un-processed video objects
-                    for num, item in enumerate(pl_info):
-                        item['formats'] = []
-                        vid = Video(item.get(url, ''), item)
+                    for num, v_info in enumerate(pl_info):
+                        v_info['formats'] = []
+
+                        # get video's url
+                        vid_url = v_info.get('webpage_url', None) or v_info.get('url', None) or v_info.get('id', None)
+
+                        # create video object
+                        vid = Video(vid_url, v_info)
+
+                        # update info
                         vid.playlist_title = info.get('title', '')
-                        vid.playlist_url = self.url
+                        vid.playlist_url = playlist_url
+
+                        # add video to playlist
                         self.playlist.append(vid)
 
                     # increment to media progressbar to complete last 50%
@@ -2015,7 +2041,7 @@ class MainWindow:
                                 t = Thread(target=process_video_info, daemon=True, args=(self.playlist[num],))
                                 v_threads.append(t)
                                 t.start()
-                                print('processed video:', num + 1)
+                                # print('processed video:', num + 1)
                                 processed_videos += 1
 
                             # check for finished threads
@@ -2122,6 +2148,7 @@ class MainWindow:
             self.video = self.playlist[selected_index]
 
             # set current download item as self.video
+            # self.video.url = self.d.url
             self.d = self.video
 
             self.update_stream_menu()
@@ -2341,6 +2368,7 @@ class MainWindow:
             return
 
         self.url = url
+        print(self.url)
 
         # Focus and select main app page in case text changed from script
         self.window.BringToFront()

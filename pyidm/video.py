@@ -88,7 +88,11 @@ class Video(DownloadItem):
             with ytdl.YoutubeDL(get_ytdl_options()) as ydl:
                 self.vid_info = ydl.extract_info(self.url, download=False, process=True)
 
-        self.webpage_url = url  # self.vid_info.get('webpage_url')
+        self.webpage_url = self.vid_info.get('webpage_url', None) or url
+
+        # update url again if webpage url is available
+        self.url = self.webpage_url or self.url
+
         self.title = validate_file_name(self.vid_info.get('title', f'video{int(time.time())}'))
         self.name = self.title
 
@@ -115,6 +119,12 @@ class Video(DownloadItem):
         url = self.vid_info.get('url', None) or self.vid_info.get('webpage_url', None) or self.vid_info.get('id', None)
         if url:
             self.eff_url = url
+
+        # sometimes url is just video id when fetch playlist info with process=False, try to get complete url
+        # example, playlist url: https://www.youtube.com/watch?v=ethlD9moxyI&list=PL2aBZuCeDwlSXza3YLqwbUFokwqQHpPbp
+        # video url = C4C8JsgGrrY
+        # After processing will get webpage url = https://www.youtube.com/watch?v=C4C8JsgGrrY
+        self.url = self.vid_info.get('webpage_url', None) or self.url
 
         # self.webpage_url = url  # self.vid_info.get('webpage_url')
         self.name = self.title = validate_file_name(self.vid_info.get('title', f'video{int(time.time())}'))
