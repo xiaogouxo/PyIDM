@@ -1056,11 +1056,12 @@ class MainWindow:
                                f'Protocol: {d.protocol} \n' \
                                f'Selected quality: {d.selected_quality}\n\n' \
                                f'Webpage url: {d.url}\n\n' \
+                               f'Playlist title: {d.playlist_title}\n' \
                                f'Playlist url: {d.playlist_url}\n\n' \
                                f'Direct video url: {d.eff_url}\n\n' \
                                f'Direct audio url: {d.audio_url}\n\n'
 
-                        sg.popup_scrolled(text, title='File properties')
+                        sg.popup_scrolled(text, title='File properties', size=(50, 20))
                 except Exception as e:
                     log('gui> properties>', e)
 
