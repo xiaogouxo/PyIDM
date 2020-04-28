@@ -17,6 +17,7 @@ from threading import Thread, Timer, Lock
 from collections import deque
 
 from .utils import *
+from . import setting
 from . import config
 from .config import Status
 from . import update
@@ -87,7 +88,7 @@ class MainWindow:
 
         # download list
         self.d_headers = ['i', 'name', 'progress', 'speed', 'time_left', 'downloaded', 'total_size', 'status']
-        self.d_list = d_list  # list of DownloadItem() objects
+        self.d_list = []  # list of DownloadItem() objects
         self.selected_row_num = None
         self._selected_d = None
 
@@ -114,10 +115,11 @@ class MainWindow:
         self.setup()
 
     @staticmethod
-    def startup_checks():
+    def startup():
         # start log recorder
         Thread(target=log_recorder, daemon=True).start()
 
+        log('-' * 50, 'PyIDM', '-' * 50)
         log('Starting PyIDM version:', config.APP_VERSION, 'Frozen' if config.FROZEN else 'Non-Frozen')
         log('operating system:', config.operating_system_info)
 
@@ -129,11 +131,20 @@ class MainWindow:
 
     def setup(self):
         """initial setup"""
-        self.startup_checks()
 
-        # empty main window's queue
-        for _ in range(config.main_window_q.qsize()):
-            _ = config.main_window_q.get()
+        # empty main window's queue and log queue
+        for q in (config.main_window_q, config.log_q):
+            reset_queue(q)
+
+        # startup
+        self.startup()
+
+        # load stored setting from disk
+        setting.load_setting()
+        config.d_list = setting.load_d_list()
+
+        # update d_list
+        self.d_list = config.d_list  # list of DownloadItem() objects
 
         # set global theme
         self.change_theme()
@@ -177,48 +188,12 @@ class MainWindow:
     def read_q(self):
         # read incoming messages from queue
         for _ in range(config.main_window_q.qsize()):
+            if not self.active:
+                return
             k, v = config.main_window_q.get()
-            if k == 'log':
-                try:
-                    contents = self.window['log'].get()
-                    # print(size_format(len(contents)))
-                    if len(contents) > config.max_log_size:
-                        # delete 20% of contents to keep size under max_log_size
-                        slice_size = int(config.max_log_size * 0.2)
-                        self.window['log'](contents[slice_size:])
-
-                    self.window['log'](v, append=True)
-                except Exception as e:
-                    print(e)
-
-                self.set_status(v.strip('\n'))
-
-                # parse youtube output while fetching playlist info with option "process=True"
-                if '[download]' in v:  # "[download] Downloading video 3 of 30"
-                    try:
-                        b = v.rsplit(maxsplit=3)  # ['[download] Downloading video', '3', 'of', '30']
-                        total_num = int(b[-1])
-                        num = int(b[-3])
-
-                        # get 50% of this value and the remaining 50% will be for other processing
-                        percent = int(num * 100 / total_num)
-                        percent = percent // 2
-
-                        # update media progress bar
-                        self.m_bar = percent
-
-                        # update playlist frame title
-                        self.window['playlist_frame'](
-                            value=f'Playlist ({num} of {total_num} {"videos" if num > 1 else "video"}):')
-                    except:
-                        pass
-
-            elif k == 'url':
+            if k == 'url':
                 self.window['url'](v.strip())
                 self.url_text_change()
-
-            elif k == 'monitor':
-                self.window['monitor'](v)
 
             elif k == 'visibility' and v == 'show':
                 # self.un_hide()
@@ -241,11 +216,12 @@ class MainWindow:
         # read commands coming from other threads / modules and execute them.
         for _ in range(config.commands_q.qsize()):
             try:
+                command = ''
                 command, args, kwargs = config.commands_q.get()
                 log(f'MainWindow, received command: {command}(), args={args}, kwargs={kwargs}', log_level=3)
                 getattr(self, command)(*args, **kwargs)
             except Exception as e:
-                log('MainWindow, error running command:', command, e)
+                log('MainWindow, error running command:', command, e, log_level=3)
 
     # region gui design
 
@@ -687,12 +663,62 @@ class MainWindow:
         except Exception as e:
             print(e)
 
+    def update_log(self):
+        """
+        read config.log_q and display text in log tab
+        :return: None
+        """
+        # update log
+        for _ in range(config.log_q.qsize()):
+            line = config.log_q.get()
+            try:
+                contents = self.window['log'].get()
+                # print(size_format(len(contents)))
+                if len(contents) > config.max_log_size:
+                    # delete 20% of contents to keep size under max_log_size
+                    slice_size = int(config.max_log_size * 0.2)
+                    self.window['log'](contents[slice_size:])
+
+                self.window['log'](line, append=True)
+            except Exception as e:
+                # print('MainWindow.read_q() log error', e)
+                pass
+
+            self.set_status(line.strip('\n'))
+
+            # currently not implemented
+            # parse youtube output while fetching playlist info with option "process=True"
+            if '[download]' in line:  # "[download] Downloading video 3 of 30"
+                try:
+                    b = line.rsplit(maxsplit=3)  # ['[download] Downloading video', '3', 'of', '30']
+                    total_num = int(b[-1])
+                    num = int(b[-3])
+
+                    # get 50% of this value and the remaining 50% will be for other processing
+                    percent = int(num * 100 / total_num)
+                    percent = percent // 2
+
+                    # update media progress bar
+                    self.m_bar = percent
+
+                    # update playlist frame title
+                    self.window['playlist_frame'](
+                        value=f'Playlist ({num} of {total_num} {"videos" if num > 1 else "video"}):')
+                except:
+                    pass
+
     def update_gui(self):
+        """
+        Periodically update gui widgets
+        :return: None
+        """
         if not self.active:
             return
 
         # update Elements
         try:
+            self.update_log()
+
             # file name
             if self.window['name'].get() != self.d.name:  # it will prevent cursor jump to end when modifying name
                 self.window['name'](self.d.name)
@@ -2389,8 +2415,9 @@ class MainWindow:
             # for some reasons close method gives some errors and tooltip activate after window is closed
             # triggering an AutoClose_alarm_callback, will close window without issues, but using protected member
             # is not recommended, todo: find a way to trigger PySimpleGUI event manually and simulate None event for window close
+
+            # this internal method will trigger "None" event
             self.window._AutoCloseAlarmCallback()
-            self.close()  # not necessarily required
 
     def un_hide_active_windows(self):
         try:
@@ -2443,6 +2470,10 @@ class MainWindow:
 
         # log('main window closing')
         self.window.close()
+
+        # Save setting to disk
+        setting.save_setting()
+        setting.save_d_list(config.d_list)
 
         # Force python garbage collector to free up memory
         gc.collect()

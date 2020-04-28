@@ -135,6 +135,7 @@ d_list = []
 # queues
 main_q = Queue()  # used by pyIDM.py
 main_window_q = Queue()  # queue for Main application window
+log_q = Queue()  # queue to hold log messages to be displayed in main window's log tab
 commands_q = Queue()  # queue to access MainWindow internal methods from threads
 error_q = Queue()  # used by workers to report server refuse connection errors
 jobs_q = Queue()  # # required for failed worker jobs

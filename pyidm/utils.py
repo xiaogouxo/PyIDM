@@ -310,9 +310,15 @@ def log(*args, log_level=1, start='>> ', end='\n', showpopup=False):
 
     try:
         print(text, end=end)
+
+        # one log line, currently used by download window
         config.log_entry = text
+
+        # sent text to log recorder to write it into log.txt file
         config.log_recorder_q.put(text + end)
-        config.main_window_q.put(('log', text + end))
+
+        # send for main menu
+        config.log_q.put(text + end)
 
         # show popup
         if showpopup:
@@ -326,7 +332,7 @@ def echo_stdout(func):
 
     def echo(text):
         try:
-            config.main_window_q.put(('log', text))
+            config.log_q.put(('log', text))
             return func(text)
         except:
             return func(text)
@@ -339,7 +345,7 @@ def echo_stderr(func):
 
     def echo(text):
         try:
-            config.main_window_q.put(('log', text))
+            config.log_q.put(('log', text))
             return func(text)
         except:
             return func(text)
@@ -836,12 +842,19 @@ def version_value(text):
         return 0
 
 
+def reset_queue(q):
+    """clear all contents of queue by dummy reading contents"""
+    for _ in range(q.qsize()):
+        _ = q.get()
+
+
 __all__ = [
     'notify', 'handle_exceptions', 'get_headers', 'download', 'size_format', 'time_format', 'log',
     'validate_file_name', 'size_splitter', 'delete_folder', 'get_seg_size',
     'run_command', 'print_object', 'update_object', 'truncate', 'sort_dictionary', 'popup', 'compare_versions',
     'translate_server_code', 'validate_url', 'open_file', 'delete_file',
     'rename_file', 'load_json', 'save_json', 'echo_stdout', 'echo_stderr', 'log_recorder', 'natural_sort',
-    'process_thumbnail', 'parse_bytes', 'set_curl_options', 'execute_command', 'clipboard', 'version_value'
+    'process_thumbnail', 'parse_bytes', 'set_curl_options', 'execute_command', 'clipboard', 'version_value',
+    'reset_queue'
 
 ]

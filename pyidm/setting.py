@@ -177,4 +177,4 @@ def save_setting():
             json.dump(settings, f)
             log('setting saved')
     except Exception as e:
-        handle_exceptions(e)
+        log('save_setting() > error', e)

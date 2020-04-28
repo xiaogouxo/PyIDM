@@ -49,26 +49,35 @@ install_missing_pkgs()
 # local modules
 from .utils import *
 from . import config
-from . import setting
 from . import video
 from .gui import MainWindow, SysTray
 
 
+# messages will be written to clipboard to check for any PyIDM instance with the same version running
+QUERY_MSG = f'PyIDM "{config.APP_VERSION}", any one there?'
+AFFIRMATIVE_MSG = f'PyIDM "{config.APP_VERSION}", already running'
+
+
 def clipboard_listener():
+    """Monitor clipboard for any copied url, also a way to allow only one App. instance"""
     old_data = ''
-    # monitor = True
 
     while True:
-
+        # read clipboard contents
         new_data = clipboard.paste()
 
-        if new_data == f'PyIDM "{config.APP_VERSION}", any one there?':  # a possible message coming from new instance of this script
-            clipboard.copy('hey, get lost!')  # it will be read by singleApp() as an exit signal
+        # Solo App. guard, if user try to launch app. executable while it is already running
+        if new_data == QUERY_MSG:  # a message coming from new App. instance
+            # send a yes response # it will be read by is_solo() as an exit signal
+            clipboard.copy(AFFIRMATIVE_MSG)
+
+            # wake up MainWindow if it is closed in systray or not focused
             config.main_q.put('start_main_window')
             config.main_window_q.put(('visibility', 'show'))  # restore main window if minimized
 
+        # url processing
         if config.monitor_clipboard and new_data != old_data:
-            if new_data.startswith('http') and ' ' not in new_data:
+            if new_data.startswith('http'):
                 config.main_window_q.put(('url', new_data))
 
             old_data = new_data
@@ -77,18 +86,27 @@ def clipboard_listener():
         if config.shutdown:
             break
 
+        # good boy
         time.sleep(0.2)
 
 
-def singleApp():
-    """send a message thru clipboard to check if an app instance already running"""
+def is_solo():
+    """send a message thru clipboard to check if a previous app instance already running"""
     original = clipboard.paste()  # get original clipboard value
-    clipboard.copy(f'PyIDM "{config.APP_VERSION}", any one there?')
-    time.sleep(0.3)
-    answer = clipboard.paste()
-    clipboard.copy(original)  # restore clipboard original value
 
-    if answer == 'hey, get lost!':
+    # write this message to clipboard to check if there is an active PyIDM instance
+    clipboard.copy(QUERY_MSG)
+
+    # wait to get a reply
+    time.sleep(0.3)
+
+    # get the current clipboard content
+    answer = clipboard.paste()
+
+    # restore clipboard original value
+    clipboard.copy(original)
+
+    if answer == AFFIRMATIVE_MSG:
         return False
     else:
         return True
@@ -96,18 +114,14 @@ def singleApp():
 
 def main():
 
-    # quit if there is previous instance of this script already running
-    if not singleApp():
+    # quit if there is previous instance of this App. already running
+    if not is_solo():
         print('previous instance already running')
         config.shutdown = True
         return
 
     # import youtube-dl in a separate thread
     Thread(target=video.import_ytdl, daemon=True).start()
-
-    # load stored setting from disk
-    setting.load_setting()
-    config.d_list = setting.load_d_list()
 
     # run clipboard monitor thread
     Thread(target=clipboard_listener, daemon=True).start()
@@ -116,7 +130,7 @@ def main():
     systray = SysTray()
     Thread(target=systray.run, daemon=True).start()
 
-    # start gui main loop
+    # create main window
     main_window = MainWindow(config.d_list)
 
     # create main run loop
@@ -133,6 +147,7 @@ def main():
         time.sleep(sleep_time)
 
         if systray.active:
+            # set hover text for systray
             state = f'PyIDM is active \n{main_window.total_speed}' if not config.terminate else 'PyIDM is off'
             systray.update(hover_text=state)
 
@@ -142,7 +157,6 @@ def main():
             if value == 'start_main_window':
                 if not main_window:
                     main_window = MainWindow(config.d_list)
-                    # main_window.active = True
                 else:
                     main_window.un_hide()
             elif value == 'minimize_to_systray':
@@ -153,15 +167,13 @@ def main():
                     main_window.close()
 
         # global shutdown flag
-        if config.shutdown or (not main_window and not systray.active):
-            print('config.shutdown, systray.active', config.shutdown, systray.active)
+        if config.shutdown or not(main_window or systray.active):
+            # print('config.shutdown, systray.active', config.shutdown, systray.active)
             systray.shutdown()
             config.shutdown = True
+            if main_window:
+                main_window.close()
             break
-
-    # Save setting to disk
-    setting.save_setting()
-    setting.save_d_list(config.d_list)
 
 
 if __name__ == '__main__':
