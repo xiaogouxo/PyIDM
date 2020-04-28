@@ -1386,8 +1386,9 @@ class MainWindow:
                                                         f'days since last check: {days_since_last_update} day(s).',
                                                         'you can change frequency or disable check for update from settings\n', title='Reminder')
                             if response == 'OK':
-                                Thread(target=self.check_for_update, daemon=True).start()
-                                # Thread(target=self.check_for_ytdl_update, daemon=True).start()
+                                # it will check for updates and offer auto-update for frozen app. version
+                                Thread(target=self.update_app, daemon=True).start()
+                                # Thread(target=self.check_for_update, daemon=True).start()
                                 config.last_update_check = today
                             else:
                                 config.last_update_check = 0
@@ -2630,7 +2631,8 @@ class MainWindow:
         layout = [
             [sg.T('New version available:')],
             [sg.Multiline(self.new_version_description, size=(70, 10))],
-            [sg.B('Update'), sg.B('website'), sg.Cancel()]
+            # show update button for Frozen versions only i.e. "windows portable version"
+            [sg.B('Update') if config.FROZEN else sg.T(''), sg.B('website'), sg.Cancel()]
         ]
         window = sg.Window('Update Application', layout, finalize=True, keep_on_top=True)
         event, _ = window()
