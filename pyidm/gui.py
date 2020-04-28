@@ -3241,6 +3241,26 @@ class PlaylistWindow:
 
         size_widget(size_format(vid.total_size))
 
+    def follow_master_selection(self, num):
+        """
+        set stream menu selection for current video to match master stream menu selection
+        :param num: int, video number
+        :return: None
+        """
+        master_combo = self.window['master_stream_combo']
+        vid_combo = self.stream_combos[num]
+        vid = self.playlist[num]
+        master_text = master_combo.get()  # example: mp4 - 1080
+
+        match_stream_name = [text for text in vid.stream_menu if master_text in text]
+        if match_stream_name:
+            match_stream_name = match_stream_name[0]
+            vid.select_stream(name=match_stream_name)
+            # set a matching stream name, note: for example, if master_text is "mp4 - 1080",
+            # then matching could be "mp4 - 1080 - 30 MB - id:137" with size and format id included
+            vid_combo(match_stream_name)
+            self.update_video(num)
+
     def run(self):
         # event loop -------------------------------------------------------------------------------------------------
         window = self.window
@@ -3299,19 +3319,8 @@ class PlaylistWindow:
                 self.update_video(num)
 
         elif event == 'master_stream_combo':
-            master_text = values['master_stream_combo']  # example: mp4 - 1080
-
-            # update all videos stream menus from master stream menu
-            for num, stream_combo in enumerate(self.stream_combos):
-                vid = playlist[num]
-                match_stream_name = [text for text in vid.stream_menu if master_text in text]
-                if match_stream_name:
-                    match_stream_name = match_stream_name[0]
-                    vid.select_stream(name=match_stream_name)
-                    # set a matching stream name, note: for example, if master_text is "mp4 - 1080",
-                    # then matching could be "mp4 - 1080 - 30 MB - id:137" with size and format id included
-                    stream_combo(match_stream_name)
-                    self.update_video(num)
+            for num, _ in enumerate(self.stream_combos):
+                self.follow_master_selection(num)
 
         # video checkbox or stream menu events
         elif event.startswith('stream') or event.startswith('video'):
@@ -3327,16 +3336,10 @@ class PlaylistWindow:
                         stream_combo(values=vid.stream_menu)
 
                         # set current selection to match master combo selection
+                        self.follow_master_selection(num)
+
+                        # should update master stream combo
                         master_stream_text = values['master_stream_combo']
-
-                        stream = vid.select_stream(raw_name=master_stream_text)
-                        if stream:
-                            stream_combo(master_stream_text)
-                            self.update_video(num)
-                        else:
-                            stream_combo(vid.selected_stream.name)
-
-                        # should update master playlist
                         self.window['master_stream_combo'](values=self.create_master_menu(), value=master_stream_text)
 
             # animate progress bars while loading streams
