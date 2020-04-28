@@ -284,8 +284,8 @@ class MainWindow:
             [sg.T('-' * 300, key='file_properties', font='any 9')],
 
             # download button
-            [sg.Column([[sg.B('', tooltip='Main download Engine', image_data=download_icon, key='Download')]],
-                       size=(166, 50), justification='center')],
+            [sg.Column([[sg.B('', image_data=download_icon, key='Download', **transparent)]],
+                       size=(166, 52), justification='center')],
 
         ]
 
@@ -314,9 +314,9 @@ class MainWindow:
         # selected download item's preview panel, "si" = selected item
         si_layout = [sg.Image(data=thumbnail_icon, key='si_thumbnail', right_click_menu=table_right_click_menu,
                               enable_events=True),
-                     sg.Col([[sg.T('', size=(100, 5), key='si_out', font='any 8', enable_events=True, tooltip=' Show download window ')],
+                     sg.Col([[sg.T('', size=(100, 5), key='si_out', font='any 8', enable_events=True)],
                             [sg.ProgressBar(100, size=(16, 10), key='si_bar'), sg.T(' ', size=(7, 1), key='si_percent'),
-                             *[copy.copy(x) for x in (resume_btn, stop_btn, folder_btn)],
+                             # *[copy.copy(x) for x in (resume_btn, stop_btn, folder_btn)],
                              ]])]
 
         # for table
@@ -339,7 +339,7 @@ class MainWindow:
             [sg.Table(values=headings, headings=headings, num_rows=9, justification='left', auto_size_columns=False,
                       vertical_scroll_only=False, key='table', enable_events=True, font='any 9',
                       right_click_menu=table_right_click_menu, max_col_width=100, col_widths=col_widths,
-                      row_height=21
+                      row_height=23
                       )],
 
             si_layout
