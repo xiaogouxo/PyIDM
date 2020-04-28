@@ -1,40 +1,39 @@
-Copyright (c) 2019, 2020 pyIDM, by Mahmoud Elshahat, "info.pyidm@gmail.com"
+Copyright (c) 2019, 2020 PyIDM, by Mahmoud Elshahat, "info.pyidm@gmail.com"
 
-# ####################################################################################################################
-# copyright notice                                                                                                   #
-# ####################################################################################################################
-# pyIDM is an open source multi-connections download manager developed in Python,                                    #
-# it downloads general files, support downloading videos, and playlists from youtube, and other media websites.      #
-# Mainly based on "pyCuRL/curl", "youtube_dl", and "PySimpleGUI"                                                     #
-#                                                                                                                    #
-# Project url: https://github.com/pyIDM/pyIDM                                                                        #
-#                                                                                                                    #
-# Author,                                                                                                            #
-# Mahmoud Elshahat                                                                                                   #
-# email: info.pyidm@gmail.com                                                                                        #
-# 2019, 2020                                                                                                         #
-# ####################################################################################################################
+# ###################################################################################################################
+# copyright notice                                                                                                  #
+# ###################################################################################################################
+# PyIDM is an open source multi-connections download manager.                                   #
+# it downloads general files, support downloading Videos, and PlayLists from youtube, and other media websites.     #
+# Developed in Python, based on "pyCuRL/LibCurl", "youtube_dl", and "PySimpleGUI"                                   #
+#                                                                                                                   #
+# This application is free for use, in hope to be useful for someone.                                               #
+# Conditions and usage restrictions:                                                                                  #
+# - videos / streams / contents that are not allowed to be downloaded using this application are:                   #
+#     - DRM "Digital rights management", protected videos / streams or Copyright materials.                         #
+#     - Porn videos/streams or any pornography materials.                                                           #
+#     - Illegal contents.                                                                                           #
+#     - Any contents that encourage/promote violence or criminal/illegal behaviours                                 #
+# - This Software/application is provided "AS IS" without any warranty, it is under no circumstances the            #
+#   PyIDM author could be held liable for any claim, or damages or responsible for any misuse of this application.  #
+#                                                                                                                   #
+#                                                                                                                   #
+# Project url: https://github.com/pyIDM/pyIDM                                                                       #
+#                                                                                                                   #
+# Author,                                                                                                           #
+# Mahmoud Elshahat                                                                                                  #
+# email: info.pyidm@gmail.com                                                                                       #
+# 2019, 2020                                                                                                        #
+# ###################################################################################################################
 
 
-# ####################################################################################################################
-# License   GNU LGPLv3                                                                                               #
-# ####################################################################################################################
-# This software can be used under "GNU LGPLv3" License, this means:                                                  #
-# you have permission for: Commercial use, Distribution, Modification,  Patent use, Private use                      #
-# subject to the following conditions:                                                                               #
-#  - Source code must be made available when the software is distributed.                                            #
-#  - a copy of the license and copyright notice must be included with the software.                                  #
-#  - Changes made to the code must be documented                                                                     #
-# ####################################################################################################################
-
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+# ###################################################################################################################
+# License   GNU LGPLv3                                                                                              #
+# ###################################################################################################################
+# This software can be used under "GNU LGPLv3" License, this means:                                                 #
+# you have permission for: Commercial use, Distribution, Modification,  Patent use, Private use                     #
+# subject to the following conditions:                                                                              #
+#  - Source code must be made available when the software is distributed.                                           #
+#  - Changes made to the code must be documented                                                                    #
+#  - A copy of this license and above copyright notice must be included with the software.                          #
+# ###################################################################################################################

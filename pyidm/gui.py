@@ -2947,9 +2947,17 @@ class AboutWindow:
         self.active = True  # if False, object will be removed from "active windows list"
 
         # create gui
-        msg1 = f'PyIDM is a python open source (Internet Download Manager) with multi-connections, high speed engine, \n' \
-               f'it downloads general files and videos from youtube and tons of other streaming websites.\n' \
-               f'Developed in Python, based on "pyCuRL/libcurl", "youtube_dl", and "PySimpleGUI" \n' \
+        msg1 = f'PyIDM is an open source multi-connections download manager, it downloads general files, support \n' \
+               f'downloading videos, and playlists from youtube, and other media websites.\n' \
+               f'Developed in Python, based on "pyCuRL/LibCurl", "youtube_dl", and "PySimpleGUI"  \n\n' \
+               f'This application is free for use, in hope to be useful for someone, \n' \
+               f'Conditions and usage restrictions:\n' \
+               f'- The following contents are not allowed to be downloaded using this application: \n' \
+               f'     - DRM "Digital rights management", protected videos / streams or Copyright materials. \n' \
+               f'     - Porn videos/streams or any pornography materials\n' \
+               f'     - Illegal contents or any material that encourage/promote violence or criminal/illegal behaviours\n' \
+               f'- This application is provided "AS IS" without any warranty, it is under no circumstances the PyIDM author \n' \
+               f'  could be held liable for any claim, or damages or responsible for any misuse of this application.\n\n' \
                f'your feedback is most welcomed on:'
 
         msg2 = f'Author,\n' \
