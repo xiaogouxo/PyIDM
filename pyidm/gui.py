@@ -2752,7 +2752,7 @@ class DownloadWindow:
         # trim name and folder length
         name = truncate(self.d.name, 50)
         # folder = truncate(self.d.folder, 50)
-        errors = f' ....... ERRORS!! ...... {self.d.errors}' if self.d.errors else ''
+        errors = f' ... connection errors! ... {self.d.errors}' if self.d.errors and self.d.status == Status.downloading else ''
 
         out = f"File: {name}\n" \
               f"downloaded: {size_format(self.d.downloaded)} out of {size_format(self.d.total_size)}\n" \

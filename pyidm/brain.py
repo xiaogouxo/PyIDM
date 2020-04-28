@@ -123,6 +123,12 @@ def thread_manager(d):
     downloaded = 0
     total_errors = 0
     max_errors = 100
+    errors_descriptions = set()  # store unique errors
+
+    def clear_error_q():
+        # clear error queue
+        for _ in range(config.error_q.qsize()):
+            errors_descriptions.add(config.error_q.get())
 
     while True:
         time.sleep(0.1)  # a sleep time to while loop to make the app responsive
@@ -145,25 +151,25 @@ def thread_manager(d):
                 limited_connections = limited_connections - 1 if limited_connections > 1 else 1
                 log('Thread Manager: receiving server errors, connections limited to:', limited_connections)
 
-                # clear error queue
-                for _ in range(config.error_q.qsize()):
-                    _ = config.error_q.get()
+                clear_error_q()
             else:
                 if limited_connections < config.max_connections:
                     limited_connections = limited_connections + 1
                     log('Thread Manager: allowable connections:', allowable_connections)
 
             total_errors += errors_num
+            d.errors = total_errors  # update errors property of download item
+
             if total_errors:
                 log('--------------------------------- errors ---------------------------------:', total_errors)
-
-                # update errors property of download item
-                d.errors = total_errors
+                log('Errors descriptions:', errors_descriptions, log_level=3)
 
             # reset total errors if received any data
             if downloaded != d.downloaded:
                 downloaded = d.downloaded
+                # print('reset errors to zero')
                 total_errors = 0
+                clear_error_q()
 
             if total_errors >= max_errors:
                 d.status = Status.error

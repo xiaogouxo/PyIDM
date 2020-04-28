@@ -195,9 +195,9 @@ class Worker:
         if self.d.status != Status.downloading:
             return -1  # abort
 
-    def report_error(self):
+    def report_error(self, description='x'):
         # report server error to thread manager, for now will just send segment name, no more data required
-        error_q.put(self.seg.name)
+        error_q.put(description)
 
     def run(self):
         # check if file completed before and exit
@@ -206,7 +206,7 @@ class Worker:
 
         if not self.seg.url:
             log(f'worker-{self.tag}: segment "{os.path.basename(self.seg.name)}" has no valid url')
-            self.report_error()
+            self.report_error('invalid_url')
             return
 
         try:
@@ -234,7 +234,7 @@ class Worker:
                 log('server refuse connection', response_code, 'content type:', self.headers.get('content-type'), log_level=3)
 
                 # send error to thread manager
-                self.report_error()
+                self.report_error(f'server refuse connection: {response_code}')
 
         except Exception as e:
             if any(statement in repr(e) for statement in ('Failed writing body', 'Callback aborted')):
@@ -244,10 +244,10 @@ class Worker:
                 error = repr(e)
                 log('worker', self.tag, ': quitting ...', error, self.seg.url, log_level=3)
 
-            self.report_not_completed()
+                # report server error to thread manager
+                self.report_error(repr(e))
 
-            # report server error to thread manager
-            self.report_error()
+            self.report_not_completed()
 
     def write(self, data):
         """write to file"""
@@ -260,7 +260,7 @@ class Worker:
                     log('worker: received html contents, aborting', log_level=3)
 
                     # report server error to thread manager
-                    self.report_error()
+                    self.report_error('received html contents')
 
                     return -1  # abort
             except Exception as e:
