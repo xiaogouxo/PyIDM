@@ -151,11 +151,14 @@ def thread_manager(d):
             else:
                 if limited_connections < config.max_connections:
                     limited_connections = limited_connections + 1
-                    log('Thread Manager: trying', limited_connections, 'connections.')
+                    log('Thread Manager: allowable connections:', allowable_connections)
 
             total_errors += errors_num
             if total_errors:
-                log('--------------------------------- Server errors ---------------------------------:', total_errors)
+                log('--------------------------------- errors ---------------------------------:', total_errors)
+
+                # update errors property of download item
+                d.errors = total_errors
 
             # reset total errors if received any data
             if downloaded != d.downloaded:
@@ -194,6 +197,13 @@ def thread_manager(d):
         # update d param
         d.live_connections = len(live_threads)
         d.remaining_parts = len(live_threads) + len(job_list) + config.jobs_q.qsize()
+
+        # Required check if things goes wrong
+        if len(live_threads) + len(job_list) + config.jobs_q.qsize() == 0:
+            # rebuild job_list
+            job_list = [seg for seg in d.segments if not seg.downloaded]
+            if not job_list:
+                break
 
         # Monitor active threads and add the offline to a free_workers
         for t in live_threads:

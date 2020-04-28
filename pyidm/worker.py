@@ -195,6 +195,10 @@ class Worker:
         if self.d.status != Status.downloading:
             return -1  # abort
 
+    def report_error(self):
+        # report server error to thread manager, for now will just send segment name, no more data required
+        error_q.put(self.seg.name)
+
     def run(self):
         # check if file completed before and exit
         if self.seg.downloaded:
@@ -202,6 +206,7 @@ class Worker:
 
         if not self.seg.url:
             log(f'worker-{self.tag}: segment "{os.path.basename(self.seg.name)}" has no valid url')
+            self.report_error()
             return
 
         try:
@@ -229,7 +234,7 @@ class Worker:
                 log('server refuse connection', response_code, 'content type:', self.headers.get('content-type'), log_level=3)
 
                 # send error to thread manager
-                error_q.put(response_code)
+                self.report_error()
 
         except Exception as e:
             if any(statement in repr(e) for statement in ('Failed writing body', 'Callback aborted')):
@@ -242,7 +247,7 @@ class Worker:
             self.report_not_completed()
 
             # report server error to thread manager
-            error_q.put(error)
+            self.report_error()
 
     def write(self, data):
         """write to file"""
@@ -255,7 +260,7 @@ class Worker:
                     log('worker: received html contents, aborting', log_level=3)
 
                     # report server error to thread manager
-                    error_q.put('text/html')
+                    self.report_error()
 
                     return -1  # abort
             except Exception as e:

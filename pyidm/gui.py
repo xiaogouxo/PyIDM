@@ -1440,7 +1440,7 @@ class MainWindow:
         :param downloader: name of alternative  downloader
         """
 
-        if d is None:
+        if d is None or not d.url:
             return 'cancelled'
 
         # check for ffmpeg availability in case this is a dash video or hls video
@@ -1589,8 +1589,11 @@ class MainWindow:
     def download_btn(self, downloader=None):
 
         if not self.d:
-            sg.popup_ok('Nothing to download', 'it might be invalid url link',
-                        'check your link or click "Retry"')
+            sg.popup_ok('Nothing to download')
+            return
+        elif not self.d.url:
+            sg.popup_ok('Nothing to download, add Link / url first')
+            return
         elif self.d.type == 'text/html':
             response = sg.popup_ok_cancel('Contents might be a web page / html, Download anyway?')
             if response != 'OK':
@@ -2704,7 +2707,6 @@ class DownloadWindow:
 
             [sg.ProgressBar(max_value=100, key='progress_bar', size=(42, 15), border_width=3)],
 
-            # [sg.Column([[sg.Button('Hide', key='hide'), sg.Button('Cancel', key='cancel')]], justification='right')],
             [sg.T(' ', key='status', size=(35, 1)), sg.Button('Hide', key='hide'), sg.Button('Cancel', key='cancel')],
             [sg.T(' ', font='any 1')],
             [sg.T('', size=(100, 1),  font='any 8', key='log2', relief=sg.RELIEF_RAISED)],
@@ -2721,17 +2723,18 @@ class DownloadWindow:
         # trim name and folder length
         name = truncate(self.d.name, 50)
         # folder = truncate(self.d.folder, 50)
+        errors = f' ....... ERRORS!! ...... {self.d.errors}' if self.d.errors else ''
 
         out = f"File: {name}\n" \
               f"downloaded: {size_format(self.d.downloaded)} out of {size_format(self.d.total_size)}\n" \
               f"speed: {size_format(self.d.speed, '/s') }  {time_format(self.d.time_left)} left \n" \
-              f"live connections: {self.d.live_connections} - remaining parts: {self.d.remaining_parts}\n"
+              f"live connections: {self.d.live_connections} - remaining parts: {self.d.remaining_parts} {errors}\n"
 
         try:
             self.window['out'](value=out)
 
             # progress bar mode depend on available downloaditem progress property
-            if self.d.progress:
+            if self.d.progress or self.d.status != Status.downloading:
                 self.progress_mode = 'determinate'
                 self.window['progress_bar'].update_bar(self.d.progress)
             else:  # size is zero, will make random animation
