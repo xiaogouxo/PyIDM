@@ -258,7 +258,8 @@ class MainWindow:
             sg.Button('', key='Retry', tooltip=' retry ', image_data=refresh_icon, **transparent)],
 
             # playlist/video block
-            [sg.Col([[sg.T('       '), sg.Image(data=thumbnail_icon, key='main_thumbnail')]], size=(320, 110)),
+            [sg.Col([[sg.T('       '), sg.Image(data=thumbnail_icon, key='main_thumbnail', enable_events=True, tooltip=' properties ')]],
+                    size=(320, 110)),
              sg.Frame('Playlist/video:',
                       [[video_block]],
                       relief=sg.RELIEF_SUNKEN, key='playlist_frame'),
@@ -568,8 +569,9 @@ class MainWindow:
         self.window['table'].bind('<Double-Button-1>', '_double_clicked')  # will generate event "table_double_clicked"
         self.window['table'].bind('<Return>', '_enter_key')  # will generate event "table_enter_key"
 
-        # change cursor for thumbnail to open video
+        # change cursor for thumbnail boards
         self.window['si_thumbnail'].set_cursor('hand2')
+        self.window['main_thumbnail'].set_cursor('hand2')
 
         # log text, disable word wrap
         # use "undo='false'" disable tkinter caching to fix issue #59 "solve huge memory usage and app crash
@@ -890,6 +892,40 @@ class MainWindow:
 
             length -= 1
 
+    def show_properties(self, d):
+        """
+        Display properties of download item in a popup window
+        :param d: DownloadItem object
+        :return: None
+        """
+        try:
+
+            if d:
+                # General properties
+                text = f'Name: {d.name} \n' \
+                       f'Folder: {d.folder} \n' \
+                       f'Progress: {d.progress}% \n' \
+                       f'Downloaded: {size_format(d.downloaded)} \n' \
+                       f'Total size: {size_format(d.total_size)} \n' \
+                       f'Status: {d.status} \n' \
+                       f'Resumable: {d.resumable} \n' \
+                       f'Type: {d.type} - {"-".join(d.subtype_list)}\n'
+
+                if d.type == 'video':
+                    text += f'Protocol: {d.protocol} \n' \
+                            f'Selected quality: {d.selected_quality}\n\n' \
+                            f'Webpage url: {d.url}\n\n' \
+                            f'Playlist title: {d.playlist_title}\n' \
+                            f'Playlist url: {d.playlist_url}\n\n' \
+                            f'Direct video url: {d.eff_url}\n\n' \
+                            f'Direct audio url: {d.audio_url}\n\n'
+                else:
+                    text += f'Direct url: {d.eff_url}\n\n'
+
+                sg.popup_scrolled(text, title='File properties', size=(50, 20), non_blocking=True)
+        except Exception as e:
+            log('gui> properties>', e)
+
     # endregion
 
     def run(self):
@@ -970,6 +1006,9 @@ class MainWindow:
                 self.url_text_change()
 
             # video events
+            elif event == 'main_thumbnail':
+                self.show_properties(self.d)
+
             elif event == 'pl_download':
                 self.download_playlist()
 
@@ -1047,29 +1086,7 @@ class MainWindow:
 
             elif event == 'properties':
                 # right click properties
-                try:
-                    d = self.selected_d
-
-                    if d:
-                        text = f'Name: {d.name} \n' \
-                               f'Folder: {d.folder} \n' \
-                               f'Progress: {d.progress}% \n' \
-                               f'Downloaded: {size_format(d.downloaded)} \n' \
-                               f'Total size: {size_format(d.total_size)} \n' \
-                               f'Status: {d.status} \n' \
-                               f'Resumable: {d.resumable} \n' \
-                               f'Type: {d.type} - {"-".join(d.subtype_list)}\n' \
-                               f'Protocol: {d.protocol} \n' \
-                               f'Selected quality: {d.selected_quality}\n\n' \
-                               f'Webpage url: {d.url}\n\n' \
-                               f'Playlist title: {d.playlist_title}\n' \
-                               f'Playlist url: {d.playlist_url}\n\n' \
-                               f'Direct video url: {d.eff_url}\n\n' \
-                               f'Direct audio url: {d.audio_url}\n\n'
-
-                        sg.popup_scrolled(text, title='File properties', size=(50, 20))
-                except Exception as e:
-                    log('gui> properties>', e)
+                self.show_properties(self.selected_d)
 
             elif event in ('⏳ Schedule download', 'schedule_item'):
                 # print('schedule clicked')
