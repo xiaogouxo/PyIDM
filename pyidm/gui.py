@@ -320,8 +320,8 @@ class MainWindow:
         # selected download item's preview panel, "si" = selected item
         si_layout = [sg.Image(data=thumbnail_icon, key='si_thumbnail', right_click_menu=table_right_click_menu,
                               enable_events=True),
-                     sg.Col([[sg.T('', size=(100, 5), key='si_out', font='any 8', enable_events=True)],
-                            [sg.ProgressBar(100, size=(16, 10), key='si_bar'), sg.T(' ', size=(7, 1), key='si_percent'),
+                     sg.Col([[sg.T('', size=(75, 5), key='si_out', font='any 8', enable_events=True)],
+                            [sg.ProgressBar(100, size=(20, 10), key='si_bar'), sg.T(' ', size=(7, 1), key='si_percent'),
                              # *[copy.copy(x) for x in (resume_btn, stop_btn, folder_btn)],
                              ]])]
 
@@ -798,7 +798,7 @@ class MainWindow:
 
             if d:
                 speed = f"Speed: {size_format(d.speed, '/s') }  {time_format(d.time_left)} left" if d.speed else ''
-                out = f"#{self.selected_row_num + 1}: {d.name}\n" \
+                out = f"#{self.selected_row_num + 1}: {self.fit_text(d.name, 75)}\n" \
                       f"Downloaded: {size_format(d.downloaded)} of {size_format(d.total_size)}\n" \
                       f"{speed} \n" \
                       f"Live connections: {d.live_connections} - Remaining parts: {d.remaining_parts}\n" \

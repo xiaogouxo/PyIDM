@@ -280,7 +280,7 @@ class DownloadItem:
     @property
     def speed(self):
         """return an average of some speed values will give a stable speed reading"""
-        if self.status != config.Status.downloading: # or not self.speed_buffer:
+        if self.status != config.Status.downloading:  # or not self.speed_buffer:
             self._speed = 0
         else:
             if not self.prev_downloaded_value:
@@ -300,7 +300,7 @@ class DownloadItem:
                     self.speed_buffer.popleft()
 
                 if avg_speed:
-                    self._speed = avg_speed
+                    self._speed = avg_speed if avg_speed > 0 else 0
 
         return self._speed
 
@@ -342,7 +342,7 @@ class DownloadItem:
 
     @property
     def time_left(self):
-        if self.status == config.Status.downloading and self.total_size:
+        if self.status == config.Status.downloading and self.total_size and self.total_size >= self.downloaded:
             return (self.total_size - self.downloaded) / self.speed if self.speed else -1
         else:
             return '---'
