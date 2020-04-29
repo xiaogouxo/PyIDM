@@ -690,7 +690,8 @@ class MainWindow:
         :return: None
         """
         # update log
-        for _ in range(config.log_q.qsize()):
+        # read 10 messages max every time to prevent application freeze, in case of error messages flood by ffmpeg
+        for _ in range(min(10, config.log_q.qsize())):
             line = config.log_q.get()
             try:
                 contents = self.window['log'].get()
