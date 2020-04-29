@@ -104,11 +104,11 @@ def set_curl_options(c):
     c.setopt(pycurl.CAINFO, certifi.where())  # for https sites and ssl cert handling
 
     # time out
-    c.setopt(pycurl.CONNECTTIMEOUT, 30)  # limits the connection phase, it has no impact once it has connected.
+    c.setopt(pycurl.CONNECTTIMEOUT, 10)  # limits the connection phase, it has no impact once it has connected.
 
-    # abort if download speed slower than 1000 byte/sec during 30 seconds
-    c.setopt(pycurl.LOW_SPEED_LIMIT, 1000)
-    c.setopt(pycurl.LOW_SPEED_TIME, 30)
+    # abort if download speed slower than 1024 byte/sec during 10 seconds
+    c.setopt(pycurl.LOW_SPEED_LIMIT, 1024)
+    c.setopt(pycurl.LOW_SPEED_TIME, 10)
 
     # verbose
     if config.log_level >= 4:
@@ -445,9 +445,18 @@ def get_seg_size(seg):
 
 
 def run_command(cmd, verbose=True, shell=False, hide_window=False, d=None):
-    """run command in as a subprocess
-    :param d, DownloadItem reference, if exist will monitor user cancel action for terminating process
     """
+    run command in a subprocess
+    :param cmd: string of actual command to be executed
+    :param verbose: if true will re-route subprocess output to log()
+    :param shell: True or False
+    :param hide_window: True or False, hide shell window
+    :param d: DownloadItem object mainly use "status" property to terminate subprocess
+    :return:
+    """
+
+    # override shell parameter currently can't kill subprocess if shell=True at least on windows, more investigation required
+    shell = False
 
     if verbose:
         log('running command:', cmd)
@@ -473,6 +482,10 @@ def run_command(cmd, verbose=True, shell=False, hide_window=False, d=None):
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding='utf-8',
                                    errors='replace', shell=shell, startupinfo=startupinfo)
 
+        # update reference in download item, it will be cancelled with status, see DownloadItem.status property setter
+        if d:
+            d.subprocess = process
+
         output = ''
 
         for line in process.stdout:
@@ -481,11 +494,11 @@ def run_command(cmd, verbose=True, shell=False, hide_window=False, d=None):
             if verbose:
                 log(line)
 
-            # monitor kill switch
-            if d and d.status == config.Status.cancelled:
-                log('terminate run_command()>', cmd)
-                process.kill()
-                return 1, 'Cancelled by user'
+            # # monitor kill switch
+            # if d and d.status == config.Status.cancelled:
+            #     log('terminate run_command()>', cmd)
+            #     process.kill()
+                # return 1, 'Cancelled by user'
 
         # wait for subprocess to finish, process.wait() is not recommended
         process.communicate()

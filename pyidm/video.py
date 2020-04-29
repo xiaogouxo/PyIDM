@@ -518,19 +518,19 @@ def merge_video_audio(video, audio, output, d):
     ffmpeg = config.ffmpeg_actual_path
 
     # very fast audio just copied, format must match [mp4, m4a] and [webm, webm]
-    cmd1 = f'"{ffmpeg}" -y -i "{video}" -i "{audio}" -c copy "{output}"'
+    cmd1 = f'"{ffmpeg}" -loglevel error -stats -y -i "{video}" -i "{audio}" -c copy "{output}"'
 
     # slow, mix different formats
-    cmd2 = f'"{ffmpeg}" -y -i "{video}" -i "{audio}" "{output}"'
+    cmd2 = f'"{ffmpeg}" -loglevel error -stats -y -i "{video}" -i "{audio}" "{output}"'
 
     verbose = True if config.log_level >= 2 else False
 
     # run command with shell=False if failed will use shell=True option
-    error, output = run_command(cmd1, verbose=verbose, shell=True, d=d)
+    error, output = run_command(cmd1, verbose=verbose, hide_window=True, d=d)
 
     # retry on error with cmd2
     if error:
-        error, output = run_command(cmd2, verbose=verbose, shell=True, d=d)
+        error, output = run_command(cmd2, verbose=verbose, hide_window=True, d=d)
 
     return error, output
             
@@ -760,9 +760,6 @@ def pre_process_hls(d):
     if 'dash' in d.subtype_list:
         process_m3u8(audio_m3u8, type_='audio')
 
-    # load previous segment information from disk - resume download -
-    d.load_progress_info()
-
     log('pre_process_hls()> done processing', d.name)
 
     return True
@@ -776,7 +773,7 @@ def post_process_hls(d):
     local_video_m3u8_file = os.path.join(d.temp_folder, 'local_video.m3u8')
     local_audio_m3u8_file = os.path.join(d.temp_folder, 'local_audio.m3u8')
 
-    cmd = f'"{config.ffmpeg_actual_path}" -y -protocol_whitelist "file,http,https,tcp,tls,crypto"  ' \
+    cmd = f'"{config.ffmpeg_actual_path}" -loglevel error -stats -y -protocol_whitelist "file,http,https,tcp,tls,crypto"  ' \
           f'-allowed_extensions ALL -i "{local_video_m3u8_file}" -c copy -f mp4 "file:{d.temp_file}"'
 
     error, output = run_command(cmd, d=d)
@@ -785,7 +782,7 @@ def post_process_hls(d):
         return False
 
     if 'dash' in d.subtype_list:
-        cmd = f'"{config.ffmpeg_actual_path}" -y -protocol_whitelist "file,http,https,tcp,tls,crypto"  ' \
+        cmd = f'"{config.ffmpeg_actual_path}" -loglevel error -stats -y -protocol_whitelist "file,http,https,tcp,tls,crypto"  ' \
               f'-allowed_extensions ALL -i "{local_audio_m3u8_file}" -c copy -f mp4 "file:{d.audio_file}"'
 
         error, output = run_command(cmd, d=d)
@@ -809,16 +806,16 @@ def convert_audio(d):
     outfile = d.target_file
 
     # look for compatible formats and use "copy" parameter for faster processing
-    cmd1 = f'ffmpeg -y -i "{infile}" -acodec copy "{outfile}"'
+    cmd1 = f'ffmpeg -loglevel error -stats -y -i "{infile}" -acodec copy "{outfile}"'
 
     # general command, consume time
-    cmd2 = f'ffmpeg -y -i "{infile}" "{outfile}"'
+    cmd2 = f'ffmpeg -loglevel error -stats -y -i "{infile}" "{outfile}"'
 
     # run command1
-    error, _ = run_command(cmd1, verbose=True, shell=True, d=d)
+    error, _ = run_command(cmd1, verbose=True, hide_window=True, d=d)
 
     if error:
-        error, _ = run_command(cmd2, verbose=True, shell=True, d=d)
+        error, _ = run_command(cmd2, verbose=True, hide_window=True, d=d)
 
     if error:
         return False

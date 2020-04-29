@@ -24,9 +24,12 @@ def brain(d=None, downloader=None):
     and communicate with download window Gui, Main frame gui"""
 
     # in case of re-downloading a completed file will reset segment flags
-    if d.status == Status.completed:
-        d.reset_segments()
-        d.downloaded = 0
+    # if d.status == Status.completed:
+    # complete reset and start over
+    d.reset_segments()
+    d.verify_downloaded()
+    delete_file(d.temp_file)
+    delete_file(d.audio_file)
 
     # set status
     if d.status == Status.downloading:
@@ -37,7 +40,7 @@ def brain(d=None, downloader=None):
 
     log('\n')
     log('=' * 106)
-    log(f'start downloading file: "{d.name}", size: {size_format(d.size)}, to: {d.folder}')
+    log(f'start downloading file: "{d.name}", size: {size_format(d.total_size)}, to: {d.folder}')
 
     # hls / m3u8 protocols
     if 'hls' in d.subtype_list:
@@ -53,10 +56,10 @@ def brain(d=None, downloader=None):
             return
     else:
         # for non hls videos and normal files
-        keep_segments = False
+        keep_segments = True  # False
 
-        # load previous saved progress info
-        d.load_progress_info()
+    # load previous saved progress info
+    d.load_progress_info()
 
     # run file manager in a separate thread
     Thread(target=file_manager, daemon=True, args=(d, keep_segments)).start()

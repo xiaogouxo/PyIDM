@@ -87,7 +87,7 @@ class DownloadItem:
         self.live_connections = 0
         self._downloaded = 0
         self._status = config.Status.cancelled
-        self.remaining_parts = 0
+        self._remaining_parts = 0
 
         # connection status
         self.status_code = 0
@@ -170,10 +170,13 @@ class DownloadItem:
         # errors
         self.errors = 0  # an indicator for server, network, or other errors while downloading
 
+        # subprocess references
+        self.subprocess = None
+
         # properties names that will be saved on disk
         self.saved_properties = ['id', '_name', 'folder', 'url', 'eff_url', 'playlist_url', 'playlist_title', 'size',
                                  'resumable', 'selected_quality', '_segment_size', '_downloaded', '_status',
-                                 'remaining_parts', 'audio_url', 'audio_size', 'type', 'subtype_list', 'fragments',
+                                 '_remaining_parts', 'audio_url', 'audio_size', 'type', 'subtype_list', 'fragments',
                                  'fragment_base_url', 'audio_fragments', 'audio_fragment_base_url',
                                  'last_known_size', 'last_known_progress', 'protocol', 'manifest_url',
                                  'abr', 'tbr', 'format_id', 'audio_format_id', 'resolution']
@@ -189,6 +192,21 @@ class DownloadItem:
         for seg in self._segments:
             seg.downloaded = False
             seg.completed = False
+
+        # delete a previous progress file
+        file = os.path.join(self.temp_folder, 'progress_info.txt')
+        delete_file(file)
+
+    @property
+    def remaining_parts(self):
+        return self._remaining_parts
+
+    @remaining_parts.setter
+    def remaining_parts(self, value):
+        self._remaining_parts = value
+
+        # verify downloaded
+        self.verify_downloaded()
 
     @property
     def segments(self):
@@ -254,8 +272,12 @@ class DownloadItem:
             for seg, item in zip(self.segments, seg_list):
                 if seg.name in item['name']:
                     seg.size = item['size']
-                    seg.downloaded = item['downloaded']
-                    seg.completed = item['completed']
+                    seg.downloaded = False  # item['downloaded']
+                    seg.completed = False  #item['completed']
+
+    def verify_downloaded(self):
+        # update downloaded
+        self.downloaded = sum([os.path.getsize(seg.name) for seg in self.segments if os.path.isfile(seg.name)])
 
     @property
     def total_size(self):
@@ -355,6 +377,10 @@ class DownloadItem:
     def status(self, value):
         self._status = value
 
+        # kill subprocess if currently active
+        if self.subprocess:
+            self.kill_subprocess()
+
     @property
     def num(self):
         return self.id + 1 if isinstance(self.id, int) else self.id
@@ -423,6 +449,15 @@ class DownloadItem:
         # t = time.localtime(self.sched)
         # return f"⏳({t.tm_hour}:{t.tm_min})"
         return f"{self.sched[0]:02}:{self.sched[1]:02}"
+
+    def kill_subprocess(self):
+        try:
+            # to work subprocess should have shell=False
+            self.subprocess.kill()
+            log('run_command()> Cancelled by user', self.subprocess.args)
+            self.subprocess = None
+        except Exception as e:
+            log('DownloadItem.status error', e)
 
     def update(self, url):
         """get headers and update properties (eff_url, name, ext, size, type, resumable, status code/description)"""

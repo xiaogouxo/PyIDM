@@ -691,7 +691,7 @@ class MainWindow:
         """
         # update log
         # read 10 messages max every time to prevent application freeze, in case of error messages flood by ffmpeg
-        for _ in range(min(10, config.log_q.qsize())):
+        for _ in range(min(100, config.log_q.qsize())):
             line = config.log_q.get()
             try:
                 contents = self.window['log'].get()
