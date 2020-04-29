@@ -309,7 +309,7 @@ class MainWindow:
         refresh_btn = sg.Button('', key='Refresh', tooltip=' Refresh link ', image_data=refresh_icon, **transparent)
         folder_btn = sg.Button('', key='Folder', tooltip=' open file location ', image_data=folder_icon, **transparent)
         sched_btn = sg.B('', key='schedule_item', tooltip=' Schedule current item ', image_data=sched_icon, **transparent)
-        del_btn = sg.Button('', key='Delete', tooltip=' Delete item from list ', image_data=deleteall_icon, **transparent)
+        del_btn = sg.Button('', key='delete_btn', tooltip=' Delete item from list ', image_data=deleteall_icon, **transparent)
         # sg.Button('', key='D.Window', tooltip=' Show download window ', image_data=dwindow_icon, **transparent)
 
         resume_all_btn = sg.Button('', key='Resume All', tooltip=' Resume All ', image_data=resumeall_icon, **transparent)
@@ -736,8 +736,9 @@ class MainWindow:
 
         if self.d_list:
             # select first row by default if nothing previously selected
-            if not self.selected_row_num:
+            if self.selected_row_num is None:
                 self.selected_row_num = 0
+                # print('self.selected_row_num', self.selected_row_num)
 
             # re-select the previously selected row in the table
             self.window['table'](select_rows=(self.selected_row_num,))
@@ -1137,7 +1138,7 @@ class MainWindow:
                         if d.status in (Status.pending, Status.cancelled):
                             d.sched = response
 
-            elif event == 'Delete':
+            elif event == 'delete_btn':
                 self.delete_btn()
 
             elif event == 'delete_all':
@@ -1303,7 +1304,7 @@ class MainWindow:
                     self.window['cookie_file_path'](disabled=True)
                     config.cookie_file_path = ''
 
-                print(config.cookie_file_path)
+                # print(config.cookie_file_path)
 
             elif event in ('username', 'password', 'use_web_auth'):
                 if values['use_web_auth']:
@@ -1327,7 +1328,7 @@ class MainWindow:
             elif event == 'update_frequency':
                 selected = values['update_frequency']
                 config.update_frequency = config.update_frequency_map[selected]  # selected
-                print('config.update_frequency:', config.update_frequency)
+                # print('config.update_frequency:', config.update_frequency)
 
             elif event == 'update_youtube_dl':
                 self.update_ytdl()
@@ -1939,7 +1940,10 @@ class MainWindow:
             log('show_thumbnail()>', e)
 
     def youtube_func(self):
-        """fetch metadata from youtube and other stream websites"""
+        """fetch metadata from youtube and other stream websites, it is intended to be run as a separate thread,
+        it is recommended to use "execute command" function if need to run any gui related method, tkinter will complain
+        "not running from main thread" error
+        """
 
         def cancel_flag():
             # quit if main window terminated
@@ -2040,11 +2044,14 @@ class MainWindow:
                     m_bar_incr = 50 / playlist_length
 
                     # update playlist title widget: show how many videos
-                    self.window['playlist_frame'](
-                        value=f'Playlist ({playlist_length} {"videos" if playlist_length > 1 else "video"}):')
+                    # self.window['playlist_frame'](
+                    #     value=f'Playlist ({playlist_length} {"videos" if playlist_length > 1 else "video"}):')
+                    execute_command("window['playlist_frame']",
+                                    value=f'Playlist ({playlist_length} {"videos" if playlist_length > 1 else "video"}):')
 
                     # update playlist menu, only videos names, there is no videos qualities yet
-                    self.update_pl_menu()
+                    # self.update_pl_menu()
+                    execute_command('update_pl_menu')
 
                     # user notification for big playlist
                     if config.process_playlist and playlist_length > config.big_playlist_length:
@@ -2114,7 +2121,8 @@ class MainWindow:
                     vid.processed = True
 
                     # update playlist menu
-                    self.update_pl_menu()
+                    # self.update_pl_menu()
+                    execute_command('update_pl_menu')
 
             # quit if we couldn't extract any videos info (playlist or single video)
             if not self.playlist:
@@ -2151,7 +2159,6 @@ class MainWindow:
             self.pl_menu = [str(i + 1) + '- ' + video.title for i, video in enumerate(self.playlist)]
 
             # choose first item in playlist
-            # self.playlist_OnChoice(self.pl_menu[0])
             self.window['pl_menu'].Widget.current(0)
             self.playlist_on_choice()
 
@@ -2398,7 +2405,6 @@ class MainWindow:
             return
 
         self.url = url
-        print(self.url)
 
         # Focus and select main app page in case text changed from script
         self.window.BringToFront()
