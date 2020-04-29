@@ -815,10 +815,10 @@ def convert_audio(d):
     cmd2 = f'ffmpeg -y -i "{infile}" "{outfile}"'
 
     # run command1
-    error, _ = run_command(cmd1, verbose=True, shell=True)
+    error, _ = run_command(cmd1, verbose=True, shell=True, d=d)
 
     if error:
-        error, _ = run_command(cmd2, verbose=True, shell=True)
+        error, _ = run_command(cmd2, verbose=True, shell=True, d=d)
 
     if error:
         return False
