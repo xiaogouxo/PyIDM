@@ -631,7 +631,7 @@ def pre_process_hls(d):
     master_m3u8 = download_m3u8(d.manifest_url)
 
     if not master_m3u8:
-        log("Failed to get master m3u8 file", showpopup=True)
+        log("Failed to get master m3u8 file, Probably expired link", showpopup=True)
         return False
 
     # get fresh urls
@@ -684,7 +684,7 @@ def pre_process_hls(d):
         """
 
         base_url = d.eff_url if type_=='video' else d.audio_url
-        seg_name = 'v' if type_ == 'video' else 'a'
+        name_prefix = 'v' if type_ == 'video' else 'a'
 
         url_list = []
         lines_with_local_paths = []
@@ -694,6 +694,7 @@ def pre_process_hls(d):
         # iterate over all m3u8 file lines
         for i, line in enumerate(lines[:]):
             url = ''
+            seg_name = os.path.join(d.temp_folder, f'{name_prefix}{i + 1}')
             line_with_abs_url = line
             line_with_local_path = line
 
@@ -725,8 +726,12 @@ def pre_process_hls(d):
                 line_with_abs_url = line.replace(url, abs_url)
 
                 # build line with local file path instead of url
-                line_with_local_path = line.replace(url, os.path.join(d.temp_folder, f'{seg_name}{i + 1}'))
+                line_with_local_path = line.replace(url, seg_name)
                 line_with_local_path = line_with_local_path.replace('\\', '/')  # required for ffmpeg to work properly
+
+                # create segment object
+                segment = [Segment(name=seg_name, num=i, range=None, size=0, url=abs_url, tempfile=d.temp_file, merge=False)]
+                d.segments += segment
 
             # append to list
             lines_with_abs_urls.append(line_with_abs_url)
@@ -743,15 +748,6 @@ def pre_process_hls(d):
         file_path = os.path.join(d.temp_folder, name)
         with open(os.path.join(d.temp_folder, file_path), 'w') as f:
             f.write('\n'.join(lines_with_local_paths))
-
-        # create segments
-        seg_name = 'v' if type_ == 'video' else 'a'
-        d._segments += [Segment(name=os.path.join(d.temp_folder, f'{seg_name}{i + 1}'), num=i, range=None, size=0,
-                                url=seg_url, tempfile=d.temp_file, merge=False)
-                        for i, seg_url in enumerate(url_list) if seg_url]
-
-    # reset segments
-    d._segments = []
 
     # send video m3u8 file for processing
     process_m3u8(video_m3u8, type_='video')

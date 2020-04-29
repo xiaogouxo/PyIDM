@@ -1570,6 +1570,15 @@ class MainWindow:
                     d.segment_size = d_from_list.segment_size
                     d.downloaded = d_from_list.downloaded
                 else:
+                    if not silent:
+                        msg = f'Resume not possible, New "download item" has differnet properties than existing one \n' \
+                              f'New item    : size={size_format(d.size)}, selected quality={d.selected_quality}\n' \
+                              f'current item: size={size_format(d_from_list.size)}, selected quality={d_from_list.selected_quality}\n' \
+                              f'if you continue, previous download will be overwritten'
+                        event = sg.PopupOKCancel(msg)
+                        if event != 'OK':
+                            log('aborted by user')
+                            return False
                     log('file:', d.name, 'has different properties and will be downloaded from beginning')
                     d.delete_tempfiles()
 

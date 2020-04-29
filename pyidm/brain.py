@@ -23,11 +23,8 @@ def brain(d=None, downloader=None):
     """main brain for a single download, it controls thread manger, file manager, and get data from workers
     and communicate with download window Gui, Main frame gui"""
 
-    # in case of re-downloading a completed file will reset segment flags
-    # if d.status == Status.completed:
     # complete reset and start over
     d.reset_segments()
-    d.verify_downloaded()
     delete_file(d.temp_file)
     delete_file(d.audio_file)
 
@@ -186,7 +183,7 @@ def thread_manager(d):
         else:
             worker_sl = 0
 
-        # reuse a free worker to handle a job from job_list
+        # reuse a free worker to handle a job from job_list -----------------------------------------------------------
         if free_workers and job_list and d.status == Status.downloading and len(live_threads) < allowable_connections:
             # log('live_threads=', len(live_threads))
             for _ in range(allowable_connections - len(live_threads)):
@@ -262,7 +259,7 @@ def file_manager(d, keep_segments=False):
                             trgt_file.write(src_file.read())
 
                 seg.completed = True
-                log('completed segment: ',  os.path.basename(seg.name))
+                log('completed segment: ',  seg.basename)
 
                 if not keep_segments and not config.keep_temp:
                     delete_file(seg.name)

@@ -193,10 +193,6 @@ class DownloadItem:
             seg.downloaded = False
             seg.completed = False
 
-        # delete a previous progress file
-        file = os.path.join(self.temp_folder, 'progress_info.txt')
-        delete_file(file)
-
     @property
     def remaining_parts(self):
         return self._remaining_parts
@@ -206,11 +202,15 @@ class DownloadItem:
         self._remaining_parts = value
 
         # verify downloaded
-        self.verify_downloaded()
+        # self.verify_downloaded()
 
     @property
     def segments(self):
         if not self._segments:
+            # don't handle hls videos
+            if 'hls' in self.subtype_list:
+                return self._segments
+
             # handle fragmented video
             if self.fragments:
                 # print(self.fragments)
@@ -272,8 +272,19 @@ class DownloadItem:
             for seg, item in zip(self.segments, seg_list):
                 if seg.name in item['name']:
                     seg.size = item['size']
+
                     seg.downloaded = False  # item['downloaded']
                     seg.completed = False  #item['completed']
+
+                    # check actual file size on disk
+                    try:
+                        if os.path.getsize(seg.name) == seg.size:
+                            seg.downloaded = True
+                    except:
+                        pass
+
+            # verify and update actual downloaded data
+            self.verify_downloaded()
 
     def verify_downloaded(self):
         # update downloaded
@@ -343,6 +354,8 @@ class DownloadItem:
     def progress(self):
         if self.status == config.Status.completed:
             p = 100
+        elif not self.segments:
+            p = 0
         elif self.total_size == 0:
             # to handle fragmented files
             finished = len([seg for seg in self.segments if seg.completed]) if self.segments else 0
