@@ -493,11 +493,17 @@ class MainWindow:
             [sg.T('', size=(1, 14))]  # fill lines
         ]
 
+        advanced = [
+            [sg.T('')],
+            [sg.Checkbox('keep temp files / folders after done downloading for debugging.',
+                         default=True if config.keep_temp else False, key='keep_temp', enable_events=True, )],
+        ]
+
         # layout ----------------------------------------------------------------------------------------------------
         layout = [
             [sg.T('', size=(70, 1)), ],
             [sg.TabGroup([[sg.Tab('General   ', general), sg.Tab('Network  ', network), sg.Tab('SysTray  ', systray),
-                           sg.Tab('Update    ', update)]],
+                           sg.Tab('Update    ', update), sg.Tab('Advanced ', advanced)]],
                          tab_location='lefttop')]
         ]
 
@@ -1318,6 +1324,10 @@ class MainWindow:
             # systray -------------------------------------------------
             elif event in ('radio_close', 'radio_minimize', 'radio_quit'):
                 config.close_action = event.replace('radio_', '')
+
+            # Advanced -------------------------------------------------
+            elif event == 'keep_temp':
+                config.keep_temp = values['keep_temp']
 
             # log ---------------------------------------------------------------------------------------------------
             elif event == 'log_level':

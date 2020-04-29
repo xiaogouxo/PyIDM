@@ -26,17 +26,22 @@ lock = Lock()
 
 class Segment:
     def __init__(self, name=None, num=None, range=None, size=None, url=None, tempfile=None, seg_type='', merge=True):
+        self.name = name  # full path file name
         self.num = num
         self.size = size
         self.range = range
         self.downloaded = False
         self.completed = False  # done downloading and merging into tempfile
-        self.name = name
         self.tempfile = tempfile
         self.headers = {}
         self.url = url
         self.seg_type = seg_type
         self.merge = merge
+
+    @property
+    def basename(self):
+        # file name only without path
+        return os.path.basename(self.name)
 
     def get_size(self):
         self.headers = get_headers(self.url)
@@ -489,7 +494,8 @@ class DownloadItem:
     def delete_tempfiles(self):
         """delete temp files and folder for a given download item"""
 
-        delete_folder(self.temp_folder)
-        delete_file(self.temp_file)
-        delete_file(self.audio_file)
+        if not config.keep_temp:
+            delete_folder(self.temp_folder)
+            delete_file(self.temp_file)
+            delete_file(self.audio_file)
 

@@ -119,6 +119,8 @@ def thread_manager(d):
     # reverse job_list to process segments in proper order use pop()
     job_list.reverse()
 
+    d.remaining_parts = len(job_list)
+
     # error track, if receive many errors with no downloaded data, abort
     downloaded = 0
     total_errors = 0
@@ -259,7 +261,7 @@ def file_manager(d, keep_segments=False):
                 seg.completed = True
                 log('completed segment: ',  os.path.basename(seg.name))
 
-                if not keep_segments:
+                if not keep_segments and not config.keep_temp:
                     delete_file(seg.name)
 
             except Exception as e:
@@ -316,7 +318,8 @@ def file_manager(d, keep_segments=False):
 
             else:
                 rename_file(d.temp_file, d.target_file)
-                delete_folder(d.temp_folder)
+                # delete temp files
+                d.delete_tempfiles()
 
             # at this point all done successfully
             d.status = Status.completed

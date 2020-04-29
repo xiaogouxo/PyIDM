@@ -48,14 +48,14 @@ class Worker:
         self.seg = seg
         self.speed_limit = speed_limit
 
-        log('worker', self.tag, 'start seg:', os.path.basename(self.seg.name), 'range:', self.seg.range, 'size:',
-            self.seg.size, 'SL=', self.speed_limit, log_level=2)
+        log('Seg', self.seg.basename, 'start, range:', self.seg.range, 'size:',
+            self.seg.size, 'SL=', self.speed_limit, ' - worker', self.tag, log_level=2)
 
         self.check_previous_download()
 
     def reset(self):
-        # reset curl
-        # self.c.reset()
+        # reset curl options "only", other info cache stay intact, https://curl.haxx.se/libcurl/c/curl_easy_reset.html
+        self.c.reset()
 
         # reset variables
         self.start_size = 0
@@ -65,40 +65,44 @@ class Worker:
         self.resume_range = None
 
     def check_previous_download(self):
-        # get start file size if this segment file partially downloaded before
-        if os.path.exists(self.seg.name):
-            with open(self.seg.name, 'rb') as f:
-                self.start_size = len(f.read())
-
-            if not self.seg.size:
-                # in this case we will overwrite previous download, reset startsize and remove value from d.downloaded
-                self.mode = 'wb'
-                self.d.downloaded -= self.start_size
-                log(self.seg.num, 'overwrite the previous download, start size =', self.start_size, log_level=3)
-                self.start_size = 0
-                return
-
-        # no previous file existed - start fresh file
-        if not self.current_filesize:
+        # if file doesn't exist will start fresh
+        if not os.path.exists(self.seg.name):
             self.mode = 'wb'
+            return
 
-        elif self.current_filesize == self.seg.size:  # segment is completed before
+        # get start file size if this segment file partially downloaded before
+        with open(self.seg.name, 'rb') as f:
+            self.start_size = len(f.read())
+
+        # if no seg.size or no seg range, we will overwrite current file because resume is not possible
+        if not self.seg.size or not self.seg.range:
+            # reset start size and remove value from d.downloaded
+            self.d.downloaded -= self.start_size
+            self.start_size = 0
+            self.mode = 'wb'
+            log('Seg', self.seg.num, 'overwrite the previous part-downloaded segment', ' - worker', self.tag, log_level=3)
+            return
+
+        # at this point file exists and resume is possible
+        # case-1: segment is completed before
+        if self.current_filesize == self.seg.size:
             # self.report_completed()
-            log('worker', self.tag, ': File', self.seg.num, 'already completed before', log_level=3)
+            log('Seg', self.seg.basename, 'already completed before', ' - worker', self.tag, log_level=3)
             self.seg.downloaded = True
 
-        # in case the server sent extra bytes from last session by mistake, truncate file
+        # Case-2: over-sized, in case the server sent extra bytes from last session by mistake, truncate file
         elif self.current_filesize > self.seg.size:
-            log(f"found seg {self.seg.num} over-sized {self.current_filesize}, "
-                       f"will be truncated to: {self.seg.size}", log_level=3)
+            log('Seg', self.seg.basename, 'over-sized', self.current_filesize, 'will be truncated to:',
+                self.seg.size, ' - worker', self.tag, log_level=3)
 
             # truncate file
             with open(self.seg.name, 'rb+') as f:
                 f.truncate(self.seg.size)
             # self.report_completed()
             self.seg.downloaded = True
+            self.d.downloaded -= self.current_filesize - self.seg.size
 
-        # should resume with new range
+        # Case-3: Resume, with new range
         elif self.current_filesize < self.seg.size and self.seg.range:
             # set new range and file open mode
             a, b = [int(x) for x in self.seg.range.split('-')]
@@ -106,14 +110,8 @@ class Worker:
             self.mode = 'ab'  # open file for append
 
             # report
-            log('Seg', self.seg.num, 'resuming, new range:', self.resume_range,
-                       'current file size:', self.current_filesize, log_level=3)
-
-        elif not self.seg.range:
-            self.mode = 'wb'
-            self.d.downloaded -= self.start_size
-            log(self.seg.num, 'overwrite the previous download, start size =', self.start_size, log_level=3)
-            self.start_size = 0
+            log('Seg', self.seg.basename, 'resuming, new range:', self.resume_range,
+                'current file size:', self.current_filesize, ' - worker', self.tag, log_level=3)
 
     def verify(self):
         """check if segment completed"""
@@ -124,9 +122,9 @@ class Worker:
             return False
 
     def report_not_completed(self):
-        log('worker', self.tag, 'did not complete', os.path.basename(self.seg.name), 'done',
-                   self.current_filesize, 'target size:', self.seg.size, 'left:',
-                   self.seg.size - self.current_filesize, 'url:', self.seg.url, log_level=3)
+        log('Seg', self.seg.basename, 'did not complete', '- done',
+            self.current_filesize, 'target size:', self.seg.size, 'left:',
+            self.seg.size - self.current_filesize, 'url:', self.seg.url, 'worger', self.tag, log_level=3)
 
         # put back to jobs queue to try again
         jobs_q.put(self.seg)
@@ -135,7 +133,7 @@ class Worker:
         # self.debug('worker', self.tag, 'completed', self.seg.name)
         self.seg.downloaded = True
 
-        log('downloaded segment:', os.path.basename(self.seg.name), log_level=2)
+        log('Seg', self.seg.basename, 'downloaded', 'worker', self.tag, log_level=2)
 
         # in case couldn't fetch segment size from headers we put the downloaded length as segment size
         if not self.seg.size:
@@ -205,7 +203,7 @@ class Worker:
             return
 
         if not self.seg.url:
-            log(f'worker-{self.tag}: segment "{os.path.basename(self.seg.name)}" has no valid url')
+            log('Seg', self.seg.basename, 'segment has no valid url', 'worker', {self.tag}, log_level=2)
             self.report_error('invalid_url')
             return
 
@@ -239,10 +237,10 @@ class Worker:
         except Exception as e:
             if any(statement in repr(e) for statement in ('Failed writing body', 'Callback aborted')):
                 error = f'terminated by user, or html content received from server'
-                log('worker', self.tag, error, log_level=3)
+                log('Seg', self.seg.basename, error, 'worker', self.tag, log_level=3)
             else:
                 error = repr(e)
-                log('worker', self.tag, ': quitting ...', error, self.seg.url, log_level=3)
+                log('Seg', self.seg.basename, '- worker', self.tag, 'quitting ...', error, self.seg.url,  log_level=3)
 
                 # report server error to thread manager
                 self.report_error(repr(e))
@@ -257,7 +255,7 @@ class Worker:
             # some video encryption keys has content-type 'text/html'
             try:
                 if '<html' in data.decode('utf-8') and not self.d.accept_html:
-                    log('worker: received html contents, aborting', log_level=3)
+                    log('Seg', self.seg.basename, '- worker', self.tag, 'received html contents, aborting', log_level=3)
 
                     # report server error to thread manager
                     self.report_error('received html contents')
