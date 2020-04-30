@@ -922,9 +922,10 @@ class MainWindow:
                             f'Direct video url: {d.eff_url}\n\n' \
                             f'Direct audio url: {d.audio_url}\n\n'
                 else:
-                    text += f'Direct url: {d.eff_url}\n\n'
+                    text += f'Webpage url: {d.url}\n\n' \
+                            f'Direct url: {d.eff_url}\n\n'
 
-                sg.popup_scrolled(text, title='File properties', size=(50, 20), non_blocking=True)
+                sg.popup_scrolled(text, title='Download Item properties', size=(50, 20), non_blocking=True)
         except Exception as e:
             log('gui> properties>', e)
 
@@ -1480,12 +1481,14 @@ class MainWindow:
 
         return _active_downloads
 
-    def start_download(self, d, silent=False, downloader=None):
+    def start_download(self, d, silent=False, force_window=False, downloader=None):
         """
-        Receive a DownloadItem and pass it to brain
-        :param bool silent: True or False, show a warninig dialogues
-        :param DownloadItem d: DownloadItem() object
-        :param downloader: name of alternative  downloader
+         Receive a DownloadItem, do required checks then pass it to brain
+        :param d:
+        :param silent: if True, hide all a warnning dialogues and hide download window
+        :param force_window: if True, download window will be shown, overriding silent option
+        :param downloader: name of alternative  downloader, currently not implemented
+        :return: 'cancelled', 'error', or None on success
         """
 
         if d is None or not d.url:
@@ -1578,7 +1581,7 @@ class MainWindow:
                         event = sg.PopupOKCancel(msg)
                         if event != 'OK':
                             log('aborted by user')
-                            return False
+                            return 'cancelled'
                     log('file:', d.name, 'has different properties and will be downloaded from beginning')
                     d.delete_tempfiles(force_delete=True)
 
@@ -1611,11 +1614,10 @@ class MainWindow:
         if len(self.active_downloads) >= config.max_concurrent_downloads:
             d.status = Status.pending
             self.pending.append(d)
-            return
+            return None
 
-        # start downloading
-        if config.show_download_window and not silent:
-            # create download window and append to active list
+        # create download window and append to active list
+        if config.show_download_window and (not silent or force_window):
             self.active_windows.append(DownloadWindow(d))
 
         # create and start brain in a separate thread
@@ -1623,6 +1625,8 @@ class MainWindow:
 
         # select row in downloads table
         self.select_row(d.id)
+
+        return None
 
     def stop_all_downloads(self):
         # change status of pending items to cancelled
@@ -1718,7 +1722,7 @@ class MainWindow:
 
         # print_object(self.selected_d)
 
-        self.start_download(self.selected_d, silent=True)
+        self.start_download(self.selected_d, silent=True, force_window=True)
 
     def cancel_btn(self):
         if self.selected_row_num is None:

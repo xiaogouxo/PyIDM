@@ -25,6 +25,7 @@ def brain(d=None, downloader=None):
 
     # complete reset and start over
     d.reset_segments()
+    d.last_known_progress = 0
     delete_file(d.temp_file)
     delete_file(d.audio_file)
 
