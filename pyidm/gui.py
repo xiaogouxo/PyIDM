@@ -1580,14 +1580,14 @@ class MainWindow:
                             log('aborted by user')
                             return False
                     log('file:', d.name, 'has different properties and will be downloaded from beginning')
-                    d.delete_tempfiles()
+                    d.delete_tempfiles(force_delete=True)
 
                 # replace old item in download list
                 self.d_list[found_index] = d
 
             elif response == 'Overwrite':
                 log('overwrite')
-                d.delete_tempfiles()
+                d.delete_tempfiles(force_delete=True)
 
                 # replace old item in download list
                 self.d_list[found_index] = d
@@ -1767,7 +1767,7 @@ class MainWindow:
                     self.selected_row_num = last_num
 
             # delete temp folder on disk
-            d.delete_tempfiles()
+            d.delete_tempfiles(force_delete=True)
 
         except:
             pass
@@ -1799,7 +1799,7 @@ class MainWindow:
         # delete temp files
         for i in range(n):
             d = self.d_list[i]
-            Thread(target=d.delete_tempfiles, daemon=True).start()
+            Thread(target=d.delete_tempfiles, args=[True], daemon=True).start()
 
         self.d_list.clear()
 
@@ -2123,15 +2123,15 @@ class MainWindow:
                     # add to playlist
                     self.playlist = [vid]
 
+                    # update playlist menu
+                    # self.update_pl_menu()
+                    execute_command('update_pl_menu')
+
                     # get thumbnail
                     vid.get_thumbnail()
 
                     # report done processing
                     vid.processed = True
-
-                    # update playlist menu
-                    # self.update_pl_menu()
-                    execute_command('update_pl_menu')
 
             # quit if we couldn't extract any videos info (playlist or single video)
             if not self.playlist:

@@ -539,10 +539,10 @@ class DownloadItem:
             output += f"{k}: {v} \n"
         return output
 
-    def delete_tempfiles(self):
+    def delete_tempfiles(self, force_delete=False):
         """delete temp files and folder for a given download item"""
 
-        if not config.keep_temp:
+        if force_delete or not config.keep_temp:
             delete_folder(self.temp_folder)
             delete_file(self.temp_file)
             delete_file(self.audio_file)
