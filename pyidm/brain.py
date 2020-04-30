@@ -95,8 +95,6 @@ def brain(d=None, downloader=None):
 
 def thread_manager(d):
 
-    error_timer = 0
-
     #   soft start, connections will be gradually increase over time to reach max. number
     #   set by user, this prevent impact on servers/network, and avoid "service not available" response
     #   from server when exceeding multi-connection number set by server.
@@ -127,6 +125,11 @@ def thread_manager(d):
     total_errors = 0
     max_errors = 100
     errors_descriptions = set()  # store unique errors
+    error_timer = 0
+    errors_check_interval = 1  # in seconds
+
+    # speed limit
+    sl_timer = time.time()
 
     def clear_error_q():
         # clear error queue
@@ -144,9 +147,9 @@ def thread_manager(d):
         # allowable connections
         allowable_connections = min(config.max_connections, d.remaining_parts, limited_connections)
 
-        # dynamic connection manager
-        # check every n seconds for server errors, in case of too many connections server will refuse all connections
-        if time.time() - error_timer >= 1:
+        # dynamic connection manager ---------------------------------------------------------------------------------
+        # check every n seconds for connection errors
+        if time.time() - error_timer >= errors_check_interval:
             error_timer = time.time()
             errors_num = config.error_q.qsize()
 
@@ -178,11 +181,13 @@ def thread_manager(d):
                 d.status = Status.error
                 log('Thread manager: too many errors received from server,\n  maybe network problem or expired link', showpopup=True)
 
-        # speed limit
-        if allowable_connections:
-            worker_sl = config.speed_limit // allowable_connections
+        # speed limit ------------------------------------------------------------------------------------------------
+        # wait some time for dynamic connection manager to release all connections
+        if time.time() - sl_timer < config.max_connections * errors_check_interval:
+            worker_sl = (config.speed_limit // config.max_connections) if config.max_connections else 0
         else:
-            worker_sl = 0
+            # normal calculations
+            worker_sl = (config.speed_limit // allowable_connections) if allowable_connections else 0
 
         # reuse a free worker to handle a job from job_list -----------------------------------------------------------
         if free_workers and job_list and d.status == Status.downloading and len(live_threads) < allowable_connections:
