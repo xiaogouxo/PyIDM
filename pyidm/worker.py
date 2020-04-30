@@ -34,6 +34,10 @@ class Worker:
         self.speed_limit = 0
         self.headers = {}
 
+        # minimum speed and timeout, abort if download speed slower than n byte/sec during n seconds
+        self.minimum_speed = None
+        self.timeout = None
+
     def __repr__(self):
         return f"worker_{self.tag}"
 
@@ -41,15 +45,24 @@ class Worker:
     def current_filesize(self):
         return self.start_size + self.downloaded
 
-    def reuse(self, seg=None, speed_limit=0):
+    def reuse(self, seg=None, speed_limit=0, minimum_speed=None, timeout=None):
         """Recycle same object again, better for performance as recommended by curl docs"""
         self.reset()
 
         self.seg = seg
         self.speed_limit = speed_limit
 
-        log('Seg', self.seg.basename, 'start, size:', size_format(self.seg.size), ' - range:', self.seg.range,
-            ' - SL=', self.speed_limit, ' - worker', self.tag, log_level=2)
+        # minimum speed and timeout, abort if download speed slower than n byte/sec during n seconds
+        self.minimum_speed = minimum_speed
+        self.timeout = timeout
+
+        msg = f'Seg, {self.seg.basename} start, size: {size_format(self.seg.size)} - range: {self.seg.range}'
+        if self.speed_limit:
+            msg += f'- SL= {self.speed_limit}'
+        if self.minimum_speed:
+            msg += f'- minimum speed= {self.minimum_speed}, timeout={self.timeout}'
+
+        log(msg, ' - worker', self.tag, log_level=2)
 
         self.check_previous_download()
 
@@ -171,6 +184,13 @@ class Worker:
         self.c.setopt(pycurl.WRITEFUNCTION, self.write)
         self.c.setopt(pycurl.XFERINFOFUNCTION, self.progress)
 
+        # set minimum speed and timeout, abort if download speed slower than n byte/sec during n seconds
+        if self.minimum_speed:
+            self.c.setopt(pycurl.LOW_SPEED_LIMIT, self.minimum_speed)
+
+        if self.timeout:
+            self.c.setopt(pycurl.LOW_SPEED_TIME, self.timeout)
+
     def header_callback(self, header_line):
         header_line = header_line.decode('iso-8859-1')
         header_line = header_line.lower()
@@ -263,6 +283,8 @@ class Worker:
             try:
                 if '<html' in data.decode('utf-8') and not self.d.accept_html:
                     log('Seg', self.seg.basename, '- worker', self.tag, 'received html contents, aborting', log_level=3)
+
+                    log('=' * 20, '\n', data, '=' * 20, '\n', log_level=3)
 
                     # report server error to thread manager
                     self.report_error('received html contents')

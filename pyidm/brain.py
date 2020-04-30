@@ -194,12 +194,20 @@ def thread_manager(d):
             # log('live_threads=', len(live_threads))
             for _ in range(allowable_connections - len(live_threads)):
                 try:
-                    worker_num, seg = free_workers.pop(), job_list.pop()  # get available tag # get a new job
+                    # sometimes download chokes when remaining only one worker, will set higher minimum speed and
+                    # less timeout for last workers batch
+                    if len(job_list) + config.jobs_q.qsize() <= allowable_connections:
+                        minimum_speed, timeout = 20 * 1024, 10  # worker will abort if speed less than 20 KB for 10 seconds
+                    else:
+                        minimum_speed = timeout = None   # default as in utils.set_curl_option
+
+                    # get available tag and  get a new job
+                    worker_num, seg = free_workers.pop(), job_list.pop()
                     busy_workers.append(worker_num)  # add number to busy workers
 
                     # create new threads
                     worker = workers[worker_num]
-                    worker.reuse(seg=seg, speed_limit=worker_sl)
+                    worker.reuse(seg=seg, speed_limit=worker_sl, minimum_speed=minimum_speed, timeout=timeout)
                     t = Thread(target=worker.run, daemon=True, name=str(worker_num))
                     live_threads.append(t)
                     t.start()
