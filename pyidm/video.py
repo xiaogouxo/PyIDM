@@ -116,9 +116,7 @@ class Video(DownloadItem):
         return f'Video object( name: {self.name}, url:{self.url}'
 
     def setup(self):
-        url = self.vid_info.get('url', None) or self.vid_info.get('webpage_url', None) or self.vid_info.get('id', None)
-        if url:
-            self.eff_url = url
+        # url = self.vid_info.get('url', None) or self.vid_info.get('webpage_url', None) or self.vid_info.get('id', None)
 
         # sometimes url is just video id when fetch playlist info with process=False, try to get complete url
         # example, playlist url: https://www.youtube.com/watch?v=ethlD9moxyI&list=PL2aBZuCeDwlSXza3YLqwbUFokwqQHpPbp
