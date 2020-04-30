@@ -2116,13 +2116,20 @@ class MainWindow:
                     # process_video_info() will fail to get formats for some videos
                     # https://vod.tvp.pl/video/rozmowy-przy-wycinaniu-lasu,rozmowy-przy-wycinaniu-lasu,21765408
 
+                    # process info
+                    info = ydl.process_ie_result(info, download=False)
+
                     # check for formats, and inform user
                     if not info.get('formats'):
                         log('youtube func: missing formats, re-downloading webpage')
 
-                    # to avoid missing formats will call youtube-dl again with process=True 're-downloading webpage'
-                    info = ydl.extract_info(self.d.url, download=False, process=True)
+                        # to avoid missing formats will call youtube-dl again with process=True 're-downloading webpage'
+                        info = ydl.extract_info(self.d.url, download=False, process=True)
+
                     vid = Video(self.d.url, vid_info=info)
+
+                    # report done processing
+                    vid.processed = True
 
                     # add to playlist
                     self.playlist = [vid]
@@ -2132,10 +2139,7 @@ class MainWindow:
                     execute_command('update_pl_menu')
 
                     # get thumbnail
-                    vid.get_thumbnail()
-
-                    # report done processing
-                    vid.processed = True
+                    Thread(target=vid.get_thumbnail, daemon=True).start()
 
             # quit if we couldn't extract any videos info (playlist or single video)
             if not self.playlist:
