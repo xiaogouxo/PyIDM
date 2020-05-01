@@ -495,9 +495,13 @@ class MainWindow:
         ]
 
         advanced = [
+
             [sg.T('')],
+            [sg.T('Developer options: "*you should know what you are doing before modifying these options!"')],
             [sg.Checkbox('keep temp files / folders after done downloading for debugging.',
                          default=True if config.keep_temp else False, key='keep_temp', enable_events=True, )],
+            [sg.Checkbox('Re-raise all caught exceptions / errors for debugging',
+                         default=True if config.TEST_MODE else False, key='TEST_MODE', enable_events=True,)],
         ]
 
         # layout ----------------------------------------------------------------------------------------------------
@@ -838,7 +842,8 @@ class MainWindow:
                 self.update_stream_menu()
 
         except Exception as e:
-            # raise e
+            if config.TEST_MODE:
+                raise e
             log('MainWindow.update_gui() error:', e)
 
     def enable(self):
@@ -1350,6 +1355,9 @@ class MainWindow:
             elif event == 'keep_temp':
                 config.keep_temp = values['keep_temp']
 
+            elif event == 'TEST_MODE':
+                config.TEST_MODE = values['TEST_MODE']
+
             # log ---------------------------------------------------------------------------------------------------
             elif event == 'log_level':
                 config.log_level = int(values['log_level'])
@@ -1442,8 +1450,9 @@ class MainWindow:
                 self.set_status('')
 
         except Exception as e:
-            # raise e
             log('Main window - Run()>', e)
+            if config.TEST_MODE:
+                raise e
 
     # region headers
     def refresh_headers(self, url):
@@ -2028,6 +2037,13 @@ class MainWindow:
                 info = ydl.extract_info(self.d.url, download=False, process=False)
                 log('Media info:', info, log_level=3)
 
+                # don't process direct links, youtube-dl warning message "URL could be a direct video link, returning it as such."
+                # refer to youtube-dl/extractor/generic.py
+                if not info or info.get('direct'):
+                    log('youtube_func()> No streams found')
+                    self.reset_video_controls()
+                    return
+
                 # set playlist / video title
                 self.pl_title = info.get('title', '')
 
@@ -2121,34 +2137,34 @@ class MainWindow:
                                 num += 1
 
                 else:
-                    # one video, not a playlist, processing info
-                    # process_video_info() will fail to get formats for some videos
-                    # https://vod.tvp.pl/video/rozmowy-przy-wycinaniu-lasu,rozmowy-przy-wycinaniu-lasu,21765408
+                        # one video, not a playlist, processing info
+                        # process_video_info() will fail to get formats for some videos
+                        # https://vod.tvp.pl/video/rozmowy-przy-wycinaniu-lasu,rozmowy-przy-wycinaniu-lasu,21765408
 
-                    # process info
-                    info = ydl.process_ie_result(info, download=False)
+                        # process info
+                        info = ydl.process_ie_result(info, download=False)
 
-                    # check for formats, and inform user
-                    if not info.get('formats'):
-                        log('youtube func: missing formats, re-downloading webpage')
+                        # check for formats, and inform user
+                        if not info.get('formats'):
+                            log('youtube func: missing formats, re-downloading webpage')
 
-                        # to avoid missing formats will call youtube-dl again with process=True 're-downloading webpage'
-                        info = ydl.extract_info(self.d.url, download=False, process=True)
+                            # to avoid missing formats will call youtube-dl again with process=True 're-downloading webpage'
+                            info = ydl.extract_info(self.d.url, download=False, process=True)
 
-                    vid = Video(self.d.url, vid_info=info)
+                        vid = Video(self.d.url, vid_info=info)
 
-                    # report done processing
-                    vid.processed = True
+                        # report done processing
+                        vid.processed = True
 
-                    # add to playlist
-                    self.playlist = [vid]
+                        # add to playlist
+                        self.playlist = [vid]
 
-                    # update playlist menu
-                    # self.update_pl_menu()
-                    execute_command('update_pl_menu')
+                        # update playlist menu
+                        # self.update_pl_menu()
+                        execute_command('update_pl_menu')
 
-                    # get thumbnail
-                    Thread(target=vid.get_thumbnail, daemon=True).start()
+                        # get thumbnail
+                        Thread(target=vid.get_thumbnail, daemon=True).start()
 
             # quit if we couldn't extract any videos info (playlist or single video)
             if not self.playlist:
@@ -2168,6 +2184,8 @@ class MainWindow:
 
         except Exception as e:
             log('youtube_func()> error:', e)
+            if config.TEST_MODE:
+                raise e
             self.reset_video_controls()
 
         finally:
@@ -2256,8 +2274,9 @@ class MainWindow:
             self.set_tooltip(widget=self.window['stream_menu'], tooltip_text=self.stream_menu[selected_index])
 
         except Exception as e:
-            # raise e
             log('stream_OnChoice', e, log_level=3)
+            if config.TEST_MODE:
+                raise e
 
     def set_tooltip(self, widget=None, tooltip_text=None):
         """

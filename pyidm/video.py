@@ -41,7 +41,7 @@ class Logger(object):
 
 
 def get_ytdl_options():
-    ydl_opts = {'ignoreerrors': True, 'prefer_insecure': False, 'no_warnings': False, 'logger': Logger()}
+    ydl_opts = {'ignoreerrors': True, 'logger': Logger()}  # 'prefer_insecure': False, 'no_warnings': False,
     if config.proxy:
         ydl_opts['proxy'] = config.proxy
 
