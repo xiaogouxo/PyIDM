@@ -131,7 +131,7 @@ def main():
     Thread(target=systray.run, daemon=True).start()
 
     # create main window
-    main_window = MainWindow(config.d_list)
+    main_window = MainWindow()
 
     # create main run loop
     while True:
@@ -156,7 +156,7 @@ def main():
             value = config.main_q.get()
             if value == 'start_main_window':
                 if not main_window:
-                    main_window = MainWindow(config.d_list)
+                    main_window = MainWindow()
                 else:
                     main_window.un_hide()
             elif value == 'minimize_to_systray':

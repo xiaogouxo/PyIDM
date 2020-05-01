@@ -53,7 +53,7 @@ transparent = {}
 
 
 class MainWindow:
-    def __init__(self, d_list):
+    def __init__(self):
         """This is the main application user interface window"""
 
         self.active = True  # active flag, if true this window will run in main application loop in "pyIDM.py"
