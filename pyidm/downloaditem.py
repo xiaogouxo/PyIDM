@@ -17,11 +17,8 @@ from queue import Queue
 from threading import Thread, Lock
 from urllib.parse import urljoin
 from .utils import validate_file_name, get_headers, translate_server_code, size_splitter, get_seg_size, log, \
-    delete_file, delete_folder, save_json, load_json
+    delete_file, delete_folder, save_json, load_json, size_format
 from . import config
-
-# lock used with "DownloadItem.downloaded" property
-lock = Lock()
 
 
 class Segment:
@@ -80,21 +77,23 @@ class DownloadItem:
 
         # type and subtypes
         self.type = ''  # general, video, audio
-        self.subtype_list = []  # it might contains one or more eg "video, audio, hls, dash, fragmented"
+        self.subtype_list = []  # it might contains one or more eg "hls, dash, fragmented, normal"
 
         self._segment_size = config.segment_size
 
         self.live_connections = 0
         self._downloaded = 0
+        self._lock = None  # Lock() to access downloaded property from different threads
         self._status = config.Status.cancelled
-        self._remaining_parts = 0
+        self.remaining_parts = 0
 
         # connection status
         self.status_code = 0
         self.status_code_description = ''
 
         # animation
-        self.animation_index = 0  # self.id % 2  # to give it a different start point than neighbour items
+        self.animation_index = 0
+        self.animation_timer = 0
 
         # audio
         self.audio_stream = None
@@ -114,7 +113,7 @@ class DownloadItem:
         self.prev_downloaded_value = 0
         self.speed_buffer = deque()  # store some speed readings for calculating average speed afterwards
         self.speed_timer = 0
-        self.speed_refresh_rate = 1  # calculate speed every n time
+        self.speed_refresh_rate = 1  # calculate speed every n seconds
 
         # segments
         self._segments = []
@@ -130,6 +129,7 @@ class DownloadItem:
         # protocol
         self.protocol = ''
 
+        # format id, youtube-dl specific
         self.format_id = None
         self.audio_format_id = None
 
@@ -138,15 +138,10 @@ class DownloadItem:
         self.tbr = None  # for video equal Bandwidth/1000
         self.resolution = None  # for videos only example for 720p: 1280x720
 
-        # some downloads will have their progress and total size calculated and we can't store these values in self.size
-        # since it will affect self.segments, workaround: use self.last_known_size, and self.last_known_progress so it
-        # will be shown when loading self.d_list from disk, other solution is to load progress info
-        # from setting.load_d_list()
+        # used as a fallback for total size calculations, required for some items like hls videos
         self.last_known_size = 0
-        self.last_known_progress = 0
 
-        self.animation_timer = 0
-
+        # hls m3u8 manifest url
         self.manifest_url = ''
 
         # thumbnails
@@ -176,9 +171,9 @@ class DownloadItem:
         # properties names that will be saved on disk
         self.saved_properties = ['id', '_name', 'folder', 'url', 'eff_url', 'playlist_url', 'playlist_title', 'size',
                                  'resumable', 'selected_quality', '_segment_size', '_downloaded', '_status',
-                                 '_remaining_parts', 'audio_url', 'audio_size', 'type', 'subtype_list', 'fragments',
+                                 'remaining_parts', 'audio_url', 'audio_size', 'type', 'subtype_list', 'fragments',
                                  'fragment_base_url', 'audio_fragments', 'audio_fragment_base_url',
-                                 'last_known_size', 'last_known_progress', 'protocol', 'manifest_url',
+                                 'last_known_size', 'protocol', 'manifest_url',
                                  'abr', 'tbr', 'format_id', 'audio_format_id', 'resolution']
 
     # def __getattr__(self, attrib):  # commented out as it makes problem with copy.copy module
@@ -186,23 +181,6 @@ class DownloadItem:
     #
     #     # will return empty string instead of raising error
     #     return ''
-
-    def reset_segments(self):
-        """reset each segment properties "downloaded and merged" """
-        for seg in self._segments:
-            seg.downloaded = False
-            seg.completed = False
-
-    @property
-    def remaining_parts(self):
-        return self._remaining_parts
-
-    @remaining_parts.setter
-    def remaining_parts(self, value):
-        self._remaining_parts = value
-
-        # verify downloaded
-        # self.verify_downloaded()
 
     @property
     def segments(self):
@@ -258,51 +236,16 @@ class DownloadItem:
     def segments(self, value):
         self._segments = value
 
-    def save_progress_info(self):
-        """save segments info to disk"""
-        seg_list = [{'name': seg.name, 'downloaded':seg.downloaded, 'completed':seg.completed, 'size':seg.size} for seg in self.segments]
-        file = os.path.join(self.temp_folder, 'progress_info.txt')
-        save_json(file, seg_list)
-
-    def load_progress_info(self):
-        """load saved progress info from disk"""
-        file = os.path.join(self.temp_folder, 'progress_info.txt')
-        if os.path.isfile(file):
-            seg_list = load_json(file)
-            for seg, item in zip(self.segments, seg_list):
-                if seg.name in item['name']:
-                    seg.size = item['size']
-
-                    seg.downloaded = False  # item['downloaded']
-                    seg.completed = False  #item['completed']
-
-                    # check actual file size on disk
-                    try:
-                        if os.path.getsize(seg.name) == seg.size:
-                            seg.downloaded = True
-                    except:
-                        pass
-
-            # verify and update actual downloaded data
-            self.verify_downloaded()
-
-    def verify_downloaded(self):
-        # update downloaded
-        self.downloaded = sum([os.path.getsize(seg.name) for seg in self.segments if os.path.isfile(seg.name)])
-
     @property
     def total_size(self):
-        if 'dash' in self.subtype_list:
-            size = self.size + self.audio_size
-        else:
-            size = self.size
+        size = 0
 
         # estimate size based on size of downloaded fragments
-        if not size and self._segments:
+        if self.segments:
             sizes = [seg.size for seg in self.segments if seg.size]
             if sizes:
                 avg_seg_size = sum(sizes)//len(sizes)
-                size = avg_seg_size * len(self._segments)  # estimated
+                size = avg_seg_size * len(self.segments)  # estimated
 
         if not size:
             return self.last_known_size
@@ -338,6 +281,13 @@ class DownloadItem:
         return self._speed
 
     @property
+    def lock(self):
+        # Lock() to access downloaded property from different threads
+        if not self._lock:
+            self._lock = Lock()
+        return self._lock
+
+    @property
     def downloaded(self):
         return self._downloaded
 
@@ -347,32 +297,28 @@ class DownloadItem:
         if not isinstance(value, int):
             return
 
-        with lock:
+        with self.lock:
             self._downloaded = value
 
     @property
     def progress(self):
         if self.status == config.Status.completed:
             p = 100
-        elif not self.segments:
-            p = 0
-        elif self.total_size == 0:
+
+        elif self.total_size == 0 and self.segments:
             # to handle fragmented files
-            finished = len([seg for seg in self.segments if seg.completed]) if self.segments else 0
+            finished = len([seg for seg in self.segments if seg.completed])
             p = round(finished * 100 / len(self.segments), 1)
         else:
             p = round(self.downloaded * 100 / self.total_size, 1)
 
-        p = p if p <= 100 else 100
-
-        if not p:
-            return self.last_known_progress
-
         # make progress 99% if not completed
-        if p >= 99 and not self.status == config.Status.completed:
-            p = 99
+        if p >= 100:
+            if not self.status == config.Status.completed:
+                p = 99
+            else:
+                p = 100
 
-        self.last_known_progress = p  # to be loaded when restarting application
         return p
 
     @property
@@ -449,7 +395,6 @@ class DownloadItem:
 
     @property
     def segment_size(self):
-        self._segment_size = config.segment_size
         return self._segment_size
 
     @segment_size.setter
@@ -460,17 +405,20 @@ class DownloadItem:
     @property
     def sched_string(self):
         # t = time.localtime(self.sched)
-        # return f"⏳({t.tm_hour}:{t.tm_min})"
-        return f"{self.sched[0]:02}:{self.sched[1]:02}"
+        # text = f"⏳({t.tm_hour}:{t.tm_min})"
+        text = f"{self.sched[0]:02}:{self.sched[1]:02}"
+        # text = f"⏳{self.sched[0]:02}:{self.sched[1]:02}"
+        return text
 
     def kill_subprocess(self):
+        """it will kill any subprocess running for this download item, ex: ffmpeg merge video/audio"""
         try:
             # to work subprocess should have shell=False
             self.subprocess.kill()
             log('run_command()> Cancelled by user', self.subprocess.args)
             self.subprocess = None
         except Exception as e:
-            log('DownloadItem.status error', e)
+            log('DownloadItem.kill_subprocess()> error', e)
 
     def update(self, url):
         """get headers and update properties (eff_url, name, ext, size, type, resumable, status code/description)"""
@@ -533,11 +481,7 @@ class DownloadItem:
         # print('done', url)
 
     def __repr__(self):
-        """used with functions like print, it will return all properties in this object"""
-        output = ''
-        for k, v in self.__dict__.items():
-            output += f"{k}: {v} \n"
-        return output
+        return f'DownloadItem object( name: {self.name}, url:{self.url}'
 
     def delete_tempfiles(self, force_delete=False):
         """delete temp files and folder for a given download item"""
@@ -546,4 +490,86 @@ class DownloadItem:
             delete_folder(self.temp_folder)
             delete_file(self.temp_file)
             delete_file(self.audio_file)
+
+    def save_progress_info(self):
+        """save segments info to disk"""
+        progress_info = [{'name': seg.name, 'downloaded': seg.downloaded, 'completed': seg.completed, 'size': seg.size}
+                         for seg in self.segments]
+        file = os.path.join(self.temp_folder, 'progress_info.txt')
+        save_json(file, progress_info)
+
+    def load_progress_info(self):
+        """
+        load progress info from disk, update segments' info, verify actual segments' size on disk
+        :return: None
+        """
+        progress_info = None
+
+        file = os.path.join(self.temp_folder, 'progress_info.txt')
+        if os.path.isfile(file):
+            # load progress info from temp folder if exist
+            data = load_json(file)
+            if isinstance(data, list):
+                progress_info = data
+
+        # update segments from progress info
+        if progress_info:
+            downloaded = 0
+            if self.segments:
+                for seg, item in zip(self.segments, progress_info):
+                    if seg.name == item.get('name'):
+                        seg.size = item.get('size') or seg.size
+
+                        # check actual file size on disk and set "downloaded" flag
+                        try:
+                            size_on_disk = os.path.getsize(seg.name)
+                            downloaded += size_on_disk
+                            if size_on_disk == seg.size:
+                                seg.downloaded = True
+                            else:
+                                # reset flags
+                                seg.downloaded = False
+                                seg.completed = False
+                        except:
+                            pass
+            else:
+                # in case of hls videos there is no segments until start downloading
+                # segments will be built by video.hls_pre_process()
+                downloaded = sum([item.get('size') for item in progress_info])
+
+            # update self.downloaded
+            self.downloaded = downloaded
+
+            # print('progress info loaded for', self.name, 'downloaded:', size_format(self.downloaded))
+
+    def reset_segments(self):
+        """reset each segment properties "downloaded and merged" """
+        for seg in self._segments:
+            seg.downloaded = False
+            seg.completed = False
+
+    def prepare_for_downloading(self):
+        """
+        prepare download item for downloading, mainly for resume downloading
+        :return: None
+        """
+
+        # first we will remove temp files because file manager is appending segments blindly to temp file
+        delete_file(self.temp_file)
+        delete_file(self.audio_file)
+
+        # reset downloaded
+        self.downloaded = 0
+
+        # reset completed flag
+        for seg in self.segments:
+            seg.completed = False
+            seg.downloaded = False
+
+        # load progress info, verify actual segments' size, and update self.segments
+        self.load_progress_info()
+
+
+
+
 

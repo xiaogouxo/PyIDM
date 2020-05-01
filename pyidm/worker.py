@@ -263,7 +263,7 @@ class Worker:
 
         except Exception as e:
             if any(statement in repr(e) for statement in ('Failed writing body', 'Callback aborted')):
-                error = f'terminated by user, or html content received from server'
+                error = f'terminated'
                 log('Seg', self.seg.basename, error, 'worker', self.tag, log_level=3)
             else:
                 error = repr(e)

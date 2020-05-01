@@ -23,12 +23,6 @@ def brain(d=None, downloader=None):
     """main brain for a single download, it controls thread manger, file manager, and get data from workers
     and communicate with download window Gui, Main frame gui"""
 
-    # complete reset and start over
-    d.reset_segments()
-    d.last_known_progress = 0
-    delete_file(d.temp_file)
-    delete_file(d.audio_file)
-
     # set status
     if d.status == Status.downloading:
         log('another brain thread may be running')
@@ -56,8 +50,8 @@ def brain(d=None, downloader=None):
         # for non hls videos and normal files
         keep_segments = True  # False
 
-    # load previous saved progress info
-    d.load_progress_info()
+    # prepare download item for download
+    d.prepare_for_downloading()
 
     # run file manager in a separate thread
     Thread(target=file_manager, daemon=True, args=(d, keep_segments)).start()

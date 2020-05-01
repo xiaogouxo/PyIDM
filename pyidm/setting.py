@@ -98,11 +98,13 @@ def load_d_list():
 
         # clean d_list and load thumbnails
         for d in d_list:
-            d.status = config.Status.completed if d.progress >= 100 else config.Status.cancelled
             d.live_connections = 0
 
             # use encode() to convert base64 string to byte, however it does work without it, will keep it to be safe
             d.thumbnail = thumbnails.get(str(d.id), '').encode()
+
+            # update progress info
+            d.load_progress_info()
 
     except FileNotFoundError:
         log('downloads.cfg file not found')

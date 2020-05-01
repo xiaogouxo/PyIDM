@@ -256,6 +256,9 @@ class Video(DownloadItem):
 
     def update_param(self, audio_stream=None):
         """Mainly used when select a stream for current video object"""
+        # reset segments first
+        self.segments.clear()
+
         # do some parameters updates
         stream = self.selected_stream
         self.name = self.title + '.' + stream.extension
