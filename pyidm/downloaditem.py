@@ -194,7 +194,7 @@ class DownloadItem:
                 # print(self.fragments)
                 # example 'fragments': [{'path': 'range/0-640'}, {'path': 'range/2197-63702', 'duration': 9.985},]
                 self._segments = [Segment(name=os.path.join(self.temp_folder, str(i)), num=i, range=None, size=0,
-                                          url=urljoin(self.fragment_base_url, x['path']), tempfile=self.temp_file)
+                                          url=urljoin(self.fragment_base_url, x.get('path', '')), tempfile=self.temp_file)
                                   for i, x in enumerate(self.fragments)]
 
             else:
@@ -216,7 +216,7 @@ class DownloadItem:
                     # example 'fragments': [{'path': 'range/0-640'}, {'path': 'range/2197-63702', 'duration': 9.985},]
                     audio_segments = [
                         Segment(name=os.path.join(self.temp_folder, str(i) + '_audio'), num=i, range=None, size=0,
-                                url=urljoin(self.audio_fragment_base_url, x['path']), tempfile=self.audio_file)
+                                url=urljoin(self.audio_fragment_base_url, x.get('path', '')), tempfile=self.audio_file)
                         for i, x in enumerate(self.audio_fragments)]
 
                 else:

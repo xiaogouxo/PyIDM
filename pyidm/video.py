@@ -258,6 +258,7 @@ class Video(DownloadItem):
         """Mainly used when select a stream for current video object"""
         # reset segments first
         self.segments.clear()
+        self.last_known_size = 0
 
         # do some parameters updates
         stream = self.selected_stream
@@ -287,6 +288,12 @@ class Video(DownloadItem):
 
         if self.fragments:
             self.subtype_list.append('fragmented')
+
+        if 'f4m' in self.protocol:
+            self.subtype_list.append('f4m')
+
+        if 'ism' in self.protocol:
+            self.subtype_list.append('ism')
 
         # select an audio to embed if our stream is dash video
         audio_streams = sorted([stream for stream in self.all_streams if stream.mediatype == 'audio'],

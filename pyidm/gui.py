@@ -838,6 +838,7 @@ class MainWindow:
                 self.update_stream_menu()
 
         except Exception as e:
+            # raise e
             log('MainWindow.update_gui() error:', e)
 
     def enable(self):
@@ -1441,6 +1442,7 @@ class MainWindow:
                 self.set_status('')
 
         except Exception as e:
+            # raise e
             log('Main window - Run()>', e)
 
     # region headers
@@ -1492,6 +1494,13 @@ class MainWindow:
         """
 
         if d is None or not d.url:
+            return 'cancelled'
+
+        # check unsupported protocols
+        unsupported = ['f4m', 'ism']
+        match = [item for item in unsupported if item in d.subtype_list]
+        if match:
+            log('unsupported protocol: \n"{match[0]}" stream type is not supported yet', start='', showpopup=True)
             return 'cancelled'
 
         # check for ffmpeg availability in case this is a dash video or hls video
@@ -2247,6 +2256,7 @@ class MainWindow:
             self.set_tooltip(widget=self.window['stream_menu'], tooltip_text=self.stream_menu[selected_index])
 
         except Exception as e:
+            # raise e
             log('stream_OnChoice', e, log_level=3)
 
     def set_tooltip(self, widget=None, tooltip_text=None):
