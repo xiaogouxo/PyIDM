@@ -50,7 +50,7 @@ install_missing_pkgs()
 from .utils import *
 from . import config
 from . import video
-from .gui import MainWindow, SysTray
+from .gui import MainWindow, SysTray, sg
 
 
 # messages will be written to clipboard to check for any PyIDM instance with the same version running
@@ -70,10 +70,6 @@ def clipboard_listener():
         if new_data == QUERY_MSG:  # a message coming from new App. instance
             # send a yes response # it will be read by is_solo() as an exit signal
             clipboard.copy(AFFIRMATIVE_MSG)
-
-            # wake up MainWindow if it is closed in systray or not focused
-            config.main_q.put('start_main_window')
-            config.main_window_q.put(('visibility', 'show'))  # restore main window if minimized
 
         # url processing
         if config.monitor_clipboard and new_data != old_data:
@@ -117,6 +113,7 @@ def main():
     # quit if there is previous instance of this App. already running
     if not is_solo():
         print('previous instance already running')
+        sg.Popup(f'PyIDM version {config.APP_VERSION} already running or maybe systray icon is active', title=f'PyIDM version {config.APP_VERSION}')
         config.shutdown = True
         return
 

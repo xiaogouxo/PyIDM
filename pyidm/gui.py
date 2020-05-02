@@ -201,11 +201,6 @@ class MainWindow:
                 self.window['url'](v.strip())
                 self.on_url_text_change()
 
-            elif k == 'visibility' and v == 'show':
-                # self.un_hide()
-                self.window.BringToFront()
-                sg.popup_ok('application is already running', title=config.APP_NAME)
-
             elif k == 'download':  # todo: tobe removed
                 self.start_download(*v)
 
