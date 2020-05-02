@@ -69,7 +69,8 @@ class MainWindow:
 
         # url
         self.url = ''  # current url in url input widget
-        self.url_timer = None  # usage: Timer(0.5, self.refresh_headers, args=[self.d.url])
+        self.url_timer = 0
+        # self.url_timer = None  # usage: Timer(0.5, self.refresh_headers, args=[self.d.url])
         self.bad_headers = [0, range(400, 404), range(405, 418), range(500, 506)]  # response codes
 
         # playlist/video
@@ -198,7 +199,7 @@ class MainWindow:
             k, v = config.main_window_q.get()
             if k == 'url':
                 self.window['url'](v.strip())
-                self.url_text_change()
+                self.on_url_text_change()
 
             elif k == 'visibility' and v == 'show':
                 # self.un_hide()
@@ -755,6 +756,13 @@ class MainWindow:
         if not self.active:
             return
 
+        # handle url text change, time since last change only after 0.3 seconds, this prevent processing url with every
+        # letter typed by user
+        if 5 > time.time() - self.url_timer > 0.3:
+            # set timer to negative value guarantee above condition to be false, i.e. execute one time only
+            self.url_timer = -10
+            self.on_url_text_change()
+
         # update Elements
         try:
             self.update_log()
@@ -1003,7 +1011,8 @@ class MainWindow:
                     self.update_app(remote=False)
 
             elif event == 'url':
-                self.url_text_change()
+                # reset timer, and self.url_text_change() will be called from update_gui()
+                self.url_timer = time.time()
 
             elif event == 'copy url':
                 url = values['url']
@@ -1012,7 +1021,7 @@ class MainWindow:
 
             elif event == 'paste url':
                 self.window['url'](clipboard.paste().strip())
-                self.url_text_change()
+                self.on_url_text_change()
 
             # video events
             elif event == 'main_thumbnail':
@@ -1454,35 +1463,6 @@ class MainWindow:
             if config.TEST_MODE:
                 raise e
 
-    # region headers
-    def refresh_headers(self, url):
-        if self.d.url != '':
-            self.set_cursor('busy')
-            Thread(target=self.get_header, args=[url], daemon=True).start()
-
-    def get_header(self, url):
-        # curl_headers = get_headers(url)
-        self.d.update(url)
-
-        # update headers only if no other curl thread created with different url
-        if url == self.d.url:
-
-            # update status code widget
-            try:
-                self.window['status_code'](f'status: {self.d.status_code}')
-            except:
-                pass
-
-            # enable download button
-            if self.d.status_code not in self.bad_headers and self.d.type != 'text/html':
-                self.enable()
-
-            # check if the link contains stream videos by youtube-dl
-            Thread(target=self.youtube_func, daemon=True).start()
-        self.set_cursor('default')
-
-    # endregion
-
     # region download
     @property
     def active_downloads(self):
@@ -1855,8 +1835,9 @@ class MainWindow:
         d = self.selected_d
         config.download_folder = d.folder
 
+        self.url = ''
         self.window['url'](d.url)
-        self.url_text_change()
+        self.on_url_text_change()
 
         self.window['folder'](config.download_folder)
         self.select_tab('Main')
@@ -2175,9 +2156,6 @@ class MainWindow:
             # check cancel flag
             if cancel_flag(): return
 
-            # enable download button
-            self.enable()
-
             # job completed
             self.m_bar = 100
             log(f'youtube_func()> done fetching information in {round(time.time() - timer1, 1)} seconds .............')
@@ -2444,7 +2422,7 @@ class MainWindow:
     # endregion
 
     # region General
-    def url_text_change(self):
+    def on_url_text_change(self):
         url = self.window['url'].get().strip()
 
         if url == self.url:
@@ -2456,23 +2434,33 @@ class MainWindow:
         self.window.BringToFront()
         self.select_tab('Main')
 
+        # reset parameters and create new download item
         self.reset()
         try:
+            self.set_cursor('busy')
             self.d.eff_url = self.d.url = url
 
-            # schedule refresh header func
-            if isinstance(self.url_timer, Timer):
-                self.url_timer.cancel()  # cancel previous timer
+            self.d.folder = config.download_folder
 
-            self.url_timer = Timer(0.5, self.refresh_headers, args=[url])
-            self.url_timer.start()  # start new timer
+            # get headers and update current download item, should use thread for responsive gui
+            Thread(target=self.d.update, args=[url], daemon=True).start()
 
-        except:
-            pass
+            # update status code widget
+            self.window['status_code'](f'status: {self.d.status_code}')
+
+            # check if the link contains stream videos by youtube-dl
+            Thread(target=self.youtube_func, daemon=True).start()
+
+        except Exception as e:
+            log('url_text_change()> error', e)
+            if config.TEST_MODE:
+                raise e
+        finally:
+            self.set_cursor('default')
 
     def retry(self):
         self.url = ''
-        self.url_text_change()
+        self.on_url_text_change()
 
     def reset(self):
         # create new download item, the old one will be garbage collected by python interpreter

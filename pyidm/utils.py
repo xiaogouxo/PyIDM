@@ -12,7 +12,6 @@ import os
 import io
 import pycurl
 import time
-
 import plyer
 import certifi
 import shutil

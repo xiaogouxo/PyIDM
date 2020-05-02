@@ -56,7 +56,7 @@ class Worker:
         self.minimum_speed = minimum_speed
         self.timeout = timeout
 
-        msg = f'Seg, {self.seg.basename} start, size: {size_format(self.seg.size)} - range: {self.seg.range}'
+        msg = f'Seg {self.seg.basename} start, size: {size_format(self.seg.size)} - range: {self.seg.range}'
         if self.speed_limit:
             msg += f'- SL= {self.speed_limit}'
         if self.minimum_speed:

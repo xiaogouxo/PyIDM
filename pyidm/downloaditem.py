@@ -426,17 +426,15 @@ class DownloadItem:
         if url in ('', None):
             return
 
-        self.url = url
         headers = get_headers(url)
         # print('update d parameters:', headers)
 
         # update headers only if no other update thread created with different url
         if url == self.url:
+            # print('update()> url, self.url', url, self.url)
             self.eff_url = headers.get('eff_url')
             self.status_code = headers.get('status_code', '')
             self.status_code_description = f"{self.status_code} - {translate_server_code(self.status_code)}"
-
-            # update file info
 
             # get file name
             name = ''
@@ -470,7 +468,7 @@ class DownloadItem:
                 if ext:
                     name += ext
 
-            # check for resume support
+            # resume support
             resumable = headers.get('accept-ranges', 'none') != 'none'
 
             self.name = name
@@ -478,7 +476,11 @@ class DownloadItem:
             self.size = size
             self.type = content_type
             self.resumable = resumable
-        # print('done', url)
+
+            # reset segments
+            self.segments.clear()
+        else:
+            print('DownloadItem.Update()> url changed, abort update for ', url)
 
     def __repr__(self):
         return f'DownloadItem object( name: {self.name}, url:{self.url}'

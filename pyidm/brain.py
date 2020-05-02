@@ -153,7 +153,7 @@ def thread_manager(d):
 
                 clear_error_q()
             else:
-                if limited_connections < config.max_connections:
+                if limited_connections < config.max_connections and limited_connections < d.remaining_parts:
                     limited_connections = limited_connections + 1
                     log('Thread Manager: allowable connections:', allowable_connections)
 
