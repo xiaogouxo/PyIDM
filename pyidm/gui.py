@@ -320,8 +320,8 @@ class MainWindow:
 
         # selected download item's preview panel, "si" = selected item
         si_layout = [sg.Image(data=thumbnail_icon, key='si_thumbnail', right_click_menu=table_right_click_menu,
-                              enable_events=True),
-                     sg.Col([[sg.T('', size=(75, 5), key='si_out', font='any 8', enable_events=True)],
+                              enable_events=True, tooltip=' Play '),
+                     sg.Col([[sg.T('', size=(75, 5), key='si_out', font='any 8', enable_events=True, tooltip=' more! ')],
                             [sg.ProgressBar(100, size=(20, 10), key='si_bar'), sg.T(' ', size=(7, 1), key='si_percent'),
                              # *[copy.copy(x) for x in (resume_btn, stop_btn, folder_btn)],
                              ]])]
@@ -577,6 +577,7 @@ class MainWindow:
         # change cursor for thumbnail boards
         self.window['si_thumbnail'].set_cursor('hand2')
         self.window['main_thumbnail'].set_cursor('hand2')
+        self.window['si_out'].set_cursor('hand2')
 
         # log text, disable word wrap
         # use "undo='false'" disable tkinter caching to fix issue #59 "solve huge memory usage and app crash
@@ -1128,18 +1129,21 @@ class MainWindow:
                 self.open_file_location()
 
             elif event in ('D.Window', 'si_out'):
-                # create download window
+                # create or show download window
                 if self.selected_d:
-                    if config.auto_close_download_window and self.selected_d.status != Status.downloading:
-                        sg.Popup('To open download window offline \n'
-                                 'go to setting tab, then uncheck "auto close download window" option', title='info')
+                    if self.selected_d.status != Status.downloading:
+                        self.show_properties(self.selected_d)
                     else:
-                        d = self.selected_d
-                        if d.id not in [win.d.id for win in self.active_windows]:
-                            self.active_windows.append(DownloadWindow(d=d))
+                        if config.auto_close_download_window and self.selected_d.status != Status.downloading:
+                            sg.Popup('To open download window offline \n'
+                                     'go to setting tab, then uncheck "auto close download window" option', title='info')
                         else:
-                            win = [win for win in self.active_windows if win.d.id == d.id][0]
-                            win.focus()
+                            d = self.selected_d
+                            if d.id not in [win.d.id for win in self.active_windows]:
+                                self.active_windows.append(DownloadWindow(d=d))
+                            else:
+                                win = [win for win in self.active_windows if win.d.id == d.id][0]
+                                win.focus()
 
             elif event == 'Resume All':
                 self.resume_all_downloads()
@@ -2202,7 +2206,7 @@ class MainWindow:
                 # reset requested quality, because it's one time use only
                 self.requested_quality = None
             else:
-                index = 0
+                index = 1
 
             self.window['stream_menu'].Widget.current(index)  # tkinter set current selected index
 
