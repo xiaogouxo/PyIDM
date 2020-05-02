@@ -304,6 +304,8 @@ class DownloadItem:
 
     @property
     def progress(self):
+        p = 0
+
         if self.status == config.Status.completed:
             p = 100
 
@@ -311,7 +313,7 @@ class DownloadItem:
             # to handle fragmented files
             finished = len([seg for seg in self.segments if seg.completed])
             p = round(finished * 100 / len(self.segments), 1)
-        else:
+        elif self.total_size:
             p = round(self.downloaded * 100 / self.total_size, 1)
 
         # make progress 99% if not completed

@@ -635,6 +635,14 @@ def pre_process_hls(d):
 
         return None
 
+    def is_encrypted(m3u8_doc):
+        if m3u8_doc:
+            # check if file encrypted, example: #EXT-X-KEY:METHOD=AES-128,URI="xxx",IV=0x8f6109d91fffb816bcd43fefe018db49
+            if '#EXT-X-KEY' in m3u8_doc:
+                return True
+
+        return False
+
     log('master manifest:   ', d.manifest_url)
     master_m3u8 = download_m3u8(d.manifest_url)
 
@@ -679,6 +687,12 @@ def pre_process_hls(d):
         if x:
             log(x, showpopup=True)
             return False
+
+    # check if file is encrypted
+    if is_encrypted(video_m3u8):
+        d.subtype_list.append('encrypted')
+
+    log(d.subtype_list)
 
     # ---------------------------------------------------------------------------------------------------------
 

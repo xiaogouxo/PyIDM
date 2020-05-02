@@ -925,7 +925,7 @@ class MainWindow:
                        f'Total size: {size_format(d.total_size)} \n' \
                        f'Status: {d.status} \n' \
                        f'Resumable: {d.resumable} \n' \
-                       f'Type: {d.type} - {"-".join(d.subtype_list)}\n'
+                       f'Type: {d.type} - subtype: {", ".join(d.subtype_list)}\n'
 
                 if d.type == 'video':
                     text += f'Protocol: {d.protocol} \n' \
