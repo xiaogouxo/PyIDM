@@ -94,6 +94,7 @@ class MainWindow:
         self.d_list = []  # list of DownloadItem() objects
         self.selected_row_num = None
         self._selected_d = None
+        self.last_table_values = []  # download items table
 
         # update
         self.new_version_available = False
@@ -732,16 +733,20 @@ class MainWindow:
     def update_table(self):
         table_values = [[self.format_cell_data(key, getattr(d, key, '')) for key in self.d_headers] for d in
                         self.d_list]
-        self.window['table'](values=table_values[:])
 
-        if self.d_list:
-            # select first row by default if nothing previously selected
-            if self.selected_row_num is None:
-                self.selected_row_num = 0
-                # print('self.selected_row_num', self.selected_row_num)
+        if self.last_table_values != table_values:
+            print('updated table')
+            self.last_table_values = table_values
+            self.window['table'](values=table_values[:])
 
-            # re-select the previously selected row in the table
-            self.window['table'](select_rows=(self.selected_row_num,))
+            if self.d_list:
+                # select first row by default if nothing previously selected
+                if self.selected_row_num is None:
+                    self.selected_row_num = 0
+                    # print('self.selected_row_num', self.selected_row_num)
+
+                # re-select the previously selected row in the table
+                self.window['table'](select_rows=(self.selected_row_num,))
 
     def update_gui(self):
         """
@@ -2059,14 +2064,14 @@ class MainWindow:
                     m_bar_incr = 50 / playlist_length
 
                     # update playlist title widget: show how many videos
-                    # self.window['playlist_frame'](
-                    #     value=f'Playlist ({playlist_length} {"videos" if playlist_length > 1 else "video"}):')
-                    execute_command("window['playlist_frame']",
-                                    value=f'Playlist ({playlist_length} {"videos" if playlist_length > 1 else "video"}):')
+                    try:
+                        self.window['playlist_frame'](
+                            value=f'Playlist ({playlist_length} {"videos" if playlist_length > 1 else "video"}):')
+                    except:
+                        pass
 
                     # update playlist menu, only videos names, there is no videos qualities yet
-                    # self.update_pl_menu()
-                    execute_command('update_pl_menu')
+                    self.update_pl_menu()
 
                     # user notification for big playlist
                     if config.process_playlist and playlist_length > config.big_playlist_length:
@@ -2137,8 +2142,7 @@ class MainWindow:
                         self.playlist = [vid]
 
                         # update playlist menu
-                        # self.update_pl_menu()
-                        execute_command('update_pl_menu')
+                        self.update_pl_menu()
 
                         # get thumbnail
                         Thread(target=vid.get_thumbnail, daemon=True).start()
