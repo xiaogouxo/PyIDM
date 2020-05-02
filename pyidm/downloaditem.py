@@ -168,6 +168,9 @@ class DownloadItem:
         # subprocess references
         self.subprocess = None
 
+        # test
+        self.seg_names = []
+
         # properties names that will be saved on disk
         self.saved_properties = ['id', '_name', 'folder', 'url', 'eff_url', 'playlist_url', 'playlist_title', 'size',
                                  'resumable', 'selected_quality', '_segment_size', '_downloaded', '_status',
@@ -230,6 +233,12 @@ class DownloadItem:
                 # append to main list
                 self._segments += audio_segments
 
+        # for debugging purpose only
+        if self._segments:
+            seg_names = [seg.basename for seg in self._segments]
+            if seg_names != self.seg_names:
+                log('Segments:', seg_names, log_level=3)
+                self.seg_names = seg_names
         return self._segments
 
     @segments.setter

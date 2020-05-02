@@ -712,6 +712,7 @@ def pre_process_hls(d):
         lines_with_local_paths = []
         lines_with_abs_urls = []
         lines = file.splitlines()
+        segments = []
 
         # iterate over all m3u8 file lines
         for i, line in enumerate(lines[:]):
@@ -753,11 +754,13 @@ def pre_process_hls(d):
 
                 # create segment object
                 segment = [Segment(name=seg_name, num=i, range=None, size=0, url=abs_url, tempfile=d.temp_file, merge=True)]
-                d.segments += segment
+                segments += segment
 
             # append to list
             lines_with_abs_urls.append(line_with_abs_url)
             lines_with_local_paths.append(line_with_local_path)
+
+        d.segments = segments
 
         # write m3u8 file with absolute paths for debugging
         name = 'remote_video2.m3u8' if type_ == 'video' else 'remote_audio2.m3u8'
