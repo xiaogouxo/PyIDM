@@ -340,7 +340,7 @@ def file_manager(d, keep_segments=False):
             break
 
     # save progress info for future resuming
-    if d.status != Status.completed:
+    if os.path.isdir(d.temp_folder):
         d.save_progress_info()
 
     # Report quitting

@@ -243,7 +243,9 @@ class DownloadItem:
         # estimate size based on size of downloaded fragments
         if self.segments:
             sizes = [seg.size for seg in self.segments if seg.size]
-            if sizes:
+            size = sum(sizes)
+            # if there is some items not yet downloaded and have zero size will make estimated calculations
+            if sizes and [seg for seg in self.segments if seg.downloaded is False and not seg.size]:
                 avg_seg_size = sum(sizes)//len(sizes)
                 size = avg_seg_size * len(self.segments)  # estimated
 
@@ -517,32 +519,31 @@ class DownloadItem:
         # update segments from progress info
         if progress_info:
             downloaded = 0
+
+            # verify progress info
+            for item in progress_info:
+                # reset flags
+                item['downloaded'] = False
+                item['completed'] = False
+
+                try:
+                    size_on_disk = os.path.getsize(item.get('name'))
+                    downloaded += size_on_disk
+                    if size_on_disk == item.get('size'):
+                        item['downloaded'] = True
+                except:
+                    continue
+
+            # update segments
             if self.segments:
                 for seg, item in zip(self.segments, progress_info):
                     if seg.name == item.get('name'):
                         seg.size = item.get('size') or seg.size
-
-                        # check actual file size on disk and set "downloaded" flag
-                        try:
-                            size_on_disk = os.path.getsize(seg.name)
-                            downloaded += size_on_disk
-                            if size_on_disk == seg.size:
-                                seg.downloaded = True
-                            else:
-                                # reset flags
-                                seg.downloaded = False
-                                seg.completed = False
-                        except:
-                            pass
-            else:
-                # in case of hls videos there is no segments until start downloading
-                # segments will be built by video.hls_pre_process()
-                downloaded = sum([item.get('size') for item in progress_info])
+                        seg.downloaded = item.get('downloaded', False)
+                        seg.completed = item.get('completed', False)
 
             # update self.downloaded
             self.downloaded = downloaded
-
-            # print('progress info loaded for', self.name, 'downloaded:', size_format(self.downloaded))
 
     def reset_segments(self):
         """reset each segment properties "downloaded and merged" """
