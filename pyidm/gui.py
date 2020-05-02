@@ -306,11 +306,11 @@ class MainWindow:
 
         # buttons
         resume_btn = sg.Button('', key='Resume', tooltip=' Resume download ', image_data=resume_icon, **transparent)
-        stop_btn = sg.Button('', key='Cancel', tooltip=' Stop download ', image_data=stop_icon, **transparent)
+        stop_btn = sg.Button('', key='Cancel', tooltip=' Stop download (Esc) ', image_data=stop_icon, **transparent)
         refresh_btn = sg.Button('', key='Refresh', tooltip=' Refresh link ', image_data=refresh_icon, **transparent)
         folder_btn = sg.Button('', key='Folder', tooltip=' open file location ', image_data=folder_icon, **transparent)
         sched_btn = sg.B('', key='schedule_item', tooltip=' Schedule current item ', image_data=sched_icon, **transparent)
-        del_btn = sg.Button('', key='delete_btn', tooltip=' Delete item from list ', image_data=deleteall_icon, **transparent)
+        del_btn = sg.Button('', key='delete_btn', tooltip=' Delete item from list (Del) ', image_data=delete_icon, **transparent)
         # sg.Button('', key='D.Window', tooltip=' Show download window ', image_data=dwindow_icon, **transparent)
 
         resume_all_btn = sg.Button('', key='Resume All', tooltip=' Resume All ', image_data=resumeall_icon, **transparent)
@@ -334,11 +334,10 @@ class MainWindow:
             [
                 resume_btn, stop_btn, refresh_btn, folder_btn, sched_btn, del_btn,
 
-                sg.T(' ', size=(25, 1)),
-                sg.Text('>', key='show_buttons', tooltip=' Show Master Buttons ', enable_events=True, size=(5, 1)),
+                sg.T(' ', size=(30, 1)),
 
                 sg.Column([[resume_all_btn, stop_all_btn, sched_all_btn, del_all_btn]], key='master_buttons',
-                          pad=(0, 0), visible=False),
+                          pad=(0, 0), visible=True),
 
             ],
 
@@ -768,6 +767,9 @@ class MainWindow:
         try:
             self.update_log()
 
+            # update status code widget
+            self.window['status_code'](f'status: {self.d.status_code}')
+
             # file name
             if self.window['name'].get() != self.d.name:  # it will prevent cursor jump to end when modifying name
                 self.window['name'](self.d.name)
@@ -1059,21 +1061,6 @@ class MainWindow:
                 self.retry()
 
             # downloads tab events -----------------------------------------------------------------------------------
-            elif event == 'show_buttons':
-                # switch text direction
-                txt = self.window['show_buttons']
-                if txt.DisplayText == '>>>':
-                    txt('>')
-                    self.set_tooltip(txt, ' Show Master Buttons ')
-                    self.window['master_buttons'](visible=False)
-                elif txt.DisplayText == '>':
-                    txt('>>>')
-                    self.set_tooltip(txt, ' Hide Master Buttons ')
-                    self.window['master_buttons'](visible=True)
-
-
-                # sg.Text
-
             elif event == 'table':
                 # todo: investigate this event keeps triggering
                 # I think because update_gui() keeps updating table contents, it will trigger 'table' event continuously
@@ -1638,6 +1625,12 @@ class MainWindow:
         self.pending.clear()
 
     def resume_all_downloads(self):
+        response = sg.PopupOKCancel('Resume "ALL" items?',
+                                    'Note: to resume single item use "Resume" button at top left of "Downloads tab"',
+                                    'Are you sure?')
+        if response != 'OK':
+            return
+
         # change status of all non completed items to pending
         for d in self.d_list:
             if d.status == Status.cancelled:
@@ -2461,7 +2454,7 @@ class MainWindow:
             # get headers and update current download item, should use thread for responsive gui
             Thread(target=self.d.update, args=[url], daemon=True).start()
 
-            # update status code widget
+            # update status code widget, ---- it doesn't have any effect here since above line is a different thread ----
             self.window['status_code'](f'status: {self.d.status_code}')
 
             # check if the link contains stream videos by youtube-dl
