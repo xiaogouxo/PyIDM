@@ -70,7 +70,6 @@ class MainWindow:
         # url
         self.url = ''  # current url in url input widget
         self.url_timer = 0
-        # self.url_timer = None  # usage: Timer(0.5, self.refresh_headers, args=[self.d.url])
         self.bad_headers = [0, range(400, 404), range(405, 418), range(500, 506)]  # response codes
 
         # playlist/video
@@ -84,6 +83,7 @@ class MainWindow:
         self.m_bar_lock = Lock()  # a lock to access a video quality progress bar from threads
         self._m_bar = 0  # main playlist progress par value
         self._s_bar = 0  # individual video streams progress bar value
+        self.requested_quality = None  # it will be used when refresh link pressed to select the same quality for selected item
 
         # download
         self.pending = deque()  # todo: use normal queue
@@ -771,7 +771,7 @@ class MainWindow:
             if self.window['name'].get() != self.d.name:  # it will prevent cursor jump to end when modifying name
                 self.window['name'](self.d.name)
 
-            file_properties = f'Size: {size_format(self.d.total_size)} - Type: {self.d.type} ' \
+            file_properties = f'Size: {size_format(self.d.total_size)} - Type: {self.d.type} - ' \
                               f'{", ".join(self.d.subtype_list)} - ' \
                               f'Protocol: {self.d.protocol} - Resumable: {"Yes" if self.d.resumable else "No"} ...'
             self.window['file_properties'](file_properties)
@@ -1833,6 +1833,7 @@ class MainWindow:
             return
 
         d = self.selected_d
+        self.requested_quality = d.selected_quality
         config.download_folder = d.folder
 
         self.url = ''
@@ -2194,8 +2195,16 @@ class MainWindow:
         try:
             self.stream_menu = self.video.stream_menu
 
-            # set current selection to first item in video streams ex: ['video streams:', 'mp4 - 1080 - 10MB', ... ]
-            self.window['stream_menu'].Widget.current(1)  # tkinter set current selected index
+            # check if there any requested quality / stream
+            if self.requested_quality and self.requested_quality in self.stream_menu:
+                index = self.stream_menu.index(self.requested_quality)
+
+                # reset requested quality, because it's one time use only
+                self.requested_quality = None
+            else:
+                index = 0
+
+            self.window['stream_menu'].Widget.current(index)  # tkinter set current selected index
 
             self.stream_on_choice()
 
