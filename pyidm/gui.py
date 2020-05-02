@@ -1489,7 +1489,7 @@ class MainWindow:
         unsupported = ['f4m', 'ism']
         match = [item for item in unsupported if item in d.subtype_list]
         if match:
-            log('unsupported protocol: \n"{match[0]}" stream type is not supported yet', start='', showpopup=True)
+            log(f'unsupported protocol: \n"{match[0]}" stream type is not supported yet', start='', showpopup=True)
             return 'cancelled'
 
         # check for ffmpeg availability in case this is a dash video or hls video
@@ -1857,8 +1857,8 @@ class MainWindow:
         self._m_bar = value if value <= 100 else 100
         try:
             self.window['m_bar'].update_bar(value)
-        except:
-            pass
+        except Exception as e:
+            print('update main bar failed', e)
 
     @property
     def s_bar(self):
@@ -1956,6 +1956,9 @@ class MainWindow:
         it is recommended to use "execute command" function if need to run any gui related method, tkinter will complain
         "not running from main thread" error
         """
+
+        if not self.url:
+            return
 
         def cancel_flag():
             # quit if main window terminated

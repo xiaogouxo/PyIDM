@@ -738,7 +738,7 @@ def pre_process_hls(d):
                 line_with_local_path = line_with_local_path.replace('\\', '/')  # required for ffmpeg to work properly
 
                 # create segment object
-                segment = [Segment(name=seg_name, num=i, range=None, size=0, url=abs_url, tempfile=d.temp_file, merge=False)]
+                segment = [Segment(name=seg_name, num=i, range=None, size=0, url=abs_url, tempfile=d.temp_file, merge=True)]
                 d.segments += segment
 
             # append to list
