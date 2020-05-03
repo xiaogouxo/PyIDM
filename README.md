@@ -14,7 +14,7 @@ Developed in Python, based on "pyCuRL/libcurl", "youtube_dl", and "PySimpleGUI"
 
 ---
 **Features**:
-* High download speeds "based on libcurl"   -  [See Speed test of: aria2 vs pyIDM](https://user-images.githubusercontent.com/58998813/74993622-361bd080-5454-11ea-8bda-173bfcf16349.gif).
+* High download speeds "based on libcurl"   -  [See Speed test of: aria2 vs PyIDM](https://user-images.githubusercontent.com/58998813/74993622-361bd080-5454-11ea-8bda-173bfcf16349.gif).
 * Multi-connection downloading "Multithreading"
 * Scan and resume uncompleted downloads.
 * Support for Youtube, and a lot of stream websites "using youtube-dl to fetch info and libcurl to download data".
@@ -40,11 +40,11 @@ Developed in Python, based on "pyCuRL/libcurl", "youtube_dl", and "PySimpleGUI"
 
 ---
 # How to install PyIDM?
-You have 3 options to run pyIDM on your operating system:
+You have 3 options to run PyIDM on your operating system:
 
 1. **Windows portable version**:<br>
-Latest Windows portable version available [here](https://github.com/pyIDM/pyIDM/releases/latest). <br>
-unzip, and run from pyidm.exe, no installation required.
+Latest Windows portable version available [here](https://github.com/pyIDM/PyIDM/releases/latest). <br>
+unzip, and run from PyIDM.exe, no installation required.
 
 2. **PyPi**:<br>
     `python -m pip install pyidm --upgrade --no-cache`
@@ -57,13 +57,13 @@ unzip, and run from pyidm.exe, no installation required.
 
 
 3. **run from github source code**:<br>
-pyIDM is a python app. so, it can run on any platform that can run python, 
-To run from source, you have to have a python installed, "supported python versions is 3.6, 3.7, and 3.8", then download or clone this repository, and run pyIDM.py (it will install the other required python packages automatically if missing)
-if pyIDM failed to install required packages, you should install it manually, refer to "Dependencies" section below.
+PyIDM is a python app. so, it can run on any platform that can run python, 
+To run from source, you have to have a python installed, "supported python versions is 3.6, 3.7, and 3.8", then download or clone this repository, and run PyIDM.py (it will install the other required python packages automatically if missing)
+if PyIDM failed to install required packages, you should install it manually, refer to "Dependencies" section below.
 
 4. **Build PyIDM yourself**:
     - get the source code from github:<br>
-        `git clone https://github.com/pyIDM/pyIDM.git` <br>
+        `git clone https://github.com/pyIDM/PyIDM.git` <br>
 
     - or get the source code from PyPi: <br>
         navigate to https://pypi.org/project/pyIDM/#files and download a tar ball, example file name "pyIDM-2020.3.22.tar.gz", then extract it
@@ -94,7 +94,7 @@ Required python packages:
 ** please read notes below
 
 
-pyIDM application will do its best to install missing packages automatically once you run it. or you can install required packages manually using:
+PyIDM application will do its best to install missing packages automatically once you run it. or you can install required packages manually using:
 
 ```
 pip install -r requirements.txt
@@ -120,7 +120,7 @@ python -m pip install --user --upgrade certifi PySimpleGUI pyperclip plyer youtu
 ![Multi_window](https://user-images.githubusercontent.com/37757246/71418548-a2a46a00-2673-11ea-8101-c95d29b6a0e4.png)
 
 
-[view all screenshots with different themes](https://github.com/pyIDM/pyIDM/issues/13)
+[view all screenshots with different themes](https://github.com/pyIDM/PyIDM/issues/13)
 
 
 ---
@@ -149,7 +149,7 @@ there is no issues, since most linux distros have curl preinstalled, so pycurl w
 
 ### note for [Youtube-dl](https://github.com/ytdl-org/youtube-dl): <br>
 youtube website changes frequently, if this application failed to retrieve video/playlist data
-you should update youtube-dl module thru pyIDM setting tab or manually by
+you should update youtube-dl module thru PyIDM setting tab or manually by
 ```
 python -m pip install youtube_dl --upgrade
 ```
@@ -161,8 +161,8 @@ On Linux, this module makes use of the xclip or xsel commands, which should come
 ---
 
 ### Windows binaries: <br>
-a standalone frozen version prepared by py2exe or cx_freeze is available at: [latest version](https://github.com/pyIDM/pyIDM/releases/latest) <br>
-for all available build versions you can check https://github.com/pyIDM/pyIDM/releases
+a standalone frozen version prepared by py2exe or cx_freeze is available at: [latest version](https://github.com/pyIDM/PyIDM/releases/latest) <br>
+for all available build versions you can check https://github.com/pyIDM/PyIDM/releases
 
 
 
@@ -180,7 +180,7 @@ ChangeLog.txt is included in source code.
 
 ---
 # How to contribute to this project:
-1- by testing the application and opening [new issue](https://github.com/pyIDM/pyIDM/issues/new) for bug reporting, feature request, or suggestions. <br>
+1- by testing the application and opening [new issue](https://github.com/pyIDM/PyIDM/issues/new) for bug reporting, feature request, or suggestions. <br>
 2- fork this repo and pull request
 
 <br><br>
@@ -189,7 +189,7 @@ ChangeLog.txt is included in source code.
 
 
 # Feedback:
-your feedback is most welcomed by filling a [new issue](https://github.com/pyIDM/pyIDM/issues/new) <br>
+your feedback is most welcomed by filling a [new issue](https://github.com/pyIDM/PyIDM/issues/new) <br>
 or email me at: info.pyidm@gmail.com <br>
 
 Author, <br>

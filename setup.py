@@ -30,28 +30,28 @@ except:
     requirements = ['PySimpleGUI>=4.18', 'pyperclip', 'plyer', 'certifi', 'youtube_dl', 'pycurl', 'pillow']
 
 setuptools.setup(
-    name="pyIDM",
+    name="PyIDM",
     version=version['__version__'],
-    scripts=[],  # ['pyIDM.py'], no need since added an entry_points
+    scripts=[],  # ['PyIDM.py'], no need since added an entry_points
     author="Mahmoud Elshahat",
     author_email="info.pyidm@gmail.com",
     description="download manager",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/pyIDM/pyIDM ",
+    url="https://github.com/pyIDM/PyIDM ",
     packages=setuptools.find_packages(),
     keywords="internet download manager youtube downloader pycurl curl youtube-dl PySimpleGUI",
     project_urls={
-        'Source': 'https://github.com/pyIDM/pyIDM',
-        'Tracker': 'https://github.com/pyIDM/pyIDM/issues',
-        'Releases': 'https://github.com/pyIDM/pyIDM/releases',
-        'Screenshots': 'https://github.com/pyIDM/pyIDM/issues/13#issuecomment-602136747'
+        'Source': 'https://github.com/pyIDM/PyIDM',
+        'Tracker': 'https://github.com/pyIDM/PyIDM/issues',
+        'Releases': 'https://github.com/pyIDM/PyIDM/releases',
+        'Screenshots': 'https://github.com/pyIDM/PyIDM/issues/13#issuecomment-602136747'
     },
     install_requires=requirements,
     entry_points={
         # our executable: "exe file on windows for example"
         'console_scripts': [
-            'pyidm = pyidm.pyIDM:main',
+            'pyidm = pyidm.PyIDM:main',
         ]},
     classifiers=[
         "Programming Language :: Python :: 3",
