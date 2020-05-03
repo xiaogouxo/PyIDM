@@ -300,8 +300,8 @@ class MainWindow:
                                             'properties']]
 
         # buttons
-        resume_btn = sg.Button('', key='Resume', tooltip=' Resume download ', image_data=resume_icon, **transparent)
-        stop_btn = sg.Button('', key='Cancel', tooltip=' Stop download (Esc) ', image_data=stop_icon, **transparent)
+        resume_btn = sg.Button('', key='Resume', tooltip=' Resume ', image_data=resume_icon, **transparent)
+        stop_btn = sg.Button('', key='Cancel', tooltip=' Stop (Esc) ', image_data=stop_icon, **transparent)
         refresh_btn = sg.Button('', key='Refresh', tooltip=' Refresh link ', image_data=refresh_icon, **transparent)
         folder_btn = sg.Button('', key='Folder', tooltip=' open file location ', image_data=folder_icon, **transparent)
         sched_btn = sg.B('', key='schedule_item', tooltip=' Schedule current item ', image_data=sched_icon, **transparent)

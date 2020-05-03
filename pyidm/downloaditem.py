@@ -363,7 +363,7 @@ class DownloadItem:
         self._status = value
 
         # kill subprocess if currently active
-        if self.subprocess:
+        if self.subprocess and value in (config.Status.cancelled, config.Status.error):
             self.kill_subprocess()
 
     @property
@@ -441,7 +441,7 @@ class DownloadItem:
         try:
             # to work subprocess should have shell=False
             self.subprocess.kill()
-            log('run_command()> Cancelled by user', self.subprocess.args)
+            log('run_command()> cancelled', self.subprocess.args)
             self.subprocess = None
         except Exception as e:
             log('DownloadItem.kill_subprocess()> error', e)
