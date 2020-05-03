@@ -24,6 +24,7 @@ from . import config
 class Segment:
     def __init__(self, name=None, num=None, range=None, size=None, url=None, tempfile=None, seg_type='', merge=True):
         self.name = name  # full path file name
+        self.basename = os.path.basename(self.name)
         self.num = num
         self.size = size
         self.range = range
@@ -34,11 +35,6 @@ class Segment:
         self.url = url
         self.seg_type = seg_type
         self.merge = merge
-
-    @property
-    def basename(self):
-        # file name only without path
-        return os.path.basename(self.name)
 
     def get_size(self):
         self.headers = get_headers(self.url)
@@ -73,6 +69,7 @@ class DownloadItem:
         self.eff_url = ''
 
         self.size = 0
+        self._total_size = 0
         self.resumable = False
 
         # type and subtypes
@@ -85,7 +82,7 @@ class DownloadItem:
         self._downloaded = 0
         self._lock = None  # Lock() to access downloaded property from different threads
         self._status = config.Status.cancelled
-        self.remaining_parts = 0
+        self._remaining_parts = 0
 
         # connection status
         self.status_code = 0
@@ -138,9 +135,6 @@ class DownloadItem:
         self.tbr = None  # for video equal Bandwidth/1000
         self.resolution = None  # for videos only example for 720p: 1280x720
 
-        # used as a fallback for total size calculations, required for some items like hls videos
-        self.last_known_size = 0
-
         # hls m3u8 manifest url
         self.manifest_url = ''
 
@@ -174,9 +168,9 @@ class DownloadItem:
         # properties names that will be saved on disk
         self.saved_properties = ['id', '_name', 'folder', 'url', 'eff_url', 'playlist_url', 'playlist_title', 'size',
                                  'resumable', 'selected_quality', '_segment_size', '_downloaded', '_status',
-                                 'remaining_parts', 'audio_url', 'audio_size', 'type', 'subtype_list', 'fragments',
+                                 '_remaining_parts', 'audio_url', 'audio_size', 'type', 'subtype_list', 'fragments',
                                  'fragment_base_url', 'audio_fragments', 'audio_fragment_base_url',
-                                 'last_known_size', 'protocol', 'manifest_url',
+                                 '_total_size', 'protocol', 'manifest_url',
                                  'abr', 'tbr', 'format_id', 'audio_format_id', 'resolution']
 
     # def __getattr__(self, attrib):  # commented out as it makes problem with copy.copy module
@@ -184,6 +178,18 @@ class DownloadItem:
     #
     #     # will return empty string instead of raising error
     #     return ''
+
+    @property
+    def remaining_parts(self):
+        return self._remaining_parts
+
+    @remaining_parts.setter
+    def remaining_parts(self, value):
+        self._remaining_parts = value
+
+        # should recalculate total size again with every completed segment, most of the time segment size won't be
+        # available until actually downloaded this segment, "check worker.report_completed()"
+        self.total_size = self.calculate_total_size()
 
     @property
     def segments(self):
@@ -237,7 +243,7 @@ class DownloadItem:
         if self._segments:
             seg_names = [seg.basename for seg in self._segments]
             if seg_names != self.seg_names:
-                log('Segments:', seg_names, log_level=3)
+                log(f'Segments ({len(seg_names)}):', seg_names, log_level=3)
                 self.seg_names = seg_names
         return self._segments
 
@@ -247,22 +253,29 @@ class DownloadItem:
 
     @property
     def total_size(self):
-        size = 0
+        # recalculate total size only if there is size change in segment size
+        if not self._total_size:
+            self._total_size = self.calculate_total_size()
 
-        # estimate size based on size of downloaded fragments
+        return self._total_size
+
+    @total_size.setter
+    def total_size(self, value):
+        self._total_size = value
+
+    def calculate_total_size(self):
+        total_size = 0
+
+        # this is heavy and should be used carefully, calculate size by getting every segment's size
         if self.segments:
             sizes = [seg.size for seg in self.segments if seg.size]
-            size = sum(sizes)
+            total_size = sum(sizes)
             # if there is some items not yet downloaded and have zero size will make estimated calculations
             if sizes and [seg for seg in self.segments if seg.downloaded is False and not seg.size]:
-                avg_seg_size = sum(sizes)//len(sizes)
-                size = avg_seg_size * len(self.segments)  # estimated
+                avg_seg_size = sum(sizes) // len(sizes)
+                total_size = avg_seg_size * len(self.segments)  # estimated
 
-        if not size:
-            return self.last_known_size
-
-        self.last_known_size = size  # to be loaded when restarting application
-        return size
+        return total_size
 
     @property
     def speed(self):
