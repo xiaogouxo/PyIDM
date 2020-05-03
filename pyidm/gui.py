@@ -137,8 +137,8 @@ class MainWindow:
         """initial setup"""
 
         # empty main window's queue and log queue
-        for q in (config.main_window_q, config.log_q):
-            reset_queue(q)
+        # for q in (config.main_window_q, config.log_q):
+        #     reset_queue(q)
 
         # startup
         self.startup()
@@ -317,7 +317,7 @@ class MainWindow:
         # selected download item's preview panel, "si" = selected item
         si_layout = [sg.Image(data=thumbnail_icon, key='si_thumbnail', right_click_menu=table_right_click_menu,
                               enable_events=True, tooltip=' Play '),
-                     sg.Col([[sg.T('', size=(75, 5), key='si_out', font='any 8', enable_events=True, tooltip=' more! ')],
+                     sg.Col([[sg.T('', size=(75, 5), key='si_out', font='any 9', enable_events=True, tooltip=' more! ')],
                             [sg.ProgressBar(100, size=(20, 10), key='si_bar'), sg.T(' ', size=(7, 1), key='si_percent'),
                              # *[copy.copy(x) for x in (resume_btn, stop_btn, folder_btn)],
                              ]])]
@@ -339,10 +339,10 @@ class MainWindow:
 
             # table
             [sg.Table(values=headings, headings=headings, num_rows=9, justification='left', auto_size_columns=False,
-                      vertical_scroll_only=False, key='table', enable_events=True, font='any 9',
+                      vertical_scroll_only=False, key='table', enable_events=False, font='any 9',
                       right_click_menu=table_right_click_menu, max_col_width=100, col_widths=col_widths,
-                      row_height=23
-                      )],
+                      row_height=22,
+                      )],  # don't enable events for table, there is some bindings in self.start_window()
 
             si_layout
         ]
@@ -566,6 +566,7 @@ class MainWindow:
 
         # bind keys events for table, it is tkinter specific
         self.window['table'].Widget.bind("<Button-3>", self.table_right_click)  # right click
+        self.window['table'].Widget.bind("<ButtonRelease-1>", self.on_table_click)  # don't enable events for table
         self.window['table'].bind('<Double-Button-1>', '_double_clicked')  # will generate event "table_double_clicked"
         self.window['table'].bind('<Return>', '_enter_key')  # will generate event "table_enter_key"
 
@@ -663,10 +664,13 @@ class MainWindow:
 
     def select_row(self, row_num):
         try:
-            self.selected_row_num = int(row_num)
+            row_num = int(row_num)
 
-            # get instant gui update, don't wait for scheduled update
-            self.update_gui()
+            if self.selected_row_num != row_num:
+                self.selected_row_num = row_num
+
+                # get instant gui update, don't wait for scheduled update
+                self.update_gui()
 
         except Exception as e:
             log('MainWindow.select_row(): ', e)
@@ -730,12 +734,22 @@ class MainWindow:
                 except:
                     pass
 
+    def on_table_click(self, event):
+        selections = event.widget.selection()  # expected ('1', '2', '3', '4', '5', '6')
+
+        # get selected rows starting from 0 and convert to int
+        selections = [int(x) - 1 for x in selections]
+
+        # we just use one selection in our application, will get the first one
+        if selections:
+            self.select_row(selections[0])
+
     def update_table(self):
         table_values = [[self.format_cell_data(key, getattr(d, key, '')) for key in self.d_headers] for d in
                         self.d_list]
 
         if self.last_table_values != table_values:
-            print('updated table')
+            # print('updated table')
             self.last_table_values = table_values
             self.window['table'](values=table_values[:])
 
@@ -779,7 +793,7 @@ class MainWindow:
                               f'Protocol: {self.d.protocol} - Resumable: {"Yes" if self.d.resumable else "No"} ...'
             self.window['file_properties'](file_properties)
 
-            # download list / table
+            # table
             if self.active_tab == 'Downloads':
                 self.update_table()
 
@@ -814,11 +828,11 @@ class MainWindow:
             d = self.selected_d
 
             if d:
-                speed = f"Speed: {size_format(d.speed, '/s') }  {time_format(d.time_left)} left" if d.speed else ''
-                out = f"#{self.selected_row_num + 1}: {self.fit_text(d.name, 75)}\n" \
-                      f"Downloaded: {size_format(d.downloaded)} of {size_format(d.total_size)}\n" \
+                speed = f"Speed: {size_format(d.speed, '/s') }  {time_format(d.time_left)} left"   # if d.speed else ''
+                out = f"{self.selected_row_num + 1}- {self.fit_text(d.name, 75)}\n" \
+                      f"Done: {size_format(d.downloaded)} of {size_format(d.total_size)}\n" \
                       f"{speed} \n" \
-                      f"Live connections: {d.live_connections} - Remaining parts: {d.remaining_parts}\n" \
+                      f"Live connections: {d.live_connections} - Remaining parts: {d.remaining_parts} - ({d.type}, {', '.join(d.subtype_list)}) \n" \
                       f"{d.status}  {d.i}"
 
                 # thumbnail
@@ -954,9 +968,8 @@ class MainWindow:
         try:
             # todo: we could use callback style for some of these if's
             event, values = self.window.Read(timeout=50)
-            self.event, self.values = event, values
-            if event not in ('__TIMEOUT__', 'table'):
-                log(event, values, log_level=4)
+            if event not in ('__TIMEOUT__'):
+                log(event, log_level=4)
 
             if event is None:
                 # close or hide active windows
@@ -966,7 +979,7 @@ class MainWindow:
                     self.close()
 
             # keyboard events --------------------------------------------------
-            elif event.startswith('Up'):  # up arrow example "Up:38"
+            elif event.startswith('Up:'):  # up arrow example "Up:38"
                 # get current element with focus
                 focused_elem = self.window.find_element_with_focus()
 
@@ -982,7 +995,7 @@ class MainWindow:
                 if self.window['table'] == focused_elem and self.selected_row_num < len(self.window['table'].Values)-1:
                     self.select_row(self.selected_row_num + 1)
 
-            elif event.startswith('Delete'):  # Delete:46
+            elif event.startswith('Delete:'):  # Delete:46
                 # get current element with focus
                 focused_elem = self.window.find_element_with_focus()
 
@@ -990,7 +1003,7 @@ class MainWindow:
                 if self.window['table'] == focused_elem and self.selected_d:
                     self.delete_btn()
 
-            elif event.startswith('Escape'):  # Escape:27
+            elif event.startswith('Escape:'):  # Escape:27
 
                 # get current element with focus
 
@@ -1061,18 +1074,6 @@ class MainWindow:
                 self.retry()
 
             # downloads tab events -----------------------------------------------------------------------------------
-            elif event == 'table':
-                # todo: investigate this event keeps triggering
-                # I think because update_gui() keeps updating table contents, it will trigger 'table' event continuously
-
-                try:
-                    row_num = values['table'][0]
-                    if row_num != self.selected_row_num:  # this is a must here otherwise application will freeze [bug]
-                        self.select_row(row_num)
-                except Exception as e:
-                    # log("MainWindow.run:if event == 'table': ", e)
-                    pass
-
             elif event in ('table_double_clicked', 'table_enter_key', 'Open File', '▶ Watch while downloading',
                            'si_thumbnail') and self.selected_d:
                 if self.selected_d.status == Status.completed:
@@ -2125,6 +2126,12 @@ class MainWindow:
 
                         # process info
                         info = ydl.process_ie_result(info, download=False)
+
+                        # if returned None
+                        if not info:
+                            log('youtube_func()> No streams found')
+                            self.reset_video_controls()
+                            return
 
                         # check for formats, and inform user
                         if not info.get('formats'):
