@@ -337,7 +337,7 @@ class MainWindow:
             ],
 
             # table
-            [sg.Table(values=headings, headings=headings, num_rows=9, justification='left', auto_size_columns=False,
+            [sg.Table(values=[], headings=headings, num_rows=9, justification='left', auto_size_columns=False,
                       vertical_scroll_only=False, key='table', enable_events=False, font='any 9',
                       right_click_menu=table_right_click_menu, max_col_width=100, col_widths=col_widths,
                       row_height=22,
@@ -495,7 +495,7 @@ class MainWindow:
             [sg.T('Developer options: "*you should know what you are doing before modifying these options!"')],
             [sg.Checkbox('keep temp files / folders after done downloading for debugging.',
                          default=True if config.keep_temp else False, key='keep_temp', enable_events=True, )],
-            [sg.Checkbox('Re-raise all caught exceptions / errors for debugging',
+            [sg.Checkbox('Re-raise all caught exceptions / errors for debugging "Application will crash on any Error"',
                          default=True if config.TEST_MODE else False, key='TEST_MODE', enable_events=True,)],
         ]
 
@@ -961,7 +961,7 @@ class MainWindow:
         try:
             # todo: we could use callback style for some of these if's
             event, values = self.window.Read(timeout=50)
-            if event not in ('__TIMEOUT__'):
+            if event and event not in ('__TIMEOUT__'):
                 log(event, log_level=4)
 
             if event is None:

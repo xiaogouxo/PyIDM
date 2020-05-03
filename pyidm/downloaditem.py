@@ -243,7 +243,7 @@ class DownloadItem:
         if self._segments:
             seg_names = [seg.basename for seg in self._segments]
             if seg_names != self.seg_names:
-                log(f'Segments ({len(seg_names)}):', seg_names, log_level=3)
+                log(f'Segments-{self.name}, ({len(seg_names)}):', seg_names, log_level=3)
                 self.seg_names = seg_names
         return self._segments
 
