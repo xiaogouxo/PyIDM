@@ -87,7 +87,6 @@ class MainWindow:
 
         # download
         self.pending = deque()  # todo: use normal queue
-        self.disabled = True  # for download button
 
         # download list
         self.d_headers = ['i', 'name', 'progress', 'speed', 'time_left', 'downloaded', 'total_size', 'status']
@@ -870,12 +869,6 @@ class MainWindow:
             if config.TEST_MODE:
                 raise e
             log('MainWindow.update_gui() error:', e)
-
-    def enable(self):
-        self.disabled = False
-
-    def disable(self):
-        self.disabled = True
 
     def set_status(self, text):
         """update status bar text widget"""
@@ -2487,7 +2480,6 @@ class MainWindow:
         self.video = None
 
         # widgets
-        self.disable()
         self.reset_video_controls()
         self.window['status_code']('')
 
