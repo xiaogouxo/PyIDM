@@ -287,13 +287,14 @@ def time_format(t, tail=''):
         return t
 
 
-def log(*args, log_level=1, start='>> ', end='\n', showpopup=False):
+def log(*args, log_level=1, start='>> ', end='\n', sep=' ', showpopup=False):
     """
     print messages to stdout and log widget in main menu thru main window queue
     :param args: comma separated messages to be printed
     :param log_level: used to filter messages
     :param start: prefix appended to start of string
     :param end: tail of string
+    :param sep: separator used to join text "args"
     :param showpopup: if true will show popup gui message
     :return:
     """
@@ -303,8 +304,8 @@ def log(*args, log_level=1, start='>> ', end='\n', showpopup=False):
     text = ''
     for arg in args:
         text += str(arg)
-        text += ' '
-    text = text[:-1]  # remove last space
+        text += sep
+    text = text[:-1]  # remove last space, or sep
     text = start + text
 
     try:

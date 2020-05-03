@@ -480,7 +480,7 @@ class DownloadItem:
             size = int(headers.get('content-length', 0))
 
             # type
-            content_type = headers.get('content-type', 'N/A').split(';')[0]
+            content_type = headers.get('content-type', '').split(';')[0]
             # fallback, guess type from file name extension
             guessed_content_type = mimetypes.guess_type(name, strict=False)[0]
             if not content_type:
