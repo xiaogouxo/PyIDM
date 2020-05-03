@@ -55,7 +55,7 @@ def notify(message='', title='', timeout=5, app_icon='', ticker='', toast=False,
     """
 
     try:
-        plyer.notification.notify(title=title, message=message, app_name=app_name, app_icon='', timeout=timeout,
+        plyer.notification.notify(title=title, message=message, app_name=app_name, app_icon=app_icon, timeout=timeout,
                                   ticker='', toast=False)
     except Exception as e:
         log(f'plyer notification: {e}')

@@ -2513,19 +2513,12 @@ class MainWindow:
             if config.close_action == 'quit':
                 config.shutdown = True
 
-            # cancel pending jobs
-            # root = self.window.TKroot
-            # root.after_cancel(self.window.TKAfterID)
-            # self.window._Close()
-            # root.quit()
+            root = self.window.TKroot
+
+            root.quit()
+            root.destroy()
             # self.window.RootNeedsDestroying = True
-
-            # for some reasons close method gives some errors and tooltip activate after window is closed
-            # triggering an AutoClose_alarm_callback, will close window without issues, but using protected member
-            # is not recommended, todo: find a way to trigger PySimpleGUI event manually and simulate None event for window close
-
-            # this internal method will trigger "None" event
-            self.window._AutoCloseAlarmCallback()
+            # self.window.TKrootDestroyed = True
 
     def un_hide_active_windows(self):
         try:
@@ -2549,7 +2542,9 @@ class MainWindow:
             self.close()
             return
 
-        notify('PyIDM still running in background', timeout=2)
+        icon = os.path.join(config.sett_folder, 'systray.ico')
+
+        notify('PyIDM still running in background', timeout=1, app_icon=icon)
 
         # hide active windows
         self.hide_active_windows()
