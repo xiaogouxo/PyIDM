@@ -689,7 +689,7 @@ def pre_process_hls(d):
             return False
 
     # check if file is encrypted
-    if is_encrypted(video_m3u8):
+    if is_encrypted(video_m3u8) and 'encrypted' not in d.subtype_list:
         d.subtype_list.append('encrypted')
 
     log(d.subtype_list)
@@ -713,6 +713,7 @@ def pre_process_hls(d):
         lines_with_abs_urls = []
         lines = file.splitlines()
         segments = []
+        merge = 'encrypted' not in d.subtype_list  # merge non-encrypted streams only
 
         # iterate over all m3u8 file lines
         for i, line in enumerate(lines[:]):
@@ -753,7 +754,7 @@ def pre_process_hls(d):
                 line_with_local_path = line_with_local_path.replace('\\', '/')  # required for ffmpeg to work properly
 
                 # create segment object
-                segment = [Segment(name=seg_name, num=i, range=None, size=0, url=abs_url, tempfile=d.temp_file, merge=True)]
+                segment = [Segment(name=seg_name, num=i, range=None, size=0, url=abs_url, tempfile=d.temp_file, merge=merge)]
                 segments += segment
 
             # append to list
