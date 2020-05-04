@@ -761,7 +761,7 @@ def pre_process_hls(d):
             lines_with_abs_urls.append(line_with_abs_url)
             lines_with_local_paths.append(line_with_local_path)
 
-        d.segments = segments
+        d.segments += segments
 
         # write m3u8 file with absolute paths for debugging
         name = 'remote_video2.m3u8' if type_ == 'video' else 'remote_audio2.m3u8'
@@ -774,6 +774,9 @@ def pre_process_hls(d):
         file_path = os.path.join(d.temp_folder, name)
         with open(os.path.join(d.temp_folder, file_path), 'w') as f:
             f.write('\n'.join(lines_with_local_paths))
+
+    # reset segments first
+    d.segments = []
 
     # send video m3u8 file for processing
     process_m3u8(video_m3u8, type_='video')

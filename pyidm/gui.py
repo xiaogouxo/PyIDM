@@ -1644,10 +1644,10 @@ class MainWindow:
         elif not self.url:
             sg.popup_ok('Nothing to download, you should add url first')
             return
-        elif not self.d.type or self.d.status_code in self.bad_headers:
-            response = sg.PopupOKCancel('None type or bad response code', 'Force download?')
-            if response != 'OK':
-                return
+        # elif not self.d.type or self.d.status_code in self.bad_headers:
+        #     response = sg.PopupOKCancel('None type or bad response code', 'Force download?')
+        #     if response != 'OK':
+        #         return
         elif self.d.type == 'text/html':
             response = sg.popup_ok_cancel('Contents might be a web page / html, Download anyway?')
             if response != 'OK':
