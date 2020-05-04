@@ -1644,10 +1644,10 @@ class MainWindow:
         elif not self.url:
             sg.popup_ok('Nothing to download, you should add url first')
             return
-        # elif not self.d.type or self.d.status_code in self.bad_headers:
-        #     response = sg.PopupOKCancel('None type or bad response code', 'Force download?')
-        #     if response != 'OK':
-        #         return
+        elif not self.d.type:
+            response = sg.PopupOKCancel('None type or bad response code', 'Force download?')
+            if response != 'OK':
+                return
         elif self.d.type == 'text/html':
             response = sg.popup_ok_cancel('Contents might be a web page / html, Download anyway?')
             if response != 'OK':
@@ -2628,7 +2628,7 @@ class MainWindow:
         return response
 
     def set_proxy(self):
-        enable_proxy = self.values['enable_proxy']
+        enable_proxy = self.window['enable_proxy'].get()
         config.enable_proxy = enable_proxy
 
         # enable disable proxy entry text
@@ -2640,18 +2640,20 @@ class MainWindow:
             return
 
         # set raw proxy
-        raw_proxy = self.values.get('raw_proxy', '')
+        raw_proxy = self.window['raw_proxy'].get()
         config.raw_proxy = raw_proxy
 
         # proxy type
-        config.proxy_type = self.values['proxy_type']
+        config.proxy_type = self.window['proxy_type'].get()
 
-        if raw_proxy and isinstance(raw_proxy, str):
+        if raw_proxy:
             raw_proxy = raw_proxy.split('://')[-1]
             proxy = config.proxy_type + '://' + raw_proxy
+        else:
+            proxy = ''
 
-            config.proxy = proxy
-            self.window['current_proxy_value'](config.proxy)
+        config.proxy = proxy
+        self.window['current_proxy_value'](config.proxy)
         # print('config.proxy = ', config.proxy)
 
     # endregion
@@ -2782,8 +2784,6 @@ class DownloadWindow:
         self.d = d
         self.window = None
         self.active = True
-        self.event = None
-        self.values = None
         self.timeout = 10
         self.timer = 0
         self._progress_mode = 'determinate'
