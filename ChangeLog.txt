@@ -1,3 +1,26 @@
+2020.5.4:
+- critical bug fix for version 2020.5.3, which affects dash HLS videos.
+
+2020.5.3:
+- Added cookies support issue #80.
+- Major Fixes for "Resume download".
+- Parsing subtitles from hls m3u8 files issue #77.
+- SysTray icon, with options "minimize or close to systray", currently "available
+  on windows", support for other platforms in progress.
+- Filtered Ads. segments from hls video's manifest.
+- Ask user permission before checking for update, issue #76.
+- Portable windows version, upgrading to new versions can be done by using update
+  button which will auto-download "updated files only - almost 5MB" instead of
+  downloading the whole new version.
+- cancel download for expired links or if no data received from network, with popup
+  feedback on download error
+- Added some keyboard keys action: Esc key for download cancel, Delete for item delete.
+- play video on thumbnail click, "in downloads tab".
+- Get direct streaming url without downloading, by clicking Thumbnail board at main tab.
+- Fixes for "download speed chokes" at the end, when remaining only one worker only.
+- Hls videos watch while downloading is now available for non-encrypted videos.
+
+
 2020.4.17:
 - Critical Bug fix for missing extensions in video filename and failed audio/video
   merging.
