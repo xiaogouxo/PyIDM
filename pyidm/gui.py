@@ -98,6 +98,8 @@ class MainWindow:
         # update
         self.new_version_available = False
         self.new_version_description = None
+        self.update_batch_available = False
+        self.update_batch_description = None
 
         # thumbnail
         self.current_thumbnail = None
@@ -2692,13 +2694,13 @@ class MainWindow:
             latest_version, version_description = info
 
             # compare with current application version
-            newer_version = compare_versions(current_version, latest_version)  # return None if both equal
+            newer_version = compare_versions(current_version, latest_version)  # return None if both equal # todo: use version_value instead
             # print(newer_version, current_version, latest_version)
 
             if not newer_version or newer_version == current_version:
                 self.new_version_available = False
                 log("check_for_update() --> App. is up-to-date, server version=", latest_version)
-            else:  # newer_version == latest_version
+            else:  # newer_version available on server
                 self.new_version_available = True
 
             # updaet global values
@@ -2707,6 +2709,27 @@ class MainWindow:
         else:
             self.new_version_description = None
             self.new_version_available = False
+
+        # check for update batch for portable version only
+        if config.FROZEN:
+            info = update.get_update_batch_info()
+
+            if info:
+                minimum_version = info.get('minimum_version')
+                max_version = info.get('max_version')
+                hash = info.get('sha256')
+
+                if version_value(max_version) >= version_value(config.APP_VERSION) >= version_value(minimum_version):
+                    self.update_batch_available = True
+                    self.update_batch_description = info.get('description', 'No description available')
+
+                    # check if this batch already installed before, info will be stored in "update_batches_record" file
+                    if os.path.isfile(config.update_batches_record):
+                        with open(config.update_batches_record) as file:
+                            if hash in file.read():
+                                log('update batch already installed before')
+                                self.update_batch_available = False
+                                self.update_batch_description = ''
 
         self.set_cursor('default')
 
@@ -2717,7 +2740,10 @@ class MainWindow:
             self.check_for_update()
 
         if self.new_version_available:
-            config.main_window_q.put(('show_update_gui', ''))
+            # config.main_window_q.put(('show_update_gui', ''))
+            execute_command('show_update_gui')
+        elif self.update_batch_available:
+            execute_command('show_update_gui', update_batch_window=True)
         else:
             if self.new_version_description:
                 popup(f"App. is up-to-date, Local version: {config.APP_VERSION} \n"
@@ -2725,13 +2751,15 @@ class MainWindow:
             else:
                 popup("couldn't check for update")
 
-    def show_update_gui(self):
+    def show_update_gui(self, update_batch_window=False):
+
         layout = [
-            [sg.T('New version available:')],
-            [sg.Multiline(self.new_version_description, size=(70, 10))],
+            [sg.T('New update available:')],
+            [sg.Multiline(self.update_batch_description if update_batch_window else self.new_version_description, size=(70, 10))],
             # show update button for Frozen versions only i.e. "windows portable version"
             [sg.B('Update') if config.FROZEN else sg.T(''), sg.B('website'), sg.Cancel()]
         ]
+
         window = sg.Window('Update Application', layout, finalize=True, keep_on_top=True)
         event, _ = window()
         if event == 'Update':

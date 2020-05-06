@@ -111,14 +111,24 @@ def open_update_link():
     webbrowser.open_new(url)
 
 
-def download_update_batch():
-    """for frozen windows app, will download only the updated files from server"""
+def get_update_batch_info() -> dict:
+    """
+    download updateinfo.json file to get update batch's info, parse info and return a dict
+    :return: dict of parsed info
+    """
+    # example contents of updateinfo.json
+    # {
+    #     "url": "https://github.com/pyIDM/PyIDM/releases/download/2020.5.4/2020.5.4_update_batch_1.zip",
+    #     "minimum_version": "2020.5.4",
+    #     "max_version": "2020.5.4",
+    #     "sha256": "4BE94A30CCB7B990FAFF8EDCEDB29E16D45E43412FF5006FD936A62E6B2EA8E2"
+    # }
 
-    # first download updateinfo.json file to get the link for update batch file
-    url = 'https://github.com/pyIDM/pyIDM/releases/download/extra/updateinfo.json'
+    # todo: this file should be with github source code
+    url = 'https://github.com/pyIDM/pyIDM/releases/download/extra/testupdateinfo.json'
 
-    # get latest version url
-    log('getting latest update batch url')
+    # get latest update batch url
+    log('check for update batches')
     buffer = download(url, verbose=False)
     if buffer:
         log('decode buffer')
@@ -126,17 +136,31 @@ def download_update_batch():
         log('read json information')
         try:
             info = json.loads(buffer)
+            return info
         except:
-            log('download_update_batch().json, Failed to read info from downloaded file')
-            return False
+            log('get_update_batch_info().json, Failed to read info from downloaded file')
 
+    return {}
+
+
+def download_update_batch():
+    """for frozen windows app, will download only the updated files from server"""
+
+    info = get_update_batch_info()
+
+    if info:
         url = info.get('url')
         minimum_version = info.get('minimum_version')
-        original_hash = info.get('sha256')
+        max_version = info.get('max_version')
+        sha256_hash = info.get('sha256')
 
         if version_value(config.APP_VERSION) < version_value(minimum_version):
             log('Minimum version allowed to receive this update is:', minimum_version, '\n',
                 'Please download the full version instead')
+            return False
+        elif version_value(config.APP_VERSION) > version_value(max_version):
+            log('Max. version allowed to receive this update is:', max_version, '\n',
+                'Your version already has this batch')
             return False
 
         log('downloading "update files", please wait...')
@@ -154,10 +178,10 @@ def download_update_batch():
         # close buffer
         buffer.close()
 
-        if download_hash.lower() != original_hash.lower():
+        if download_hash.lower() != sha256_hash.lower():
             log('Integrity check failed, update batch has different hash, quitting...')
             log('download_hash, original_hash:')
-            log('\n', download_hash, '\n', original_hash)
+            log('\n', download_hash, '\n', sha256_hash)
             return False
 
         # unzipping downloaded file
@@ -167,6 +191,13 @@ def download_update_batch():
 
         log('delete zip file')
         delete_file(target_path, verbose=True)
+
+        # write hash to update_batches_record file "append"
+        log('write update batch hash to update_batches_record')
+        with open(config.update_batches_record, 'a') as file:
+            file.write('\n')
+            file.write(sha256_hash)
+
         return True
 
 

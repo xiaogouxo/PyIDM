@@ -674,7 +674,7 @@ def open_file(file):
         log('open_file(): ', e, log_level=2)
 
 
-def compare_versions(x, y):
+def compare_versions(x, y):  # todo: use version_value instead
     """it will compare 2 version numbers and return the higher value
     example compare_versions('2020.10.6', '2020.3.7') will return '2020.10.6'
     return None if 2 versions are equal

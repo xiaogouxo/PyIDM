@@ -81,11 +81,6 @@ use_web_auth = False
 username = ''
 password = ''
 
-# update
-update_frequency = 7  # 'every day'=1, every week=7, every month=30 and so on
-last_update_check = 0  # day number in the year range from 1 to 366
-update_frequency_map = {'Everyday': 1, 'Every Week': 7, 'Every Month': 30, 'Never': -1}
-
 # proxy
 proxy = ''  # must be string example: 127.0.0.1:8080
 proxy_type = 'http'  # socks4, socks5
@@ -134,6 +129,14 @@ ffmpeg_download_folder = sett_folder
 # downloads
 active_downloads = set()  # indexes for active downloading items
 d_list = []
+
+
+# update
+update_frequency = 7  # 'every day'=1, every week=7, every month=30 and so on
+last_update_check = 0  # day number in the year range from 1 to 366
+update_frequency_map = {'Everyday': 1, 'Every Week': 7, 'Every Month': 30, 'Never': -1}
+update_batches_record = os.path.join(current_directory, 'update_batches_record.info')
+
 
 # queues
 main_q = Queue()  # used by pyIDM.py
