@@ -359,14 +359,15 @@ def validate_file_name(f_name):
     # filter for tkinter safe character range
     f_name = ''.join([c for c in f_name if ord(c) in range(65536)])
     safe_string = str()
-    char_count = 0
+    char_count = 1
     for c in str(f_name):
         if c in ['\\', '/', ':', '?', '<', '>', '"', '|', '*']:
             safe_string += '_'
         else:
             safe_string += c
 
-        if char_count > 100:
+        if char_count >= 245:  # max. allowed filename length 255 on windows, https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file?redirectedfrom=MSDN
+            safe_string += f_name[-10:]  # add last 10 characters "including file extension"
             break
         else:
             char_count += 1
