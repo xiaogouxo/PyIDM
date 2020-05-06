@@ -84,6 +84,8 @@ def set_curl_options(c):
     # referer
     if config.referer_url:
         c.setopt(pycurl.REFERER, config.referer_url)
+    else:
+        c.setopt(pycurl.AUTOREFERER, 1)
 
     # cookies
     if config.use_cookies:
