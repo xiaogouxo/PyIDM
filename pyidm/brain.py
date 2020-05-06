@@ -64,8 +64,9 @@ def brain(d=None, downloader=None):
 
         if d.status == Status.completed:
             # os notification popup
+            notify_icon = os.path.join(config.sett_folder, 'systray.ico')
             notification = f"File: {d.name} \nsaved at: {d.folder}"
-            notify(notification, title=f'{APP_NAME} - Download completed')
+            notify(notification, title=f'{APP_NAME} - Download completed', app_icon=notify_icon)
             log(f'File: "{d.name}", completed.')
             break
         elif d.status == Status.cancelled:

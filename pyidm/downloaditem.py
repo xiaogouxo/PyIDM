@@ -482,9 +482,9 @@ class DownloadItem:
             # type
             content_type = headers.get('content-type', '').split(';')[0]
             # fallback, guess type from file name extension
-            guessed_content_type = mimetypes.guess_type(name, strict=False)[0]
-            if not content_type:
-                content_type = guessed_content_type
+            # guessed_content_type = mimetypes.guess_type(name, strict=False)[0]
+            # if not content_type:
+            #     content_type = guessed_content_type
 
             # file extension:
             ext = os.path.splitext(name)[1]
@@ -507,6 +507,8 @@ class DownloadItem:
             self.segments.clear()
         else:
             print('DownloadItem.Update()> url changed, abort update for ', url)
+
+        log('headers:', headers, log_level=3)
 
     def __repr__(self):
         return f'DownloadItem object( name: {self.name}, url:{self.url}'

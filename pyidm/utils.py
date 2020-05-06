@@ -127,7 +127,7 @@ def set_curl_options(c):
 def get_headers(url, verbose=False):
     """return dictionary of headers"""
 
-    # log('get_headers()> getting headers for:', url)
+    log('get_headers()> getting headers for:', url, log_level=3)
 
     curl_headers = {}
 
