@@ -2507,8 +2507,14 @@ class MainWindow:
 
     def close_callback(self):
         """This callback override main window close"""
-        if config.close_action == 'minimize':
+        # currently "systray" support windows only
+        if config.close_action == 'minimize' and config.operating_system == 'Windows':
             self.hide()
+
+            # notify
+            icon = os.path.join(config.sett_folder, 'systray.ico')
+            notify('PyIDM still running in background', timeout=1, app_icon=icon)
+
         else:
             # closing window and terminate downloads
             self.active = False
@@ -2542,13 +2548,6 @@ class MainWindow:
 
     def hide(self):
         """close main window and hide other windows"""
-        if config.operating_system != 'Windows':
-            self.close()
-            return
-
-        icon = os.path.join(config.sett_folder, 'systray.ico')
-
-        notify('PyIDM still running in background', timeout=1, app_icon=icon)
 
         # hide active windows
         self.hide_active_windows()
@@ -3428,7 +3427,7 @@ class PlaylistWindow:
                 else:
                     bar(visible=False)
 
-            # animate note widget
+            # animate "note" widget
             if time.time() - self.timer1 >= 1:
                 self.timer1 = time.time()
                 note = self.window['note']
