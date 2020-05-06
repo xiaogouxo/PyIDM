@@ -283,7 +283,8 @@ class MainWindow:
                       text_color=text_color), sg.Text('      ')],
 
             # file properties
-            [sg.T('-' * 300, key='file_properties', font='any 9')],
+            [sg.T('-' * 300, key='file_properties', font='any 9'),
+             sg.T('', key='critical_settings_warning', visible=False, font='any 9', size=(30, 1))],
 
             # download button
             [sg.Column([[sg.B('', image_data=download_icon, key='Download', **transparent)]],
@@ -569,7 +570,7 @@ class MainWindow:
         self.window['table'].bind('<Double-Button-1>', '_double_clicked')  # will generate event "table_double_clicked"
         self.window['table'].bind('<Return>', '_enter_key')  # will generate event "table_enter_key"
 
-        # change cursor for thumbnail boards
+        # change cursor for some widgets
         self.window['si_thumbnail'].set_cursor('hand2')
         self.window['main_thumbnail'].set_cursor('hand2')
         self.window['si_out'].set_cursor('hand2')
@@ -865,10 +866,32 @@ class MainWindow:
             if self.video and self.stream_menu != self.video.stream_menu:
                 self.update_stream_menu()
 
+            # critical_settings_warning: sometimes user set proxy or speed limit in settings and forget it is
+            # already set, which affect the whole application operation, will show a flashing text at main Tab
+            if config.proxy or config.speed_limit:
+                proxy = 'proxy: active, ' if config.proxy else ''
+                sl = f'Speed Limit: {size_format(config.speed_limit)}' if config.speed_limit else ''
+                self.window['critical_settings_warning'](proxy + sl)
+                self.flip_visibility(self.window['critical_settings_warning'])
+            else:
+                self.window['critical_settings_warning']('', visible=False)
+
         except Exception as e:
             if config.TEST_MODE:
                 raise e
             log('MainWindow.update_gui() error:', e)
+
+    def flip_visibility(self, widget):
+        """
+        flip visibility for a widget, hide visible widget or show hidden one
+        :param widget: pysimplegui Element object i.e. self.window['widget_key']
+        :return:
+        """
+        visible = widget.Visible
+        visible = not visible
+
+        widget.Visible = visible
+        widget(visible=visible)
 
     def set_status(self, text):
         """update status bar text widget"""
