@@ -379,6 +379,9 @@ class DownloadItem:
         # validate new name
         self._name = validate_file_name(new_value)
 
+        # Reset segments since change in file name will affect segments info
+        self.segments.clear()
+
     @property
     def target_file(self):
         """return file name including path"""
