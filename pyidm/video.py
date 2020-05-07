@@ -258,7 +258,7 @@ class Video(DownloadItem):
         """Mainly used when select a stream for current video object"""
         # reset segments first
         self.segments.clear()
-        self.last_known_size = 0
+        self.total_size = 0
 
         # do some parameters updates
         stream = self.selected_stream
@@ -330,19 +330,24 @@ class Video(DownloadItem):
 
 def process_video_info(vid, getthumbnail=True):
     try:
+        vid.busy = True
         with ytdl.YoutubeDL(get_ytdl_options()) as ydl:
             vid_info = ydl.process_ie_result(vid.vid_info, download=False)
             if vid_info:
                 vid.vid_info = vid_info
                 vid.refresh()
 
-            if vid and getthumbnail:
-                vid.get_thumbnail()
+                if vid and getthumbnail:
+                    vid.get_thumbnail()
 
-        log('process_video_info()> processed url:', vid.url, log_level=3)
-        vid.processed = True
+                log('process_video_info()> processed url:', vid.url, log_level=3)
+                vid.processed = True
+            else:
+                log('process_video_info()> Failed,  url:', vid.url, log_level=3)
     except Exception as e:
         log('process_video_info()> error:', e)
+    finally:
+        vid.busy = False
 
 
 class Stream:

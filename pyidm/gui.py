@@ -8,6 +8,7 @@
 """
 import gc
 import webbrowser
+from queue import Queue
 from urllib.parse import urljoin
 
 import PySimpleGUI as sg
@@ -3206,10 +3207,11 @@ class PlaylistWindow:
         self.playlist = playlist  # reference to MainWindow instant
         self.window = None
         self.selected_videos = []
-        self.active_threads = {}  # {video.name: thread}
+        self.active_threads = []  # threads
         self.video_checkboxes = []
         self.stream_combos = []
         self.progress_bars = []
+        self.process_q = Queue()  # add videos which needs to fetch their streams
 
         self.timer1 = 0
 
@@ -3344,17 +3346,9 @@ class PlaylistWindow:
         # update some parameters for a selected video
         vid = self.playlist[num]
         stream_widget = self.window[f'stream {num}']
-        video_checkbox = self.window[f'video {num}']
         size_widget = self.window[f'size_text {num}']
 
-        selected = video_checkbox.get()
         stream_text = stream_widget.get()
-
-        # process video
-        if selected and not vid.processed and not self.active_threads.get(vid.name, None):
-            t = Thread(target=process_video_info, daemon=True, args=(vid,))
-            self.active_threads[vid.name] = t
-            t.start()
 
         # first check if video has streams
         if not vid.all_streams:
@@ -3364,7 +3358,6 @@ class PlaylistWindow:
         stream = vid.select_stream(name=stream_text)
         if not stream:
             stream_widget(vid.selected_stream.name)
-
         size_widget(size_format(vid.total_size))
 
     def follow_master_selection(self, num):
@@ -3374,17 +3367,18 @@ class PlaylistWindow:
         :return: None
         """
         master_combo = self.window['master_stream_combo']
-        vid_combo = self.stream_combos[num]
-        vid = self.playlist[num]
         master_text = master_combo.get()  # example: mp4 - 1080
 
+        vid_combo = self.stream_combos[num]
+        vid = self.playlist[num]
+
+        # set a matching stream name, note: for example, if master_text is "mp4 - 1080",
+        # then matching could be "mp4 - 1080 - 30 MB - id:137" with size and format id included
         match_stream_name = [text for text in vid.stream_menu if master_text in text]
         if match_stream_name:
             match_stream_name = match_stream_name[0]
-            vid.select_stream(name=match_stream_name)
-            # set a matching stream name, note: for example, if master_text is "mp4 - 1080",
-            # then matching could be "mp4 - 1080 - 30 MB - id:137" with size and format id included
             vid_combo(match_stream_name)
+
             self.update_video(num)
 
     def run(self):
@@ -3442,14 +3436,28 @@ class PlaylistWindow:
             # process all other check boxes
             for num, checkbox in enumerate(self.video_checkboxes):
                 checkbox(checked)
-                self.update_video(num)
+                vid = self.playlist[num]
+
+                # fetch video info if not processed
+                if checked and not vid.processed:
+                    self.process_q.put(vid)
 
         elif event == 'master_stream_combo':
             for num, _ in enumerate(self.stream_combos):
                 self.follow_master_selection(num)
 
-        # video checkbox or stream menu events
-        elif event.startswith('stream') or event.startswith('video'):
+        # video checkbox
+        elif event.startswith('video'):
+            num = int(event.split()[-1])
+            vid = self.playlist[num]
+            checked = values[event]
+
+            # fetch video info if not processed
+            if checked and not vid.processed:
+                self.process_q.put(vid)
+
+        # stream menu events
+        elif event.startswith('stream'):
             num = int(event.split()[-1])
             self.update_video(num)
 
@@ -3471,19 +3479,28 @@ class PlaylistWindow:
             # animate progress bars while loading streams
             for num, bar in enumerate(self.progress_bars):
                 vid = playlist[num]
-                if vid.name in self.active_threads and not vid.processed:
+                if vid.busy:
                     bar(visible=True)
                     bar.expand(expand_x=True)
                     bar.Widget['value'] += 10
                 else:
                     bar(visible=False)
 
-            # animate "note" widget
+            # run every (n) second
             if time.time() - self.timer1 >= 1:
+                # animate "note" widget
                 self.timer1 = time.time()
                 note = self.window['note']
                 note.Visible = not note.Visible
                 note(visible=note.Visible)
+
+                # fetch video streams info
+                self .active_threads = [t for t in self.active_threads if t.is_alive()]
+                if self.process_q.qsize() and len(self.active_threads) < 10:
+                    vid = self.process_q.get()
+                    t = Thread(target=process_video_info, daemon=True, args=(vid,))
+                    self.active_threads.append(t)
+                    t.start()
 
     def download_selected_videos(self):
         for vid in self.selected_videos:

@@ -173,6 +173,9 @@ class DownloadItem:
                                  '_total_size', 'protocol', 'manifest_url',
                                  'abr', 'tbr', 'format_id', 'audio_format_id', 'resolution']
 
+        # property to indicate that there is a time consuming operation is running on download item now
+        self.busy = False
+
     # def __getattr__(self, attrib):  # commented out as it makes problem with copy.copy module
     #     """this method will be called if no attribute found"""
     #
