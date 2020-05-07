@@ -248,7 +248,8 @@ class MainWindow:
             # app icon and app name
             [sg.Image(data=APP_ICON, enable_events=True, key='app_icon'),
              sg.Text(f'{config.APP_NAME}', font='any 20', justification='center', key='app_name', enable_events=True),
-             sg.T('', size=(30, 1), justification='center', key='update_note', enable_events=True, font='any 9'),
+             sg.T('New version available, click me for more info !', size=(50, 1), justification='center',
+                  key='update_note', enable_events=True, font='any 9', visible=False),
              ],
 
             # url entry
@@ -577,6 +578,7 @@ class MainWindow:
         self.window['si_thumbnail'].set_cursor('hand2')
         self.window['main_thumbnail'].set_cursor('hand2')
         self.window['si_out'].set_cursor('hand2')
+        self.window['update_note'].set_cursor('hand2')
 
         # log text, disable word wrap
         # use "undo='false'" disable tkinter caching to fix issue #59 "solve huge memory usage and app crash
@@ -875,7 +877,7 @@ class MainWindow:
                 proxy = 'proxy: active, ' if config.proxy else ''
                 sl = f'Speed Limit: {size_format(config.speed_limit)}' if config.speed_limit else ''
                 self.window['critical_settings_warning'](proxy + sl)
-                self.flip_visibility(self.window['critical_settings_warning'])
+                flip_visibility(self.window['critical_settings_warning'])
             else:
                 self.window['critical_settings_warning']('', visible=False)
 
@@ -883,18 +885,6 @@ class MainWindow:
             if config.TEST_MODE:
                 raise e
             log('MainWindow.update_gui() error:', e)
-
-    def flip_visibility(self, widget):
-        """
-        flip visibility for a widget, hide visible widget or show hidden one
-        :param widget: pysimplegui Element object i.e. self.window['widget_key']
-        :return:
-        """
-        visible = widget.Visible
-        visible = not visible
-
-        widget.Visible = visible
-        widget(visible=visible)
 
     def set_status(self, text):
         """update status bar text widget"""
@@ -1460,9 +1450,9 @@ class MainWindow:
                 self.timer2 = time.time()
                 # update notification
                 if self.new_version_available:
-                    self.animate_update_note()
+                    flip_visibility(self.window['update_note'])
                 else:
-                    self.window['update_note']('')
+                    self.window['update_note'](visible=False)
 
             # reset statusbar periodically
             if time.time() - self.statusbar_timer >= 10:
@@ -2771,31 +2761,6 @@ class MainWindow:
 
         window.close()
 
-    def animate_update_note(self):
-        # display word by word
-        # values = 'new version available, click me for more info !'.split()
-        # values = [' '.join(values[:i + 1]) for i in range(len(values))]
-
-        # display character by character
-        # values = [c for c in 'new version available, click me for more info !']
-        # values = [''.join(values[:i + 1]) for i in range(len(values))]
-
-        # normal on off display
-        values = ['', 'new version available, click me for more info !']
-        note = self.window['update_note']
-
-        # add animation text property to note object
-        if not hasattr(note, 'animation_index'):
-            note.animation_index = 0
-
-        if note.animation_index < len(values) - 1:
-            note.animation_index += 1
-        else:
-            note.animation_index = 0
-
-        new_text = values[note.animation_index]
-        note(new_text)
-
     def check_for_ytdl_update(self):
         config.ytdl_LATEST_VERSION = update.check_for_ytdl_update()
         log('youtube-dl, latest version = ', config.ytdl_LATEST_VERSION, ' - current version = ', config.ytdl_VERSION)
@@ -3488,11 +3453,10 @@ class PlaylistWindow:
 
             # run every (n) second
             if time.time() - self.timer1 >= 1:
-                # animate "note" widget
                 self.timer1 = time.time()
-                note = self.window['note']
-                note.Visible = not note.Visible
-                note(visible=note.Visible)
+
+                # animate "note" widget
+                flip_visibility(self.window['note'])
 
                 # fetch video streams info
                 self .active_threads = [t for t in self.active_threads if t.is_alive()]
