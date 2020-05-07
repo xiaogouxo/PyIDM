@@ -105,9 +105,6 @@ class MainWindow:
         # thumbnail
         self.current_thumbnail = None
 
-        # side bar
-        self.animate_bar = True
-
         # timers
         self.statusbar_timer = 0
         self.timer1 = 0
@@ -858,16 +855,14 @@ class MainWindow:
             self.window['si_bar'].update_bar(d.progress if d else 0)
             self.window['si_percent'](f'{d.progress}%' if d else '')
 
-            # animate side bar
-            if self.animate_bar and self.s_bar < 90:
-                self.s_bar += 10
+            # animate side bar ------------------------------------------------------------------------
+            if self.video:
+                if self.d.busy:
+                    self.s_bar = self.s_bar + 10 if self.s_bar < 90 else self.s_bar
+                else:
+                    self.s_bar = 100
 
-            # stop animate side bar
-            if self.video and self.video.processed:
-                self.s_bar = 100
-                self.animate_bar = False
-
-            # update stream menu
+            # update stream menu ----------------------------------------------------------------------
             if self.video and self.stream_menu != self.video.stream_menu:
                 self.update_stream_menu()
 
@@ -1929,9 +1924,6 @@ class MainWindow:
             # reset thumbnail
             self.reset_thumbnail()
 
-            # animate bar
-            self.animate_bar = False
-
             # reset tooltips
             self.set_tooltip(widget=self.window['pl_menu'], tooltip_text='')
             self.set_tooltip(widget=self.window['stream_menu'], tooltip_text='')
@@ -1940,7 +1932,6 @@ class MainWindow:
 
     def reset_progress_bar(self):
         self.m_bar = 0
-        self.animate_bar = False
         self.s_bar = 0
 
     def reset_thumbnail(self):
@@ -2246,13 +2237,11 @@ class MainWindow:
             # fetch video info if not available and animate side bar
             if self.video and not self.video.processed:
                 self.s_bar = 0
-                self.animate_bar = True  # let update_gui() start a fake progress
 
                 # process video
                 Thread(target=process_video_info, daemon=True, args=(self.video, )).start()
             else:
                 self.s_bar = 100
-                self.animate_bar = False
 
             # set tooltip
             self.set_tooltip(widget=self.window['pl_menu'], tooltip_text=self.pl_menu[selected_index])
