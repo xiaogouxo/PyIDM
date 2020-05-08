@@ -15,8 +15,8 @@ from urllib.parse import urljoin
 
 from . import config
 from .downloaditem import DownloadItem, Segment
-from .utils import log, validate_file_name, get_headers, size_format, run_command, size_splitter, get_seg_size, \
-    delete_file, download, process_thumbnail, execute_command
+from .utils import (log, validate_file_name, get_headers, size_format, run_command, size_splitter, get_seg_size,
+                    delete_file, download, process_thumbnail, execute_command, rename_file)
 
 # youtube-dl
 ytdl = None  # youtube-dl will be imported in a separate thread to save loading time
@@ -941,6 +941,62 @@ def download_m3u8(url):
     return None
 
 
+def download_subtitles(subs, d, ext='srt'):
+    """
+    download subtitles
+    :param subs: expecting format template: {language1:[sub1, sub2, ...], language2: [sub1, ...]}, where sub = {'url': 'xxx', 'ext': 'xxx'}
+    :param d: DownloadItem object that has the subtitles
+    :param ext: subtitle format / extension
+    :return: True if it completed successfully, else False
+    """
+
+    def download_sub(lang, sub):
+        # sub = {'url': 'xxx', 'ext': 'xxx'}
+        ext = sub.get('ext', 'txt')
+        url = sub.get('url')
+        file_name = f'{os.path.splitext(d.target_file)[0]}_{lang}.{ext}'
+
+        log('downloading subtitle', file_name)
+        buffer = download(url, file_name)
+
+        if not buffer:
+            log('downloading subtitle', file_name, 'failed')
+            return
+
+        # post processing 'srt' subtitle, it might be a 'vtt' file
+        if ext == 'srt':
+            # ffmpeg file full location
+            ffmpeg = config.ffmpeg_actual_path
+
+            output = f'{file_name}2.srt'
+            log('downloading subtitle', file_name,'Ffmpeg check convert subtitle format to srt')
+
+            cmd = f'"{ffmpeg}" -y -i "{file_name}" "{output}"'
+
+            error, _ = run_command(cmd, verbose=False, shell=True)
+            if not error:
+                delete_file(file_name)
+                rename_file(oldname=output, newname=file_name)
+                log('created subtitle:', file_name)
+            else:
+                # if failed to convert
+                log("couldn't convert subtitle to srt, check file format might be corrupted")
+
+    for lang, lang_subs in subs.items():
+        selected_sub = None
+        for sub in lang_subs:
+            # print(sub)
+            if ext == sub['ext']:
+                selected_sub = sub
+            elif ext == 'srt' and 'vtt' == sub['ext']:
+                # if vtt is available will send it as if it is srt and it will be handled in download_sub by ffmpeg
+                sub['ext'] = 'srt'
+                selected_sub = sub
+        if lang_subs and not selected_sub:
+            selected_sub = lang_subs[0]
+
+        if selected_sub:
+            download_sub(lang, selected_sub)
 
 
 

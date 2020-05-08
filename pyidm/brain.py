@@ -11,7 +11,7 @@ import os
 import time
 from threading import Thread
 from .video import merge_video_audio, unzip_ffmpeg, pre_process_hls, post_process_hls, \
-    convert_audio  # unzip_ffmpeg required here for ffmpeg callback
+    convert_audio, download_subtitles  # unzip_ffmpeg required here for ffmpeg callback
 from . import config
 from .config import Status, active_downloads, APP_NAME
 from .utils import (log, size_format, popup, notify, delete_folder, delete_file, rename_file, load_json, save_json)
@@ -330,6 +330,9 @@ def file_manager(d, keep_segments=False):
                 rename_file(d.temp_file, d.target_file)
                 # delete temp files
                 d.delete_tempfiles()
+
+            # download subtitles
+            download_subtitles(d.selected_subtitles, d)
 
             # at this point all done successfully
             d.status = Status.completed

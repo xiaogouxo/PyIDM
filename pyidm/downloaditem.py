@@ -150,8 +150,10 @@ class DownloadItem:
         self.selected_quality = None
 
         # subtitles
+        # template: {language1:[sub1, sub2, ...], language2: [sub1, ...]}, where sub = {'url': 'xxx', 'ext': 'xxx'}
         self.subtitles = {}
         self.automatic_captions = {}
+        self.selected_subtitles = {}  # chosen subtitles that will be downloaded
 
         # accept html contents
         self.accept_html = False  # if server sent html contents instead of bytes
@@ -170,7 +172,7 @@ class DownloadItem:
                                  'resumable', 'selected_quality', '_segment_size', '_downloaded', '_status',
                                  '_remaining_parts', 'audio_url', 'audio_size', 'type', 'subtype_list', 'fragments',
                                  'fragment_base_url', 'audio_fragments', 'audio_fragment_base_url',
-                                 '_total_size', 'protocol', 'manifest_url',
+                                 '_total_size', 'protocol', 'manifest_url', 'selected_subtitles',
                                  'abr', 'tbr', 'format_id', 'audio_format_id', 'resolution']
 
         # property to indicate that there is a time consuming operation is running on download item now
@@ -181,6 +183,26 @@ class DownloadItem:
     #
     #     # will return empty string instead of raising error
     #     return ''
+
+    def select_subs(self, subs_names=None):
+        """
+        search subtitles names and build a dict of name:url for all selected subs
+        :param subs_names: list of subs names
+        :return: None
+        """
+        if not isinstance(subs_names, list):
+            return
+
+        subs = {}
+        # search for subs
+        for k in subs_names:
+            v = self.subtitles.get(k) or self.automatic_captions.get(k)
+            if v:
+                subs[k] = v
+
+        self.selected_subtitles = subs
+
+        # print('self.selected_subtitles:', self.selected_subtitles)
 
     @property
     def remaining_parts(self):

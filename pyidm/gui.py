@@ -3166,6 +3166,8 @@ class PlaylistWindow:
         self.stream_combos = []
         self.progress_bars = []
         self.process_q = Queue()  # add videos which needs to fetch their streams
+        self.subtitles = []  # unique subtitles names only for all videos
+        self.selected_subs = []  # subtitles names only
 
         self.timer1 = 0
 
@@ -3192,6 +3194,8 @@ class PlaylistWindow:
             vid_names.append(vid.name)
         del vid_names  # no longer needed, free memory
 
+        self.subtitles = self.update_subtitles()
+
         # gui layout ------------------------------------------------------------------------------------------------
         video_checkboxes = []
         progress_bars = []
@@ -3200,10 +3204,14 @@ class PlaylistWindow:
         master_stream_menu = self.create_master_menu()
 
         general_options_layout = [sg.Checkbox('Select All', enable_events=True, key='Select All'),
-                                  sg.T('', size=(15, 1)),
-                                  sg.T('Choose quality for all videos:'),
+                                  sg.T('', size=(6, 1)),
+                                  sg.Checkbox('Subtitles:', key='use_sub'),
+                                  sg.B('', image_data=browse_icon, key='sub_btn', **transparent, tooltip=' Select Subtitles '),
+                                  sg.T('', size=(7, 1)),
+                                  sg.T('Master Quality:'),
                                   sg.Combo(values=master_stream_menu, default_value=master_stream_menu[0], size=(28, 1),
-                                           key='master_stream_combo', enable_events=True)]
+                                           key='master_stream_combo', enable_events=True),
+                                  ]
 
         video_layout = []
 
@@ -3241,7 +3249,7 @@ class PlaylistWindow:
             general_options_layout,
             [sg.T('NOTE: Select videos first to load stream menu'), sg.T('◀◀', key='note')],  #
             [sg.Frame(title='Videos:', layout=[video_layout])],
-            [sg.Col([[sg.OK(), sg.Cancel()]], justification='right')]
+            [sg.Col([[sg.B('Download'), sg.Cancel()]], justification='right')]
         ]
 
         # create window
@@ -3296,6 +3304,19 @@ class PlaylistWindow:
 
         return master_stream_menu
 
+    def update_subtitles(self):
+        # subtitles names
+        c = set()
+        for d in self.playlist:
+            for k, v in d.subtitles.items():
+                c.add(k)
+
+            for k, v in d.automatic_captions.items():
+                c.add(k)
+
+        subtitles = sorted(list(c))
+        return subtitles
+
     def update_video(self, num):
         # update some parameters for a selected video
         vid = self.playlist[num]
@@ -3337,17 +3358,35 @@ class PlaylistWindow:
 
     def run(self):
         # event loop -------------------------------------------------------------------------------------------------
-        window = self.window
-        selected_videos = self.selected_videos
         playlist = self.playlist
 
         # while True:
-        event, values = window.read(timeout=100)
+        event, values = self.window.read(timeout=100)
         if event in (None, 'Cancel') or config.terminate:
             self.close()
 
-        elif event == 'OK':
-            selected_videos.clear()
+        elif event == 'sub_btn':
+            col = sg.Col([[
+                sg.Checkbox(sub_name, key=sub_name, default=True if sub_name in self.selected_subs else False)]
+                for sub_name in self.subtitles], size=(180, 200), scrollable=True, vertical_scroll_only=True)
+            sub_window = sg.Window('Select Subtitles', [[col], [sg.Ok(), sg.Cancel()]], keep_on_top=True)
+            sub_event, _ = sub_window()
+            if sub_event == 'Ok':
+                self.selected_subs = []
+                for sub_name in self.subtitles:
+                    checked = sub_window[sub_name].get()
+                    if checked:
+                        self.selected_subs.append(sub_name)
+
+                log('selected subs:', self.selected_subs)
+
+                # tick checkbox based on selected subs
+                self.window['use_sub'](True if self.selected_subs else False)
+
+            sub_window.close()
+
+        elif event == 'Download':
+            self.selected_videos.clear()
             null_videos = []
             for num, vid in enumerate(playlist):
                 # check if video is selected
@@ -3355,13 +3394,17 @@ class PlaylistWindow:
 
                 if selected:
                     # append to chosen videos list
-                    selected_videos.append(vid)
+                    self.selected_videos.append(vid)
 
                     # get selected text from stream menu
                     selected_text = values[f'stream {num}']
 
                     # get selected stream
                     stream = vid.select_stream(name=selected_text)
+
+                    # select subtitle
+                    if self.window['use_sub'].get():
+                        vid.select_subs(self.selected_subs)
 
                     # check if video has streams or not
                     if not stream:
@@ -3374,15 +3417,17 @@ class PlaylistWindow:
                             f'{vid_names}\n\n'
                             f'have no streams, please wait until finish loading '
                             f'or un-select this video and try again')
-            else:
+            elif self.selected_videos:
                 # downloading
                 Thread(target=self.download_selected_videos).start()
 
                 # select downloads tab
-                if self.selected_videos:
-                    execute_command("select_tab", tab_name='Downloads')
+                execute_command("select_tab", tab_name='Downloads')
 
                 self.close()
+
+            else:  # no selected videos, warn user before close
+                sg.popup_ok('There is no videos selected', 'choose videos first or hit cancel to close window')
 
         elif event == 'Select All':
             checked = values['Select All']
@@ -3418,7 +3463,7 @@ class PlaylistWindow:
         if self.active:
             # update stream menu for processed videos, in case stream menu not yet loaded
             for num, vid in enumerate(playlist):
-                stream_combo = window[f'stream {num}']
+                stream_combo = self.window[f'stream {num}']
                 if vid.all_streams:
                     if stream_combo.Values != vid.stream_menu:
                         stream_combo(values=vid.stream_menu)
@@ -3429,6 +3474,9 @@ class PlaylistWindow:
                         # should update master stream combo
                         master_stream_text = values['master_stream_combo']
                         self.window['master_stream_combo'](values=self.create_master_menu(), value=master_stream_text)
+
+                        # update subtitles
+                        self.subtitles = self.update_subtitles()
 
             # animate progress bars while loading streams
             for num, bar in enumerate(self.progress_bars):
