@@ -27,7 +27,7 @@ try:
     with open(f"{current_directory}/requirements.txt", "r") as fh:
         requirements = fh.readlines()
 except:
-    requirements = ['PySimpleGUI>=4.18', 'pyperclip', 'plyer', 'certifi', 'youtube_dl', 'pycurl', 'pillow']
+    requirements = ['PySimpleGUI>=4.18', 'pyperclip', 'plyer', 'certifi', 'youtube_dl', 'pycurl', 'pillow', 'pystray']
 
 setuptools.setup(
     name="PyIDM",

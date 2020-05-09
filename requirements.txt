@@ -5,3 +5,4 @@ certifi
 youtube_dl
 pycurl
 pillow
+pystray

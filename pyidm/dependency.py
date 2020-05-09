@@ -14,7 +14,7 @@ import subprocess
 import importlib.util
 
 # add the required packages here without any version numbers
-requirements = ['PySimpleGUI', 'pyperclip', 'plyer', 'certifi', 'youtube_dl', 'pycurl', 'PIL']
+requirements = ['PySimpleGUI', 'pyperclip', 'plyer', 'certifi', 'youtube_dl', 'pycurl', 'PIL', 'pystray']
 
 
 def install_missing_pkgs():
