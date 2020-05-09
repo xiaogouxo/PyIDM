@@ -1,5 +1,5 @@
 """
-    pyIDM
+    PyIDM
 
     multi-connections internet download manager, based on "pyCuRL/curl", "youtube_dl", and "PySimpleGUI"
 
@@ -40,7 +40,7 @@ HEADERS = {
 DEFAULT_LOG_LEVEL = 2
 
 APP_LATEST_VERSION = None  # get value from update module
-ytdl_VERSION = 'xxx'  # will be loaded once youtube-dl get imported
+ytdl_VERSION = 'loading ...'  # will be loaded once youtube-dl get imported
 ytdl_LATEST_VERSION = None  # get value from update module
 
 TEST_MODE = False
@@ -99,13 +99,13 @@ cookie_file_path = ''
 
 # systray
 close_action = 'quit'  # close, minimize, to systray, or quit and close systray
+systray_active = False
 
 # youtube-dl abort flag, will be used by decorated YoutubeDl.urlopen(), see video.import_ytdl()
 ytdl_abort = False
 
 # advanced
 keep_temp = False  # keep temp files / folders after done downloading for debugging
-
 
 # -------------------------------------------------------------------------------------
 

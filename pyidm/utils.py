@@ -8,6 +8,7 @@
 """
 import base64
 import datetime
+import importlib
 import os
 import io
 import pycurl
@@ -455,7 +456,7 @@ def run_command(cmd, verbose=True, shell=False, hide_window=False, d=None):
     :param shell: True or False
     :param hide_window: True or False, hide shell window
     :param d: DownloadItem object mainly use "status" property to terminate subprocess
-    :return:
+    :return: error (True or False), output (string of stdout/stderr output)
     """
 
     # override shell parameter currently can't kill subprocess if shell=True at least on windows, more investigation required
@@ -877,11 +878,18 @@ def flip_visibility(widget):
     widget(visible=visible)
 
 
+def is_pkg_exist(pkg):
+    if importlib.util.find_spec(pkg) is not None:
+        return True
+    else:
+        return False
+
+
 __all__ = [
     'notify', 'handle_exceptions', 'get_headers', 'download', 'size_format', 'time_format', 'log', 'validate_file_name',
     'size_splitter', 'delete_folder', 'get_seg_size', 'run_command', 'print_object', 'update_object', 'truncate',
     'sort_dictionary', 'popup', 'compare_versions', 'translate_server_code', 'validate_url', 'open_file', 'delete_file',
-    'rename_file', 'load_json', 'save_json', 'echo_stdout', 'echo_stderr', 'log_recorder', 'natural_sort',
+    'rename_file', 'load_json', 'save_json', 'echo_stdout', 'echo_stderr', 'log_recorder', 'natural_sort', 'is_pkg_exist',
     'process_thumbnail', 'parse_bytes', 'set_curl_options', 'execute_command', 'clipboard', 'version_value',
     'reset_queue', 'flip_visibility',
 

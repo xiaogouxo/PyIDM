@@ -9,14 +9,13 @@
 import gc
 import webbrowser
 from queue import Queue
-from urllib.parse import urljoin
 
 import PySimpleGUI as sg
 import tkinter.font
 import os
 import time
 import copy
-from threading import Thread, Timer, Lock
+from threading import Thread, Lock
 from collections import deque
 
 from .utils import *
@@ -31,15 +30,14 @@ from .video import Video, check_ffmpeg, download_ffmpeg, unzip_ffmpeg, get_ytdl_
 from .downloaditem import DownloadItem
 from .iconsbase64 import *
 
-# imports for systray icon, currently systray run only on python
-if config.operating_system == 'Windows':
-    try:
-        from .wintray import SysTrayIcon
-        from PIL import Image
-        import io
-        import base64
-    except Exception as e:
-        log('import error', e, log_level=2)
+# imports for systray icon
+try:
+    import pystray
+    from PIL import Image
+    import io
+    import base64
+except Exception as e:
+    log('Warning!! "pystray" package is required for systray icon, import error', e, log_level=2)
 
 # todo: this module needs some clean up
 
@@ -453,10 +451,6 @@ class MainWindow:
         systray = [
             [sg.T(' ', size=(100, 1))],
             [sg.T('SysTray:')],
-            [sg.T('*currently systray is available on windows only, support for other operating systems in progress.', font='any 9')],
-            [sg.T('', size=(1, 1))],
-            # [sg.T('Action when closing Main Window:')],
-            # [sg.T(' ', size=(30, 1)),
             [sg.Frame(title='Action when closing Main Window:', layout=[
                 [sg.T(' '), sg.Radio('Close App to systray', group_id='close_action', key='radio_close', enable_events=True),
                  sg.T('*Shutdown Main process, any activities / downloads will be cancelled', font='any 8')],
@@ -2513,7 +2507,7 @@ class MainWindow:
     def close_callback(self):
         """This callback override main window close"""
         # currently "systray" support windows only
-        if config.close_action == 'minimize' and config.operating_system == 'Windows':
+        if config.close_action == 'minimize' and config.systray_active:
             self.hide()
 
             # notify
@@ -3522,78 +3516,85 @@ class PlaylistWindow:
 
 
 class SysTray:
+    """
+    systray icon using pystray package
+    """
     def __init__(self):
-        self.active = False  # if systray works correctly
+        self._active = False  # if systray works correctly
         self._tray_icon = os.path.join(config.sett_folder, 'systray.ico')  # path to icon
-        self.systray = None
+        self.icon = None
         self._hover_text = None
 
+    @property
+    def active(self):
+        return self._active
+
+    @active.setter
+    def active(self, value):
+        self._active = value
+        config.systray_active = value
+
     @staticmethod
-    def show_main_window(systray):
+    def show_main_window(icon, item):
         config.main_q.put('start_main_window')
 
     @staticmethod
-    def minimize_to_systray(systray):
+    def minimize_to_systray(icon, item):
         config.main_q.put('minimize_to_systray')
 
     @staticmethod
-    def close_to_systray(systray):
+    def close_to_systray(icon, item):
         config.main_q.put('close_to_systray')
 
     @property
     def tray_icon(self):
         """path to icon file"""
         try:
+            # read base64 icon string into io buffer
+            buffer = io.BytesIO(base64.b64decode(APP_ICON2))
+
+            # open buffer by Pillow
+            img = Image.open(buffer)
+
             if not os.path.isfile(self._tray_icon):
-                # read base64 icon string into io buffer
-                buffer = io.BytesIO(base64.b64decode(APP_ICON2))
-
-                # open buffer by Pillow
-                img = Image.open(buffer)
-
                 # save file to settings folder
                 img.save(self._tray_icon, format='ICO')
 
                 # free memory
-                buffer.close()
+                # buffer.close()
 
-            return self._tray_icon
+            return img
         except Exception as e:
+            raise e
             log('systray: tray_icon', e)
 
     def run(self):
         try:
-            # first check operating system, if not windows will just quit
-            if config.operating_system == 'Windows':
-                menu_options = (("Start / Show", None, self.show_main_window), ("Minimize to Systray", None, self.minimize_to_systray),
-                                ("Close to Systray", None, self.close_to_systray),)
-                self.systray = SysTrayIcon(self.tray_icon, "PyIDM", menu_options, on_quit=self.quit)
-                self.systray.start()
-                self.active = True
-            else:
-                log('Systray is not supported on:', config.operating_system, 'yet!')
-                return
+            from pystray import Icon, Menu, MenuItem
+            menu = Menu(MenuItem("Start / Show", self.show_main_window, default=True),
+                        MenuItem("Minimize to Systray", self.minimize_to_systray),
+                        MenuItem("Close to Systray", self.close_to_systray),
+                        MenuItem("Quit", self.quit),)
+            self.icon = Icon('PyIDM', self.tray_icon, menu=menu)
+            self.active = True
+            self.icon.run()
         except Exception as e:
             log('systray: - run() - ', e)
             self.active = False
 
     def update(self, hover_text=None, icon=None):
-
-        if hover_text and hover_text != self._hover_text:
-            self._hover_text = hover_text
-            self.systray.update(hover_text=hover_text)
-        if icon:
-            self.systray.update(icon=icon)
+        pass
 
     def shutdown(self):
         try:
-            self.systray.shutdown()
+            self.icon.stop()
         except:
             pass
 
-    def quit(self, systray):
+    def quit(self, icon, item):
         """callback when selecting quit from systray menu"""
         # set global terminate flag
+        self.shutdown()
         self.active = False
         config.terminate = True
         config.shutdown = True
