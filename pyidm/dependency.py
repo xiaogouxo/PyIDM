@@ -17,6 +17,15 @@ import importlib.util
 requirements = ['PySimpleGUI', 'pyperclip', 'plyer', 'certifi', 'youtube_dl', 'pycurl', 'PIL', 'pystray']
 
 
+def is_venv():
+    """check if running inside virtual environment
+    there is no 100% working method to tell, but we can check for both real_prefix and base_prefix"""
+    if hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix):
+        return True
+    else:
+        return False
+
+
 def install_missing_pkgs():
 
     # list of dependency
@@ -31,7 +40,14 @@ def install_missing_pkgs():
             if pkg == 'PIL':
                 pkg = 'pillow'
 
-            cmd = [sys.executable, "-m", "pip", "install", '--user', '--upgrade', pkg]
+            # using "--user" flag is safer also avoid the need for admin privilege , but it fails inside venv, where pip
+            # will install packages normally to user folder but venv still can't see those packages
+
+            if is_venv():
+                cmd = [sys.executable, "-m", "pip", "install", '--upgrade', pkg]  # no --user flag
+            else:
+                cmd = [sys.executable, "-m", "pip", "install", '--user', '--upgrade', pkg]
+
             print('running command:', ' '.join(cmd))
             subprocess.run(cmd, shell=False)
 
