@@ -1,3 +1,13 @@
+2020.5.10:
+- Systray icon support for both Linux and windows.
+- download subtitles for all selected videos in playlist window issue #82
+- Set Auto Referee if there is no Referee set already.
+- Reminder flashing text if critical options in use, i.e. proxy, and speed limit
+- Fixed file rename problem, and allow file name length up to 255 characters. issue #83
+- Fixed total size doesn't change with different quality selection.
+- Playlist "select all" fixed "network surge connections blocked". issue #81
+- Fixed proxy input can't be enabled.
+
 2020.5.4:
 - critical bug fix for version 2020.5.3, which affects dash HLS videos.
 
