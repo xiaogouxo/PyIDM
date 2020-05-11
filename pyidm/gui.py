@@ -2512,7 +2512,7 @@ class MainWindow:
 
             # notify
             icon = os.path.join(config.sett_folder, 'systray.ico')
-            notify('PyIDM still running in background', timeout=1, app_icon=icon)
+            notify('PyIDM still running in background', timeout=2, app_icon=icon)
 
         else:
             # closing window and terminate downloads
@@ -3360,6 +3360,10 @@ class PlaylistWindow:
             self.close()
 
         elif event == 'sub_btn':
+            if not self.subtitles:
+                sg.popup_ok('There is no subtitles available!')
+                return
+
             col = sg.Col([[
                 sg.Checkbox(sub_name, key=sub_name, default=True if sub_name in self.selected_subs else False)]
                 for sub_name in self.subtitles], size=(180, 200), scrollable=True, vertical_scroll_only=True)
