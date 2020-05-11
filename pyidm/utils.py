@@ -121,8 +121,6 @@ def set_curl_options(c):
     # it tells curl not to include headers with the body
     c.setopt(pycurl.HEADEROPT, 0)
 
-    c.setopt(pycurl.PROXY, config.proxy)  # set proxy, must be string empty '' means no proxy
-
     c.setopt(pycurl.TIMEOUT, 300)
     c.setopt(pycurl.AUTOREFERER, 1)
 
