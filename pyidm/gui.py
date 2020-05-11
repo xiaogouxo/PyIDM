@@ -2511,8 +2511,7 @@ class MainWindow:
             self.hide()
 
             # notify
-            icon = os.path.join(config.sett_folder, 'systray.ico')
-            notify('PyIDM still running in background', timeout=2, app_icon=icon)
+            notify('PyIDM still running in background', timeout=2)
 
         else:
             # closing window and terminate downloads
