@@ -57,9 +57,20 @@ from .gui import MainWindow, SysTray, sg
 QUERY_MSG = f'PyIDM "{config.APP_VERSION}", any one there?'
 AFFIRMATIVE_MSG = f'PyIDM "{config.APP_VERSION}", already running'
 
+# fix for pyperclip Gtk module
+clipboard.init_gtk_clipboard = init_gtk_clipboard
+
 
 def clipboard_listener():
     """Monitor clipboard for any copied url, also a way to allow only one App. instance"""
+
+    # dummy check if clipboard running properly
+    try:
+        _ = clipboard.paste()
+    except Exception as e:
+        log("clipboard error:", e)
+        return
+
     old_data = ''
 
     while True:
@@ -73,7 +84,7 @@ def clipboard_listener():
 
         # url processing
         if config.monitor_clipboard and new_data != old_data:
-            if new_data.startswith('http'):
+            if new_data.strip().startswith('http'):
                 config.main_window_q.put(('url', new_data))
 
             old_data = new_data
@@ -88,23 +99,28 @@ def clipboard_listener():
 
 def is_solo():
     """send a message thru clipboard to check if a previous app instance already running"""
-    original = clipboard.paste()  # get original clipboard value
+    try:
+        original = clipboard.paste()  # get original clipboard value
 
-    # write this message to clipboard to check if there is an active PyIDM instance
-    clipboard.copy(QUERY_MSG)
+        # write this message to clipboard to check if there is an active PyIDM instance
+        clipboard.copy(QUERY_MSG)
 
-    # wait to get a reply
-    time.sleep(0.3)
+        # wait to get a reply
+        time.sleep(0.3)
 
-    # get the current clipboard content
-    answer = clipboard.paste()
+        # get the current clipboard content
+        answer = clipboard.paste()
 
-    # restore clipboard original value
-    clipboard.copy(original)
+        # restore clipboard original value
+        clipboard.copy(original)
 
-    if answer == AFFIRMATIVE_MSG:
-        return False
-    else:
+        if answer == AFFIRMATIVE_MSG:
+            return False
+        else:
+            return True
+    except Exception as e:
+        # if any exception will just move on and return True
+        log('Solo state can not be verified, moving on...', e)
         return True
 
 
@@ -121,7 +137,7 @@ def main():
     Thread(target=video.import_ytdl, daemon=True).start()
 
     # run clipboard monitor thread
-    Thread(target=clipboard_listener, daemon=True).start()
+    Thread(target=clipboard_listener, daemon=True, name='clipboard_listener').start()
 
     # run systray
     systray = SysTray()

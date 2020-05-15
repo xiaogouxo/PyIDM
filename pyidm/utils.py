@@ -883,12 +883,52 @@ def is_pkg_exist(pkg):
         return False
 
 
+def init_gtk_clipboard():
+    # fix for pyperclip use Gtk for python 3, ref: https://python-gtk-3-tutorial.readthedocs.io/en/latest/clipboard.html#
+    global gtk
+    import gi
+
+    try:
+        gi.require_version("Gtk", "3.0")
+    except Exception as e:
+        log('Clipboard module info: Gtk minimum version should be "3.0", will fallback to another mechanism,', e)
+        choices = [x for x in ("xsel", "xclip") if clipboard._executable_exists(x)]
+        if choices:
+            log('found a clipboard mechanisms', choices, 'selecting:', choices[0])
+            log('selecting:', choices[0])
+            clipboard.set_clipboard(choices[0])
+            return
+        else:
+            log('clipboard needs "xsel", or "xclip" installed to run properly')
+            return clipboard.init_no_clipboard()
+
+    from gi.repository import Gdk, Gtk as gtk
+
+    global cb
+    cb = gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
+
+    def copy_gtk(text):
+        text = str(text)  # Converts non-str values to str.
+        cb.set_text(text, -1)  # -1 (minus one) means calculate text length automatically
+        cb.store()
+
+    def paste_gtk():
+        clipboardContents = cb.wait_for_text()
+        # for python 2, returns None if the clipboard is blank.
+        if clipboardContents is None:
+            return ''
+        else:
+            return clipboardContents
+
+    return copy_gtk, paste_gtk
+
+
 __all__ = [
     'notify', 'handle_exceptions', 'get_headers', 'download', 'size_format', 'time_format', 'log', 'validate_file_name',
     'size_splitter', 'delete_folder', 'get_seg_size', 'run_command', 'print_object', 'update_object', 'truncate',
     'sort_dictionary', 'popup', 'compare_versions', 'translate_server_code', 'validate_url', 'open_file', 'delete_file',
     'rename_file', 'load_json', 'save_json', 'echo_stdout', 'echo_stderr', 'log_recorder', 'natural_sort', 'is_pkg_exist',
     'process_thumbnail', 'parse_bytes', 'set_curl_options', 'execute_command', 'clipboard', 'version_value',
-    'reset_queue', 'flip_visibility',
+    'reset_queue', 'flip_visibility', 'init_gtk_clipboard'
 
 ]
