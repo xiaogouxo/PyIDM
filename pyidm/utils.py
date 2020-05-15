@@ -908,13 +908,16 @@ def init_gtk_clipboard():
     cb = gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
 
     def copy_gtk(text):
-        text = str(text)  # Converts non-str values to str.
-        cb.set_text(text, -1)  # -1 (minus one) means calculate text length automatically
-        cb.store()
+        try:
+            text = str(text)  # Converts non-str values to str.
+
+            cb.set_text(text, -1)  # -1 (minus one) means calculate text length automatically
+            cb.store()
+        except:
+            pass
 
     def paste_gtk():
         clipboardContents = cb.wait_for_text()
-        # for python 2, returns None if the clipboard is blank.
         if clipboardContents is None:
             return ''
         else:
