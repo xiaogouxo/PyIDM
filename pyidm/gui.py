@@ -438,11 +438,11 @@ class MainWindow:
             [sg.T('', font='any 1')],  # spacer
 
             [sg.Checkbox('Referee url:   ', default=config.use_referer, key='use_referer', enable_events=True),
-             sg.I(default_text=config.referer_url, size=(55, 1), font='any 9', key='referer_url',
+             sg.I(default_text=config.referer_url, size=(20, 1), font='any 9', key='referer_url',
                   enable_events=True, disabled=not config.use_referer)],
 
             [sg.Checkbox('Use Cookies:', default=config.use_cookies, key='use_cookies', enable_events=True),
-             sg.I(default_text=config.cookie_file_path, size=(55, 1), font='any 9', key='cookie_file_path',
+             sg.I(default_text=config.cookie_file_path, size=(20, 1), font='any 9', key='cookie_file_path',
                   enable_events=True, disabled=not config.use_cookies), sg.FileBrowse('Browse')],
 
 
@@ -522,9 +522,9 @@ class MainWindow:
                       [sg.T('Log Level:'), sg.Combo([1, 2, 3], default_value=config.log_level, enable_events=True,
                                                     size=(3, 1), key='log_level',
                                                     tooltip='*(1=Standard, 2=Verbose, 3=Debugging)'),
-                       sg.T(f'*saved to {config.sett_folder}', font='any 8', size=(75, 1),
+                       sg.T(f'Log Path: {config.sett_folder}', font='any 8', size=(20, 1), key='log_text_path',
                             tooltip=config.current_directory),
-                       sg.Button('Clear Log')]]
+                       sg.Button('Clear', key='Clear Log', tooltip=' Clear Log ')]]
 
         layout = [[sg.TabGroup(
             [[sg.Tab('Main', main_layout), sg.Tab('Downloads', downloads_layout), sg.Tab('Settings', settings_layout),
@@ -555,7 +555,7 @@ class MainWindow:
 
         # expand elements to fit
         elements = ['url', 'name', 'folder', 'm_bar', 'pl_menu', 'file_properties', 'update_note',
-                    'stream_menu', 'log']  # elements to be expanded
+                    'stream_menu', 'log', 'cookie_file_path', 'referer_url', 'log_text_path']  # elements to be expanded
         for element in elements:
             self.window[element].expand(expand_x=True)
 
@@ -2686,11 +2686,14 @@ class MainWindow:
         # check for update batch for portable version only
         if config.FROZEN:
             info = update.get_update_batch_info()
+            print(info)
 
             if info:
                 minimum_version = info.get('minimum_version')
                 max_version = info.get('max_version')
                 hash = info.get('sha256')
+
+                print(max_version, config.APP_VERSION, minimum_version)
 
                 if version_value(max_version) >= version_value(config.APP_VERSION) >= version_value(minimum_version):
                     self.update_batch_available = True
