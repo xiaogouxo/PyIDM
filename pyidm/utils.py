@@ -883,47 +883,23 @@ def is_pkg_exist(pkg):
         return False
 
 
-def init_gtk_clipboard():
-    # fix for pyperclip use Gtk for python 3, ref: https://python-gtk-3-tutorial.readthedocs.io/en/latest/clipboard.html#
-    global gtk
-    import gi
+def alternative_to_gtk_clipboard():
+    """
+    This is an ugly fix for pyperclip to stop using gtk
+    for unknown reason Gtk clipboard cause PyIDM to freeze system task bar in Manjaro kde, if we use is_solo()
+    """
+    def executable_exists(name):
+        return subprocess.call(['which', name], stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0
 
-    try:
-        gi.require_version("Gtk", "3.0")
-    except Exception as e:
-        log('Clipboard module info: Gtk minimum version should be "3.0", will fallback to another mechanism,', e)
-        choices = [x for x in ("xsel", "xclip") if clipboard._executable_exists(x)]
-        if choices:
-            log('found a clipboard mechanisms', choices, 'selecting:', choices[0])
-            log('selecting:', choices[0])
-            clipboard.set_clipboard(choices[0])
-            return
-        else:
-            log('clipboard needs "xsel", or "xclip" installed to run properly')
-            return clipboard.init_no_clipboard()
-
-    from gi.repository import Gdk, Gtk as gtk
-
-    global cb
-    cb = gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
-
-    def copy_gtk(text):
-        try:
-            text = str(text)  # Converts non-str values to str.
-
-            cb.set_text(text, -1)  # -1 (minus one) means calculate text length automatically
-            cb.store()
-        except:
-            pass
-
-    def paste_gtk():
-        clipboardContents = cb.wait_for_text()
-        if clipboardContents is None:
-            return ''
-        else:
-            return clipboardContents
-
-    return copy_gtk, paste_gtk
+    if executable_exists("xsel"):
+        return clipboard.init_xsel_clipboard()
+    if executable_exists("xclip"):
+        return clipboard.init_xclip_clipboard()
+    if executable_exists("klipper") and executable_exists("qdbus"):
+        return clipboard.init_klipper_clipboard()
+    else:
+        log('clipboard needs "xsel", or "xclip" installed to run properly')
+        return clipboard.init_no_clipboard()
 
 
 __all__ = [
@@ -932,6 +908,6 @@ __all__ = [
     'sort_dictionary', 'popup', 'compare_versions', 'translate_server_code', 'validate_url', 'open_file', 'delete_file',
     'rename_file', 'load_json', 'save_json', 'echo_stdout', 'echo_stderr', 'log_recorder', 'natural_sort', 'is_pkg_exist',
     'process_thumbnail', 'parse_bytes', 'set_curl_options', 'execute_command', 'clipboard', 'version_value',
-    'reset_queue', 'flip_visibility', 'init_gtk_clipboard'
+    'reset_queue', 'flip_visibility', 'alternative_to_gtk_clipboard'
 
 ]

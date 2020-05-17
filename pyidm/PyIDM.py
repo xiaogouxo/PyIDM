@@ -58,7 +58,7 @@ QUERY_MSG = f'PyIDM "{config.APP_VERSION}", any one there?'
 AFFIRMATIVE_MSG = f'PyIDM "{config.APP_VERSION}", already running'
 
 # fix for pyperclip Gtk module
-clipboard.init_gtk_clipboard = init_gtk_clipboard
+clipboard.init_gtk_clipboard = alternative_to_gtk_clipboard
 
 
 def clipboard_listener():
