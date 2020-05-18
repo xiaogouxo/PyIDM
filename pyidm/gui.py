@@ -3659,7 +3659,5 @@ class SysTray:
         self.active = False
         config.terminate = True
         config.shutdown = True
-        sys.exit()
-
 
 
