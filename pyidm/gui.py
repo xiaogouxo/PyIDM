@@ -7,6 +7,7 @@
     :license: GNU LGPLv3, see LICENSE for more details.
 """
 import gc
+import sys
 import webbrowser
 from queue import Queue
 
@@ -3527,9 +3528,10 @@ class SysTray:
     """
     def __init__(self):
         self._active = False  # if systray works correctly
-        self._tray_icon = os.path.join(config.sett_folder, 'systray.ico')  # path to icon
+        self._tray_icon_path = os.path.join(config.sett_folder, 'systray.png')  # path to icon
         self.icon = None
         self._hover_text = None
+        self.Gtk = None
 
     @property
     def active(self):
@@ -3541,15 +3543,15 @@ class SysTray:
         config.systray_active = value
 
     @staticmethod
-    def show_main_window(icon, item):
+    def show_main_window(*args):
         config.main_q.put('start_main_window')
 
     @staticmethod
-    def minimize_to_systray(icon, item):
+    def minimize_to_systray(*args):
         config.main_q.put('minimize_to_systray')
 
     @staticmethod
-    def close_to_systray(icon, item):
+    def close_to_systray(*args):
         config.main_q.put('close_to_systray')
 
     @property
@@ -3562,25 +3564,73 @@ class SysTray:
             # open buffer by Pillow
             img = Image.open(buffer)
 
-            if not os.path.isfile(self._tray_icon):
-                # save file to settings folder
-                img.save(self._tray_icon, format='ICO')
-
-                # free memory
-                # buffer.close()
+            # free memory
+            # buffer.close()
 
             return img
         except Exception as e:
-            raise e
             log('systray: tray_icon', e)
+            if config.TEST_MODE:
+                raise e
+
+    @property
+    def tray_icon_path(self):
+        # save icon as a png on setting directory and return path
+        if not os.path.isfile(self._tray_icon_path):
+            try:
+                # save file to settings folder
+                self.tray_icon.save(self._tray_icon_path, format='png')
+            except:
+                pass
+
+        return self._tray_icon_path
 
     def run(self):
+        # make our own Gtk statusIcon, since pystray failed to run icon properly on Gtk 3.0 from a thread
+        if config.operating_system == 'Linux':
+            try:
+                import gi
+                gi.require_version('Gtk', '3.0')
+                from gi.repository import Gtk
+                self.Gtk = Gtk
+
+                def icon_right_click(icon, button, time):
+                    menu = Gtk.Menu()
+
+                    item1 = Gtk.MenuItem(label="Start / Show")
+                    item2 = Gtk.MenuItem(label='Minimize to Systray')
+                    item3 = Gtk.MenuItem(label='Close to Systray')
+                    item4 = Gtk.MenuItem(label='Quit')
+
+                    item1.connect('activate', self.show_main_window)
+                    item2.connect('activate', self.minimize_to_systray)
+                    item3.connect('activate', self.close_to_systray)
+                    item4.connect('activate', self.quit)
+
+                    for item in(item1, item2, item3, item4):
+                        menu.append(item)
+
+                    menu.show_all()
+                    menu.popup(None, None, None, icon, button, time)
+
+                icon = Gtk.StatusIcon()
+                icon.set_from_file(self.tray_icon_path)
+                icon.connect("popup-menu", icon_right_click)
+                icon.connect('activate', self.show_main_window)
+
+                self.active = True
+                Gtk.main()
+                return
+            except:
+                self.active = False
+
+        # let pystray decide which icon to run
         try:
             from pystray import Icon, Menu, MenuItem
             menu = Menu(MenuItem("Start / Show", self.show_main_window, default=True),
                         MenuItem("Minimize to Systray", self.minimize_to_systray),
                         MenuItem("Close to Systray", self.close_to_systray),
-                        MenuItem("Quit", self.quit),)
+                        MenuItem("Quit", self.quit))
             self.icon = Icon('PyIDM', self.tray_icon, menu=menu)
             self.active = True
             self.icon.run()
@@ -3597,11 +3647,19 @@ class SysTray:
         except:
             pass
 
-    def quit(self, icon, item):
+        try:
+            self.Gtk.main_quit()
+        except:
+            pass
+
+    def quit(self, *args):
         """callback when selecting quit from systray menu"""
         # set global terminate flag
         self.shutdown()
         self.active = False
         config.terminate = True
         config.shutdown = True
+        sys.exit()
+
+
 
