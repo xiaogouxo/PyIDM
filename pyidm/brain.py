@@ -30,6 +30,9 @@ def brain(d=None, downloader=None):
     else:
         d.status = Status.downloading
 
+    # reset segments
+    d.segments = []
+
     log('\n')
     log('=' * 106)
     log(f'start downloading file: "{d.name}", size: {size_format(d.total_size)}, to: {d.folder}')
