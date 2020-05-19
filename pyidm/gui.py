@@ -1821,11 +1821,11 @@ class MainWindow:
                     os.startfile(folder)
                 else:
                     cmd = f'explorer /select, "{file}"'
-                    run_command(cmd)
+                    run_command(cmd, ignore_output=True)
             else:
                 # linux
                 cmd = f'xdg-open "{folder}"'
-                run_command(cmd)
+                run_command(cmd, ignore_output=True)
         except Exception as e:
             log('Main window> open_file_location>', e, log_level=2)
 

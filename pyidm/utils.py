@@ -446,7 +446,7 @@ def get_seg_size(seg):
         return 0
 
 
-def run_command(cmd, verbose=True, shell=False, hide_window=False, d=None):
+def run_command(cmd, verbose=True, shell=False, hide_window=False, d=None, ignore_output=False):
     """
     run command in a subprocess
     :param cmd: string of actual command to be executed
@@ -454,6 +454,7 @@ def run_command(cmd, verbose=True, shell=False, hide_window=False, d=None):
     :param shell: True or False
     :param hide_window: True or False, hide shell window
     :param d: DownloadItem object mainly use "status" property to terminate subprocess
+    :param ignore_output: if True, run subprocess and exit in other words it will not block until finish subprocess
     :return: error (True or False), output (string of stdout/stderr output)
     """
 
@@ -483,6 +484,9 @@ def run_command(cmd, verbose=True, shell=False, hide_window=False, d=None):
         # since run() gets the output only when finished
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding='utf-8',
                                    errors='replace', shell=shell, startupinfo=startupinfo)
+
+        if ignore_output:
+            return
 
         # update reference in download item, it will be cancelled with status, see DownloadItem.status property setter
         if d:
