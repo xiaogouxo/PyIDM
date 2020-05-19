@@ -282,17 +282,6 @@ def file_manager(d, keep_segments=False):
         # all segments already merged
         if not job_list:
 
-            # handle audio streams
-            if d.type == 'audio':
-                d.status = Status.processing
-                success = convert_audio(d)
-                if not success:
-                    d.status = Status.error
-                    log('file_manager()>  convert_audio() failed, file:', d.target_file, showpopup=True)
-                    break
-                else:
-                    d.delete_tempfiles()
-
             # handle HLS streams
             if 'hls' in d.subtype_list:
                 log('handling hls videos')
@@ -327,6 +316,18 @@ def file_manager(d, keep_segments=False):
                     d.status = Status.error
                     log('failed to merge audio for file: \n', d.name, showpopup=True)
                     break
+
+            # handle audio streams
+            if d.type == 'audio':
+                log('handling audio streams')
+                d.status = Status.processing
+                success = convert_audio(d)
+                if not success:
+                    d.status = Status.error
+                    log('file_manager()>  convert_audio() failed, file:', d.target_file, showpopup=True)
+                    break
+                else:
+                    d.delete_tempfiles()
 
             else:
                 rename_file(d.temp_file, d.target_file)

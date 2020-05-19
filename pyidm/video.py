@@ -836,10 +836,10 @@ def convert_audio(d):
     outfile = d.target_file
 
     # look for compatible formats and use "copy" parameter for faster processing
-    cmd1 = f'ffmpeg -loglevel error -stats -y -i "{infile}" -acodec copy "{outfile}"'
+    cmd1 = f'"{config.ffmpeg_actual_path}" -loglevel error -stats -y -i "{infile}" -acodec copy "{outfile}"'
 
     # general command, consume time
-    cmd2 = f'ffmpeg -loglevel error -stats -y -i "{infile}" "{outfile}"'
+    cmd2 = f'"{config.ffmpeg_actual_path}" -loglevel error -stats -y -i "{infile}" "{outfile}"'
 
     # run command1
     error, _ = run_command(cmd1, verbose=True, hide_window=True, d=d)
