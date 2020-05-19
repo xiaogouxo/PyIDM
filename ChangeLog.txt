@@ -1,3 +1,9 @@
+2020.5.18:
+- Fixed pyperclip error using gtk on Linux.
+- Fixed systray icon on Linux
+- Bug fixed: segment list doesn't get updated if user changed download folder.
+- Bug fixed: error while downloading HLS Audio streams.
+
 2020.5.10:
 - Systray icon support for both Linux and windows.
 - download subtitles for all selected videos in playlist window issue #82
