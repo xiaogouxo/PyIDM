@@ -3648,6 +3648,8 @@ class SysTray:
             pass
 
         try:
+            # quit main, don't know why it raise (Gtk-CRITICAL **:gtk_main_quit: assertion 'main_loops != NULL' failed)
+            # but it has no side effect and PyIDM quit normally
             self.Gtk.main_quit()
         except:
             pass

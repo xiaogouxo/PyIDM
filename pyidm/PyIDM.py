@@ -159,10 +159,10 @@ def main():
         # sleep a little to save cpu resources
         time.sleep(sleep_time)
 
-        if systray.active:
-            # set hover text for systray
-            state = f'PyIDM is active \n{main_window.total_speed}' if not config.terminate else 'PyIDM is off'
-            systray.update(hover_text=state)
+        # if systray.active:  # not implemented
+        #     # set hover text for systray
+        #     state = f'PyIDM is active \n{main_window.total_speed}' if not config.terminate else 'PyIDM is off'
+        #     systray.update(hover_text=state)
 
         # read Main queue
         for _ in range(config.main_q.qsize()):
@@ -191,5 +191,4 @@ def main():
 
 if __name__ == '__main__':
     main()
-    sys.exit(0)
 
