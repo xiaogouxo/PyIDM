@@ -1096,7 +1096,8 @@ class MainWindow:
                 self.refresh_link_btn()
 
             elif event in ('Folder', 'Open File Location'):
-                self.open_file_location()
+                if self.selected_d:
+                    open_folder(self.selected_d.target_file)
 
             elif event in ('D.Window', 'si_out'):
                 # create or show download window
@@ -1780,29 +1781,6 @@ class MainWindow:
             Thread(target=d.delete_tempfiles, args=[True], daemon=True).start()
 
         self.d_list.clear()
-
-    def open_file_location(self):
-        if self.selected_row_num is None:
-            return
-
-        d = self.selected_d
-
-        try:
-            folder = os.path.abspath(d.folder)
-            file = d.target_file
-
-            if config.operating_system == 'Windows':
-                if not os.path.isfile(file):
-                    os.startfile(folder)
-                else:
-                    cmd = f'explorer /select, "{file}"'
-                    run_command(cmd, ignore_output=True)
-            else:
-                # linux
-                cmd = f'xdg-open "{folder}"'
-                run_command(cmd, ignore_output=True)
-        except Exception as e:
-            log('Main window> open_file_location>', e, log_level=2)
 
     def refresh_link_btn(self):
         if self.selected_row_num is None:

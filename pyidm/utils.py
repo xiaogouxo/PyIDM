@@ -446,7 +446,7 @@ def get_seg_size(seg):
         return 0
 
 
-def run_command(cmd, verbose=True, shell=False, hide_window=False, d=None, ignore_output=False):
+def run_command(cmd, verbose=True, shell=False, hide_window=False, d=None, nonblocking=False):
     """
     run command in a subprocess
     :param cmd: string of actual command to be executed
@@ -454,7 +454,7 @@ def run_command(cmd, verbose=True, shell=False, hide_window=False, d=None, ignor
     :param shell: True or False
     :param hide_window: True or False, hide shell window
     :param d: DownloadItem object mainly use "status" property to terminate subprocess
-    :param ignore_output: if True, run subprocess and exit in other words it will not block until finish subprocess
+    :param nonblocking: if True, run subprocess and exit in other words it will not block until finish subprocess
     :return: error (True or False), output (string of stdout/stderr output)
     """
 
@@ -485,7 +485,7 @@ def run_command(cmd, verbose=True, shell=False, hide_window=False, d=None, ignor
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding='utf-8',
                                    errors='replace', shell=shell, startupinfo=startupinfo)
 
-        if ignore_output:
+        if nonblocking:
             return
 
         # update reference in download item, it will be cancelled with status, see DownloadItem.status property setter
@@ -670,12 +670,49 @@ def open_file(file):
             os.startfile(file)
 
         elif config.operating_system == 'Linux':
-            run_command(f'xdg-open "{file}"', verbose=False)
+            cmd = f'xdg-open "{file}"'
+            run_command(cmd, nonblocking=True, verbose=False)
 
         elif config.operating_system == 'Darwin':
-            run_command(f'open "{file}"', verbose=False)
+            cmd = f'open "{file}"'
+            run_command(cmd, nonblocking=True, verbose=False)
     except Exception as e:
         log('open_file(): ', e, log_level=2)
+
+
+def open_folder(path):
+    """
+    open target folder in file manager and select the file if path is file
+    :param path: path to folder or file
+    :return: None
+    """
+
+    try:
+        if os.path.isdir(path):
+            file = None
+            folder = path
+        elif os.path.isfile(path):
+            file = 'path'
+            folder = os.path.dirname(file)
+        else:
+            # not exist
+            log('Specified path is not exist:', path)
+            return
+
+        if config.operating_system == 'Windows':
+            if not file:
+                # open folder and select the file
+                cmd = f'explorer /select, "{file}"'
+                run_command(cmd, nonblocking=True, verbose=False)
+            else:
+                os.startfile(folder)
+
+        else:
+            # linux
+            cmd = f'xdg-open "{folder}"'
+            run_command(cmd, nonblocking=True, verbose=False)
+    except Exception as e:
+        log('Main window> open_file_location>', e, log_level=2)
 
 
 def compare_versions(x, y):  # todo: use version_value instead
@@ -912,6 +949,6 @@ __all__ = [
     'sort_dictionary', 'popup', 'compare_versions', 'translate_server_code', 'validate_url', 'open_file', 'delete_file',
     'rename_file', 'load_json', 'save_json', 'echo_stdout', 'echo_stderr', 'log_recorder', 'natural_sort', 'is_pkg_exist',
     'process_thumbnail', 'parse_bytes', 'set_curl_options', 'execute_command', 'clipboard', 'version_value',
-    'reset_queue', 'flip_visibility', 'alternative_to_gtk_clipboard'
+    'reset_queue', 'flip_visibility', 'alternative_to_gtk_clipboard', 'open_folder'
 
 ]
