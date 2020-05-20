@@ -26,71 +26,21 @@ from .utils import log, download, run_command, delete_folder, version_value, del
 import webbrowser
 
 
-def check_for_update():
-    """download version.py from github, extract latest version number return app latest version"
-    """
-
-    # do not use, will use get_changelog() instead
-
-    source_code_url = 'https://github.com/pyIDM/pyIDM/blob/master/pyidm/version.py'
-    new_release_url = 'https://github.com/pyIDM/pyIDM/releases/download/extra/version.py'
-    url = new_release_url if config.FROZEN else source_code_url
-
-    # get BytesIO object
-    buffer = download(url)
-
-    if buffer:
-        # convert to string
-        contents = buffer.getvalue().decode()
-
-        # extract version number from contents
-        latest_version = contents.rsplit(maxsplit=1)[-1].replace("'", '')
-
-        return latest_version
-
-    else:
-        log("check_for_update() --> couldn't check for update, url is unreachable")
-        return None
-
-
-def get_changelog():
-    """download ChangeLog.txt from github, extract latest version number, return a tuple of (latest_version, contents)
-    """
-
-    # url will be chosen depend on frozen state of the application
-    source_code_url = 'https://github.com/pyIDM/pyIDM/raw/master/ChangeLog.txt'
-    new_release_url = 'https://github.com/pyIDM/pyIDM/releases/download/extra/ChangeLog.txt'
-    url = new_release_url if config.FROZEN else source_code_url
-
-    # url = new_release_url
-
-    # get BytesIO object
-    log('check for PyIDM latest version ...')
-    buffer = download(url, verbose=False)
-
-    if buffer:
-        # convert to string
-        contents = buffer.getvalue().decode()
-
-        # extract version number from contents
-        latest_version = contents.splitlines()[0].replace(':', '').strip()
-
-        return latest_version, contents
-    else:
-        log("check_for_update() --> couldn't check for update, url is unreachable")
-        return None
-
-
 def update():
+    """
+    download update patch and update current PyIDM files, this is available only for frozen portable version
+    for windows
+    """
+
     if config.FROZEN:
         try:
-            done = download_update_batch()
+            done = download_update_patch()
             if not done:
                 log('Update Failed, check log for more info', showpopup=True)
                 return False
 
-            # try to install update batch
-            done = install_update_batch()
+            # try to install update patch
+            done = install_update_patch()
             if not done:
                 log("Couldn't install updates while application running, please restart PyIDM\n\n",
                     'IMPORTANT: when you restart PyIDM it might take around 30 seconds installing updates\n',
@@ -107,68 +57,123 @@ def update():
 
 
 def open_update_link():
+    """open browser window with latest release url on github for frozen application or source code url"""
     url = config.LATEST_RELEASE_URL if config.FROZEN else config.APP_URL
     webbrowser.open_new(url)
 
 
-def get_update_batch_info() -> dict:
+def check_for_new_version():
     """
-    download updateinfo.json file to get update batch's info, parse info and return a dict
-    :return: dict of parsed info
+    Check for new PyIDM version
+    :return: changelog text or None
     """
-    # example contents of updateinfo.json
-    # {
-    #     "url": "https://github.com/pyIDM/PyIDM/releases/download/2020.5.4/2020.5.4_update_batch_1.zip",
-    #     "minimum_version": "2020.5.4",
-    #     "max_version": "2020.5.4",
-    #     "sha256": "4BE94A30CCB7B990FAFF8EDCEDB29E16D45E43412FF5006FD936A62E6B2EA8E2"
-    # }
 
-    # todo: this file should be with github source code
-    url = 'https://github.com/pyIDM/pyIDM/releases/download/extra/testupdateinfo.json'
+    # url will be chosen depend on frozen state of the application
+    source_code_url = 'https://github.com/pyIDM/pyIDM/raw/master/ChangeLog.txt'
+    new_release_url = 'https://github.com/pyIDM/pyIDM/releases/download/extra/ChangeLog.txt'
+    url = new_release_url if config.FROZEN else source_code_url
 
-    # get latest update batch url
+    # download ChangeLog.txt from github,
+    log('check for PyIDM latest version ...')
+
+    try:
+        buffer = download(url, verbose=False)    # get BytesIO object
+
+        if buffer:
+            # convert to string
+            changelog = buffer.getvalue().decode()
+
+            # extract version number from contents
+            server_version = changelog.splitlines()[0].replace(':', '').strip()
+
+            # update latest version value
+            log('Latest server version:', server_version)
+            config.APP_LATEST_VERSION = server_version
+
+            # check if this version newer than current application version
+            if version_value(server_version) > version_value(config.APP_VERSION):
+                log('Latest newer version:', server_version)
+                return changelog
+    except:
+        pass
+
+    return None
+
+
+def check_for_new_patch():
+    """
+        download updateinfo.json file to get update patch's info, parse info and return a dict
+        :return: dict of parsed info or None
+
+        example contents of updateinfo.json
+    {
+    "url": "https://github.com/pyIDM/PyIDM/releases/download/2020.5.10/update_for_older_versions.zip",
+    "minimum_version": "2020.5.4",
+    "max_version": "2020.5.9",
+    "sha256": "627FE532E34C8380A63B42AF7D3E533661F845FC4D4F84765897D036EA82C5ED",
+    "description": "updated files for versions older than 2020.5.10"
+    }
+
+    """
+
+    url = 'https://github.com/pyIDM/pyIDM/releases/download/extra/updateinfo.json'
+    info = None
+
+    # get latest update patch url
     log('check for update batches')
-    buffer = download(url, verbose=False)
-    if buffer:
-        log('decode buffer')
-        buffer = buffer.getvalue().decode()  # convert to string
-        log('read json information')
-        try:
+
+    try:
+        buffer = download(url, verbose=False)
+        if buffer:
+            log('decode buffer')
+            buffer = buffer.getvalue().decode()  # convert to string
+            log('read json information')
             info = json.loads(buffer)
-            return info
-        except:
-            log('get_update_batch_info().json, Failed to read info from downloaded file')
 
-    return {}
+            log('update patch info:', info, log_level=3)
+
+            url = info['url']
+            minimum_version = info['minimum_version']
+            max_version = info['max_version']
+            sha256_hash = info['sha256']
+            discription = info['description']
+
+            app_ver, min_ver, max_ver = version_value(config.APP_VERSION), version_value(minimum_version), version_value(max_version)
+
+            if app_ver < min_ver  or app_ver > max_ver:
+                info = None
+
+            # check if this patch already installed before, info will be stored in "update_record.info" file
+            if os.path.isfile(config.update_record_path):
+                with open(config.update_record_path) as file:
+                    if sha256_hash in file.read():
+                        log('update patch already installed before')
+                        info = None
+    except Exception as e:
+        log('check_for_new_batch()> error,', e)
+        info = None
+
+    return info
 
 
-def download_update_batch():
-    """for frozen windows app, will download only the updated files from server"""
+def download_update_patch():
+    """
+    download update patch from server
+    :return: True if succeeded
+    """
 
-    info = get_update_batch_info()
+    info = check_for_new_patch()
 
     if info:
         url = info.get('url')
-        minimum_version = info.get('minimum_version')
-        max_version = info.get('max_version')
         sha256_hash = info.get('sha256')
 
-        if version_value(config.APP_VERSION) < version_value(minimum_version):
-            log('Minimum version allowed to receive this update is:', minimum_version, '\n',
-                'Please download the full version instead')
-            return False
-        elif version_value(config.APP_VERSION) > version_value(max_version):
-            log('Max. version allowed to receive this update is:', max_version, '\n',
-                'Your version already has this batch')
-            return False
-
-        log('downloading "update files", please wait...')
+        log('downloading "update patch", please wait...')
         target_path = os.path.join(config.current_directory, 'PyIDM_update_files.zip')
         buffer = download(url, file_name=target_path)
 
         if not buffer:
-            log('downloading "update files", Failed!!!')
+            log('downloading "update patch", Failed!!!')
             return False
 
         # check download integrity / hash
@@ -179,10 +184,12 @@ def download_update_batch():
         buffer.close()
 
         if download_hash.lower() != sha256_hash.lower():
-            log('Integrity check failed, update batch has different hash, quitting...')
+            log('Integrity check failed, update patch has different hash, quitting...')
             log('download_hash, original_hash:')
             log('\n', download_hash, '\n', sha256_hash)
             return False
+        else:
+            log('Integrity check done successfully....')
 
         # unzipping downloaded file
         log('unzipping downloaded file')
@@ -192,23 +199,27 @@ def download_update_batch():
         log('delete zip file')
         delete_file(target_path, verbose=True)
 
-        # write hash to update_batches_record file "append"
-        log('write update batch hash to update_batches_record')
-        with open(config.update_batches_record, 'a') as file:
+        # write hash to "update_record.info" file with "append" flag
+        log('write hash to file: "update_batches_record"')
+        with open(config.update_record_path, 'a') as file:
             file.write('\n')
             file.write(sha256_hash)
 
         return True
 
 
-def install_update_batch():
+def install_update_patch():
+    """
+    overwrite current application files with new files from patch update
+    note: this function will fail if any file currently in use,
+    """
     try:
         log('overwrite old PyIDM files')
-        update_batch_path = os.path.join(config.current_directory, 'PyIDM_update_files')
-        copy_tree(update_batch_path, config.current_directory)
+        update_patch_path = os.path.join(config.current_directory, 'PyIDM_update_files')
+        copy_tree(update_patch_path, config.current_directory)
 
         log('delete temp files')
-        delete_folder(update_batch_path)
+        delete_folder(update_patch_path)
         return True
     except Exception as e:
         log('install_update_batch()> error', e)

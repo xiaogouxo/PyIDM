@@ -95,19 +95,12 @@ class MainWindow:
         self._selected_d = None
         self.last_table_values = []  # download items table
 
-        # update
-        self.new_version_available = False
-        self.new_version_description = None
-        self.update_batch_available = False
-        self.update_batch_description = None
-
         # thumbnail
         self.current_thumbnail = None
 
         # timers
         self.statusbar_timer = 0
         self.timer1 = 0
-        self.timer2 = 0
         self.one_time = True
         self.check_for_update_timer = time.time() - 55  # run interval is 60 seconds, use 'time.time() - 55' to make first start after 5 seconds
 
@@ -210,9 +203,6 @@ class MainWindow:
                 else:
                     sg.popup(v['msg'], title=v['title'])
 
-            elif k == 'show_update_gui':  # show update gui
-                self.show_update_gui()
-
         # read commands coming from other threads / modules and execute them.
         for _ in range(config.commands_q.qsize()):
             try:
@@ -244,8 +234,6 @@ class MainWindow:
             # app icon and app name
             [sg.Image(data=APP_ICON, enable_events=True, key='app_icon'),
              sg.Text(f'{config.APP_NAME}', font='any 20', justification='center', key='app_name', enable_events=True),
-             sg.T('New version available, click me for more info !', size=(50, 1), justification='center',
-                  key='update_note', enable_events=True, font='any 9', visible=False),
              ],
 
             # url entry
@@ -555,8 +543,8 @@ class MainWindow:
         self.window.TKroot.protocol('WM_DELETE_WINDOW', self.close_callback)
 
         # expand elements to fit
-        elements = ['url', 'name', 'folder', 'm_bar', 'pl_menu', 'file_properties', 'update_note',
-                    'stream_menu', 'log', 'cookie_file_path', 'referer_url', 'log_text_path']  # elements to be expanded
+        elements = ['url', 'name', 'folder', 'm_bar', 'pl_menu', 'file_properties', 'stream_menu', 'log',
+                    'cookie_file_path', 'referer_url', 'log_text_path']  # elements to be expanded
         for element in elements:
             self.window[element].expand(expand_x=True)
 
@@ -570,7 +558,6 @@ class MainWindow:
         self.window['si_thumbnail'].set_cursor('hand2')
         self.window['main_thumbnail'].set_cursor('hand2')
         self.window['si_out'].set_cursor('hand2')
-        self.window['update_note'].set_cursor('hand2')
 
         # log text, disable word wrap
         # use "undo='false'" disable tkinter caching to fix issue #59 "solve huge memory usage and app crash
@@ -1020,10 +1007,6 @@ class MainWindow:
                 pass
 
             # Main Tab ----------------------------------------------------------------------------------------
-            elif event == 'update_note':
-                # if clicked on update notification text
-                if self.new_version_available:
-                    self.update_app(remote=False)
 
             elif event == 'url':
                 # reset timer, and self.url_text_change() will be called from update_gui()
@@ -1435,14 +1418,6 @@ class MainWindow:
                                     config.update_frequency, 'day(s).')
                     except Exception as e:
                         log('MainWindow.run()>', e)
-
-            if time.time() - self.timer2 >= 1:
-                self.timer2 = time.time()
-                # update notification
-                if self.new_version_available:
-                    flip_visibility(self.window['update_note'])
-                else:
-                    self.window['update_note'](visible=False)
 
             # reset statusbar periodically
             if time.time() - self.statusbar_timer >= 10:
@@ -2657,95 +2632,25 @@ class MainWindow:
     # endregion
 
     # region update
-    def check_for_update(self):
-        self.set_cursor('busy')
+    def update_app(self):
+        """
+        check for new version or update patch and show update window,
+        this method is time consuming and should run from a thread
+        """
 
-        # check for update
-        current_version = config.APP_VERSION
-        info = update.get_changelog()
+        # check for new App. version
+        changelog = update.check_for_new_version()
+        if changelog:
+            self.active_windows.append(UpdateWindow(changelog))
 
-        if info:
-            latest_version, version_description = info
-
-            # compare with current application version
-            newer_version = compare_versions(current_version, latest_version)  # return None if both equal # todo: use version_value instead
-            # print(newer_version, current_version, latest_version)
-
-            if not newer_version or newer_version == current_version:
-                self.new_version_available = False
-                log("check_for_update() --> App. is up-to-date, server version=", latest_version)
-            else:  # newer_version available on server
-                self.new_version_available = True
-
-            # updaet global values
-            config.APP_LATEST_VERSION = latest_version
-            self.new_version_description = version_description
         else:
-            self.new_version_description = None
-            self.new_version_available = False
+            # check for update patch -- for frozen versions only --
+            batch_info = update.check_for_new_patch() if config.FROZEN else None
 
-        # check for update batch for portable version only
-        if config.FROZEN:
-            info = update.get_update_batch_info()
-            print(info)
-
-            if info:
-                minimum_version = info.get('minimum_version')
-                max_version = info.get('max_version')
-                hash = info.get('sha256')
-
-                print(max_version, config.APP_VERSION, minimum_version)
-
-                if version_value(max_version) >= version_value(config.APP_VERSION) >= version_value(minimum_version):
-                    self.update_batch_available = True
-                    self.update_batch_description = info.get('description', 'No description available')
-
-                    # check if this batch already installed before, info will be stored in "update_batches_record" file
-                    if os.path.isfile(config.update_batches_record):
-                        with open(config.update_batches_record) as file:
-                            if hash in file.read():
-                                log('update batch already installed before')
-                                self.update_batch_available = False
-                                self.update_batch_description = ''
-
-        self.set_cursor('default')
-
-    def update_app(self, remote=True):
-        """show changelog with latest version and ask user for update
-        :param remote: bool, check remote server for update"""
-        if remote:
-            self.check_for_update()
-
-        if self.new_version_available:
-            # config.main_window_q.put(('show_update_gui', ''))
-            execute_command('show_update_gui')
-        elif self.update_batch_available:
-            execute_command('show_update_gui', update_batch_window=True)
-        else:
-            if self.new_version_description:
-                popup(f"App. is up-to-date, Local version: {config.APP_VERSION} \n"
-                      f"Remote version:  {config.APP_LATEST_VERSION}", title='App update', )
+            if batch_info:
+                self.active_windows.append(UpdateWindow(batch_info.get('description', 'No description available')))
             else:
-                popup("couldn't check for update")
-
-    def show_update_gui(self, update_batch_window=False):
-
-        layout = [
-            [sg.T('New update available:')],
-            [sg.Multiline(self.update_batch_description if update_batch_window else self.new_version_description, size=(70, 10))],
-            # show update button for Frozen versions only i.e. "windows portable version"
-            [sg.B('Update') if config.FROZEN else sg.T(''), sg.B('website'), sg.Cancel()]
-        ]
-
-        window = sg.Window('Update Application', layout, finalize=True, keep_on_top=True)
-        event, _ = window()
-        if event == 'Update':
-            Thread(target=update.update).start()
-            self.select_tab('Log')
-        elif event == 'website':
-            update.open_update_link()
-
-        window.close()
+                log('No Update available', showpopup=True, start='')
 
     def check_for_ytdl_update(self):
         config.ytdl_LATEST_VERSION = update.check_for_ytdl_update()
@@ -3135,8 +3040,7 @@ class AboutWindow:
         event, values = self.window.read(timeout=10, timeout_key='_TIMEOUT_')
 
         if event in ('Ok', None):
-            self.active = False
-            self.window.close()
+            self.close()
 
         elif event == 'home_page':
             webbrowser.open_new('https://github.com/pyIDM/pyIDM')
@@ -3150,6 +3054,10 @@ class AboutWindow:
         elif event == 'email':
             clipboard.copy('info.pyidm@gmail.com')
             sg.PopupOK('Email "info.pyidm@gmail.com" has been copied to clipboard\n')
+
+    def close(self):
+        self.active = False
+        self.window.Close()
 
 
 class PlaylistWindow:
@@ -3520,6 +3428,57 @@ class PlaylistWindow:
         self.active = False
 
         self.window.close()
+
+
+class UpdateWindow:
+
+    def __init__(self, update_description):
+        self.active = True  # if False, object will be removed from "active windows list"
+        self.update_description = update_description
+        self.window = None
+
+    def setup(self):
+
+        # create gui
+        buttons = []
+        if config.FROZEN: # show update button for Frozen versions only i.e. "windows portable version"
+            buttons.append(sg.B('Update'))
+
+        buttons += [sg.B('website'), sg.Cancel()]
+
+        layout = [
+            [sg.T('New update available:')],
+            [sg.Multiline(self.update_description, size=(70, 10))],
+            buttons
+        ]
+
+        self.window = sg.Window('Update Application', layout, finalize=True, keep_on_top=True)
+
+    def focus(self):
+        self.window.BringToFront()
+
+    def run(self):
+
+        # using this technique we can start gui window from a thread
+        if not self.window:
+            self.setup()
+
+        # read events
+        event, values = self.window.read(timeout=10, timeout_key='_TIMEOUT_')
+
+        if event == 'Update':
+            Thread(target=update.update).start()
+            execute_command('select_tab', 'Log')
+
+        elif event == 'website':
+            update.open_update_link()
+
+        if event != '_TIMEOUT_':
+            self.close()
+
+    def close(self):
+        self.active = False
+        self.window.Close()
 
 
 class SysTray:

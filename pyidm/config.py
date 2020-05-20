@@ -15,10 +15,9 @@ import platform
 
 from .version import __version__
 
-
 # CONSTANTS
 APP_NAME = 'PyIDM'
-APP_VERSION = __version__ 
+APP_VERSION = __version__
 APP_TITLE = f'{APP_NAME} version {APP_VERSION} .. an open source download manager'
 DEFAULT_DOWNLOAD_FOLDER = os.path.join(os.path.expanduser("~"), 'Downloads')
 DEFAULT_THEME = 'DarkGrey2'
@@ -49,7 +48,7 @@ FROZEN = getattr(sys, "frozen", False)  # check if app is being compiled by cx_f
 
 # current operating system  ('Windows', 'Linux', 'Darwin')
 operating_system = platform.system()
-operating_system_info = f'{platform.platform()} - {platform.machine()}'   # i.e. Win7-64 and Vista-32
+operating_system_info = f'{platform.platform()} - {platform.machine()}'  # i.e. Win7-64 and Vista-32
 
 # application exit flag
 terminate = False  # for main window and downloads
@@ -130,13 +129,13 @@ ffmpeg_download_folder = sett_folder
 active_downloads = set()  # indexes for active downloading items
 d_list = []
 
-
 # update
 update_frequency = 7  # 'every day'=1, every week=7, every month=30 and so on
 last_update_check = 0  # day number in the year range from 1 to 366
 update_frequency_map = {'Everyday': 1, 'Every Week': 7, 'Every Month': 30, 'Never': -1}
-update_batches_record = os.path.join(current_directory, 'update_batches_record.info')
 
+# store hashes for installed update patches in update_record.info file at current folder
+update_record_path = os.path.join(current_directory, 'update_record.info')
 
 # queues
 main_q = Queue()  # used by pyIDM.py
@@ -150,8 +149,9 @@ jobs_q = Queue()  # # required for failed worker jobs
 settings_keys = ['current_theme', 'monitor_clipboard', 'show_download_window', 'auto_close_download_window',
                  'segment_size', 'show_thumbnail', 'speed_limit', 'max_concurrent_downloads', 'max_connections',
                  'update_frequency', 'last_update_check', 'proxy', 'proxy_type', 'raw_proxy', 'enable_proxy',
-                 'log_level', 'download_folder', 'manually_select_dash_audio',
-                 'use_referer', 'referer_url', 'close_action', 'process_playlist', 'keep_temp']
+                 'log_level', 'download_folder', 'manually_select_dash_audio', 'use_referer', 'referer_url',
+                 'close_action', 'process_playlist', 'keep_temp']
+
 
 # -------------------------------------------------------------------------------------
 
@@ -163,5 +163,5 @@ class Status:
     cancelled = 'cancelled'
     completed = 'completed'
     pending = 'pending'
-    processing = 'processing'  # for any ffmpeg operation
+    processing = 'processing'  # for any ffmpeg operations
     error = 'error'
