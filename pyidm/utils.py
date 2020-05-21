@@ -692,12 +692,11 @@ def open_folder(path):
             file = None
             folder = path
         elif os.path.isfile(path):
-            file = 'path'
-            folder = os.path.dirname(file)
+            file = path
+            folder = os.path.dirname(path)
         else:
-            # not exist
-            log('Specified path is not exist:', path)
-            return
+            # try parent folder
+            folder = os.path.dirname(path)
 
         if config.operating_system == 'Windows':
             if not file:
@@ -712,7 +711,7 @@ def open_folder(path):
             cmd = f'xdg-open "{folder}"'
             run_command(cmd, nonblocking=True, verbose=False)
     except Exception as e:
-        log('Main window> open_file_location>', e, log_level=2)
+        log('Main open_folder()> ', e, log_level=2)
 
 
 def compare_versions(x, y):  # todo: use version_value instead
@@ -943,12 +942,34 @@ def alternative_to_gtk_clipboard():
         return clipboard.init_no_clipboard()
 
 
+def auto_rename(file_name, parent_folder):
+    """
+    rename file to avoid clash with existing file name
+    :param file_name: file name without path
+    :param parent_folder: path to parent folder, used to verify name doesn't exist
+    :return: new name without path
+    """
+
+    name, ext = os.path.splitext(file_name)
+
+    file_list = os.listdir(parent_folder)
+
+    new_name = file_name
+
+    for i in range(2, 1000000):
+        new_name = f'{name}_{i}{ext}'
+        if new_name not in file_list:
+            break
+
+    return new_name
+
+
 __all__ = [
     'notify', 'handle_exceptions', 'get_headers', 'download', 'size_format', 'time_format', 'log', 'validate_file_name',
     'size_splitter', 'delete_folder', 'get_seg_size', 'run_command', 'print_object', 'update_object', 'truncate',
     'sort_dictionary', 'popup', 'compare_versions', 'translate_server_code', 'validate_url', 'open_file', 'delete_file',
     'rename_file', 'load_json', 'save_json', 'echo_stdout', 'echo_stderr', 'log_recorder', 'natural_sort', 'is_pkg_exist',
     'process_thumbnail', 'parse_bytes', 'set_curl_options', 'execute_command', 'clipboard', 'version_value',
-    'reset_queue', 'flip_visibility', 'alternative_to_gtk_clipboard', 'open_folder'
+    'reset_queue', 'flip_visibility', 'alternative_to_gtk_clipboard', 'open_folder', 'auto_rename'
 
 ]

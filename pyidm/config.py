@@ -67,6 +67,7 @@ show_thumbnail = True  # auto preview video thumbnail at main tab
 process_playlist = False  # fetch videos info only if selected, since big playlist consume time/resources.
 big_playlist_length = 50  # minimum number of videos in big playlist, it will ignore "process_playlist"
 manually_select_dash_audio = False  # if True, will prompt user to select audio format for dash video
+auto_rename = False  # auto rename file if there is an existing file with same name at download folder
 
 # connection / network
 speed_limit = 0  # in bytes, zero == no limit
@@ -150,7 +151,7 @@ settings_keys = ['current_theme', 'monitor_clipboard', 'show_download_window', '
                  'segment_size', 'show_thumbnail', 'speed_limit', 'max_concurrent_downloads', 'max_connections',
                  'update_frequency', 'last_update_check', 'proxy', 'proxy_type', 'raw_proxy', 'enable_proxy',
                  'log_level', 'download_folder', 'manually_select_dash_audio', 'use_referer', 'referer_url',
-                 'close_action', 'process_playlist', 'keep_temp']
+                 'close_action', 'process_playlist', 'keep_temp', 'auto_rename']
 
 
 # -------------------------------------------------------------------------------------

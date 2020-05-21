@@ -292,7 +292,7 @@ class MainWindow:
         resume_btn = sg.Button('', key='Resume', tooltip=' Resume ', image_data=resume_icon, **transparent)
         stop_btn = sg.Button('', key='Cancel', tooltip=' Stop (Esc) ', image_data=stop_icon, **transparent)
         refresh_btn = sg.Button('', key='Refresh', tooltip=' Refresh link ', image_data=refresh_icon, **transparent)
-        folder_btn = sg.Button('', key='Folder', tooltip=' open file location ', image_data=folder_icon, **transparent)
+        folder_btn = sg.Button('', key='Folder', tooltip=' open download folder ', image_data=folder_icon, **transparent)
         sched_btn = sg.B('', key='schedule_item', tooltip=' Schedule current item ', image_data=sched_icon, **transparent)
         del_btn = sg.Button('', key='delete_btn', tooltip=' Delete item from list (Del) ', image_data=delete_icon, **transparent)
         # sg.Button('', key='D.Window', tooltip=' Show download window ', image_data=dwindow_icon, **transparent)
@@ -384,7 +384,10 @@ class MainWindow:
                          enable_events=True, key='process_playlist')],
 
             [sg.Checkbox('Manually select audio format for dash videos', default=config.manually_select_dash_audio,
-                         enable_events=True, key='manually_select_dash_audio')]
+                         enable_events=True, key='manually_select_dash_audio')],
+
+            [sg.Checkbox('Auto rename file if same name exists in download folder', default=config.auto_rename,
+                         enable_events=True, key='auto_rename')]
         ]
 
         network = [
@@ -1182,6 +1185,9 @@ class MainWindow:
             elif event == 'manually_select_dash_audio':
                 config.manually_select_dash_audio = values['manually_select_dash_audio']
 
+            elif event == 'auto_rename':
+                config.auto_rename = values['auto_rename']
+
             elif event == 'segment_size':
                 user_input = values['segment_size']
 
@@ -1493,15 +1499,20 @@ class MainWindow:
 
         # check if file with the same name exist in destination
         if os.path.isfile(d.target_file):
-            #  show dialogue
-            msg = 'File with the same name already exist in ' + d.folder + '\n Do you want to overwrite file?'
-            response = sg.PopupYesNo(msg)
-
-            if response != 'Yes':
-                log('Download cancelled by user')
-                return 'cancelled'
+            # auto rename option
+            if config.auto_rename:
+                d.name = auto_rename(d.name, d.folder)
+                log('File with the same name exist in download folder, generate new name:', d.name)
             else:
-                delete_file(d.target_file)
+                #  show dialogue
+                msg = 'File with the same name already exist in ' + d.folder + '\n Do you want to overwrite file?'
+                response = sg.PopupYesNo(msg)
+
+                if response != 'Yes':
+                    log('Download cancelled by user')
+                    return 'cancelled'
+                else:
+                    delete_file(d.target_file)
 
         # ------------------------------------------------------------------
         # search current list for previous item with same name, folder
