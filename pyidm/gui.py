@@ -637,6 +637,9 @@ class MainWindow:
             self.pl_menu = ['Playlist']
             self.stream_menu = ['Video quality']
 
+        # force update table
+        self.update_table(force_update=True)
+
     def table_right_click(self, event):
         try:
             # select row under mouse
@@ -731,11 +734,11 @@ class MainWindow:
         if selections:
             self.select_row(selections[0])
 
-    def update_table(self):
+    def update_table(self, force_update=False):
         table_values = [[self.format_cell_data(key, getattr(d, key, '')) for key in self.d_headers] for d in
                         self.d_list]
 
-        if self.last_table_values != table_values:
+        if self.last_table_values != table_values or force_update:
             # print('updated table')
             self.last_table_values = table_values
             self.window['table'](values=table_values[:])
