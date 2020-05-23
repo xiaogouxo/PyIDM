@@ -59,6 +59,7 @@ shutdown = False  # complete shutdown flag
 # General
 current_theme = DEFAULT_THEME
 all_themes = []
+dynamic_theme_change = True
 monitor_clipboard = True
 show_download_window = True
 auto_close_download_window = True
@@ -151,7 +152,7 @@ settings_keys = ['current_theme', 'monitor_clipboard', 'show_download_window', '
                  'segment_size', 'show_thumbnail', 'speed_limit', 'max_concurrent_downloads', 'max_connections',
                  'update_frequency', 'last_update_check', 'proxy', 'proxy_type', 'raw_proxy', 'enable_proxy',
                  'log_level', 'download_folder', 'manually_select_dash_audio', 'use_referer', 'referer_url',
-                 'close_action', 'process_playlist', 'keep_temp', 'auto_rename']
+                 'close_action', 'process_playlist', 'keep_temp', 'auto_rename', 'dynamic_theme_change']
 
 
 # -------------------------------------------------------------------------------------

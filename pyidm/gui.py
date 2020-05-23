@@ -142,7 +142,7 @@ class MainWindow:
         self.d_list = config.d_list  # list of DownloadItem() objects
 
         # set global theme
-        self.change_theme()
+        self.select_theme()
 
         # override PySimpleGUI standard buttons' background with artwork using a decorator function
         def button_decorator(init_func):
@@ -362,7 +362,11 @@ class MainWindow:
             [sg.Text('Select Theme:  '),
              sg.Combo(values=config.all_themes, default_value=config.current_theme, size=(15, 1),
                       enable_events=True, key='themes'),
-             sg.Text(f' Total: {len(config.all_themes)} Themes')],
+             sg.Text(f' Total: {len(config.all_themes)} Themes'),
+             sg.Text(' '*5),
+             sg.Checkbox('Instant Theme change!', default=config.dynamic_theme_change, key='dynamic_theme_change',
+                         enable_events=True, tooltip=' Experimental: Change theme instantly without restart ')
+             ],
 
             [sg.Checkbox('Monitor copied urls in clipboard', default=config.monitor_clipboard,
                          key='monitor', enable_events=True)],
@@ -879,9 +883,158 @@ class MainWindow:
         except:
             pass
 
-    def change_theme(self):
+    def change_theme(self, theme_name):
+        """
+        change theme on the fly (dynamically) without a need to restart main window, unfortunately PySimpleGui doesn't
+        offer this functionality yet. https://github.com/PySimpleGUI/PySimpleGUI/issues/2437
+        :param theme_name: string represent theme name same parameter which passed to PySimpleGUI ChangeLookAndFeel()
+        """
+
+        # set global theme for new windows
+        self.select_theme(theme_name)
+
+        # Modify theme for current window ................................................................
+        # get theme dict
+        theme = sg.LOOK_AND_FEEL_TABLE[theme_name]
+
+        # handle a non friendly color values
+        if theme['BACKGROUND'] == '1234567890':  # PySimpleGUI flag for default themes
+            log('can not set this theme dynamically,', theme_name)
+            return
+
+        # Set main window background
+        self.window.TKroot.config(bg=theme['BACKGROUND'])
+
+        # set theme for individual widgets
+        def set_widget_theme(widgets_dict):
+            """
+            set theme for individual widgets
+            :param widgets_dict: dictionary with name: widget as an output of tkinter_widget.children
+            :return: None
+            """
+
+            for widget_name, widget in widgets_dict.items():
+                # use widget.winfo_class() which is better than isinstance() in this case because we need the direct
+                # class type/ name, with "isinstance" we can't differentiate between tk.Entry and tk.ComboBox because combobox
+                # is subclassed from "Entry"
+                # widget.winfo_class() examples of a return name:
+                # {'Treeview', 'Scrollbar', 'Checkbutton', 'Text', 'Menu', 'Labelframe', 'Label', 'Button', 'Canvas',
+                # 'TCombobox', 'Radiobutton', 'Frame', 'TProgressbar', 'Entry', 'TNotebook'}
+                # print(widget_name, ':', type(widget))
+
+                try:
+                    if widget.winfo_class() == 'Labelframe':
+                        widget.config(fg=theme['TEXT'], bg=theme['BACKGROUND'])
+
+                    elif widget.winfo_class() == 'Frame':
+                        widget.config(bg=theme['BACKGROUND'])
+
+                    elif widget.winfo_class() == 'Label':
+                        widget.config(fg=theme['TEXT'], bg=theme['BACKGROUND'])
+
+                    elif widget.winfo_class() == 'Checkbutton':
+                        fg = theme['TEXT']
+                        bg = theme['BACKGROUND']
+
+                        widget.config(fg=fg, bg=bg, activebackground=bg, selectcolor=bg)
+
+                    elif widget.winfo_class() == 'Entry' or widget.winfo_class() == 'Text':  # note: Text == tk.scrolledtext.ScrolledText:
+                        widget.config(fg=theme['TEXT_INPUT'], bg=theme['INPUT'])
+
+                    elif widget.winfo_class() == 'TProgressbar':
+                        s = sg.ttk.Style()
+                        BarColor = theme['PROGRESS']
+                        s.configure("my.Horizontal.TProgressbar", background=BarColor[0], troughcolor=BarColor[1],
+                                    borderwidth=0, thickness=9)  # troughrelief=relief
+                        widget.config(style="my.Horizontal.TProgressbar")
+
+                    elif widget.winfo_class() == 'TCombobox':
+                        s = sg.ttk.Style()
+                        style_name = 'combo.TCombobox'
+                        fg = theme['TEXT_INPUT']
+                        bg = theme['INPUT']
+
+                        s.configure(style_name, foreground=fg, selectforeground=fg, selectbackground=bg, fieldbackground=bg)
+                        widget.config(style=style_name)
+
+                    elif widget.winfo_class() == 'Radiobutton':
+                        fg = theme['TEXT']
+                        bg = theme['BACKGROUND']
+                        widget.config(fg=fg, selectcolor=bg, bg=bg, activebackground=fg)
+
+                    elif widget.winfo_class() == 'TNotebook':
+                        # notebook colors
+                        fg = theme['TEXT']
+                        bg = theme['BACKGROUND']
+
+                        # tabs colors
+                        tab_fg = theme['TEXT_INPUT']
+                        tab_bg = theme['INPUT']
+                        selected_tab_fg = theme['TEXT']
+                        selected_tab_bg = theme['BACKGROUND']
+
+                        custom_style = widget.tab(0, "text").strip() + '.TNotebook'
+                        tabposition = 'nw' if widget.tab(0, "text").strip() == 'Main' else 'wn'
+
+                        s = sg.ttk.Style()
+                        s.configure(custom_style, foreground=fg, background=bg, tabposition=tabposition, font=default_font)
+                        s.configure(custom_style + '.Tab', background=tab_bg, foreground=tab_fg, font=default_font)
+                        s.map(custom_style + '.Tab', foreground=[("selected", selected_tab_fg)], background=[("selected", selected_tab_bg)])
+                        widget.config(style=custom_style)
+
+                    elif widget.winfo_class() == 'Treeview':  # our table in Downloads Tab
+                        fg = theme['TEXT']
+                        bg = theme['BACKGROUND']
+
+                        heading_fg = theme['TEXT_INPUT']
+                        heading_bg = theme['INPUT']
+
+                        custom_style = 'my.Treeview'
+
+                        s = sg.ttk.Style()
+                        s.configure(custom_style, foreground=fg, background=bg, fieldbackground=bg, font='any 9', rowheight=22)
+                        s.configure(custom_style +'.Heading', foreground=heading_fg, background=heading_bg)
+                        widget.config(style=custom_style)
+
+                        # required for future added rows to the table
+                        table = self.window['table']
+                        table.BackgroundColor = bg
+                        table.TextColor = fg
+
+                        # rows
+                        for row in range(len(self.d_list)):
+                            try:
+                                widget.tag_configure(row, foreground=fg, background=bg)
+                            except:
+                                pass
+
+                    elif widget.winfo_class() in ('Button', 'TButton'):
+                        # make our button transparent
+                        widget.config(bg=theme['BACKGROUND'])
+
+                    else:
+                        # anything else
+                        widget.config(bg=theme['BACKGROUND'])
+
+                except Exception as e:
+                    log(widget.winfo_class(), ':', repr(widget), e, log_level=3)
+
+                # recursive call to handle children widgets
+                if hasattr(widget, 'children'):
+                    children = widget.children  # a dictionary of names vs widgets
+                    set_widget_theme(children)
+
+        # change theme for all children in main window
+        set_widget_theme(self.window.TKroot.children)
+
+        # special requirements
+        # 2 Input / Entry in main tab should have lable theme
+        self.window['name'].Widget.config(fg=theme['TEXT'], bg=theme['BACKGROUND'])
+        self.window['folder'].Widget.config(fg=theme['TEXT'], bg=theme['BACKGROUND'])
+
+    def select_theme(self, theme_name=None):
         # theme
-        sg.ChangeLookAndFeel(config.current_theme)
+        sg.ChangeLookAndFeel(theme_name or config.current_theme)
 
         # transparent color for button which mimic current background, will be use as a parameter, ex. **transparent
         global transparent
@@ -1158,15 +1311,22 @@ class MainWindow:
 
             elif event == 'themes':
                 config.current_theme = values['themes']
-                self.change_theme()
 
-                # close all active windows
-                for win in self.active_windows:
-                    win.window.Close()
-                self.active_windows.clear()
+                if config.dynamic_theme_change:
+                    self.change_theme(config.current_theme)
+                else:
+                    self.select_theme()
 
-                self.restart_window()
-                self.select_tab('Settings')
+                    # close all active windows
+                    for win in self.active_windows:
+                        win.window.Close()
+                    self.active_windows.clear()
+
+                    self.restart_window()
+                    self.select_tab('Settings')
+
+            elif event == 'dynamic_theme_change':
+                config.dynamic_theme_change = values['dynamic_theme_change']
 
             elif event == 'show_thumbnail':
                 config.show_thumbnail = values['show_thumbnail']
