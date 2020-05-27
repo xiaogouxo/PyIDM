@@ -1091,7 +1091,8 @@ class MainWindow:
 
                 if d.type == 'video':
                     text += f'Protocol: {d.protocol} \n' \
-                            f'Selected quality: {d.selected_quality}\n\n' \
+                            f'Video quality: {d.selected_quality}\n' \
+                            f'Audio quality: {d.audio_quality}\n\n' \
                             f'Webpage url: {d.url}\n\n' \
                             f'Playlist title: {d.playlist_title}\n' \
                             f'Playlist url: {d.playlist_url}\n\n' \
@@ -1828,7 +1829,7 @@ class MainWindow:
         # dash audio
         if 'dash' in d.subtype_list and config.manually_select_dash_audio:
             # manually select dash audio
-            self.select_dash_audio()
+            self.select_dash_audio(d)
 
         r = self.start_download(d, downloader=downloader)
 
@@ -2522,13 +2523,13 @@ class MainWindow:
         else:
             return True
 
-    def select_dash_audio(self):
+    def select_dash_audio(self, d):
         """prompt user to select dash audio manually"""
-        if 'dash' not in self.d.subtype_list:
+        if 'dash' not in d.subtype_list:
             log('select_dash_audio()> this function is available only for a dash video, ....')
             return
 
-        audio_streams = [stream for stream in self.d.all_streams if stream.mediatype == 'audio']
+        audio_streams = [stream for stream in d.all_streams if stream.mediatype == 'audio']
         if not audio_streams:
             log('select_dash_audio()> there is no audio streams available, ....')
             return
@@ -2536,7 +2537,7 @@ class MainWindow:
         streams_menu = [stream.name for stream in audio_streams]
         layout = [
             [sg.T('Select audio stream to be merged with dash video:')],
-            [sg.Combo(streams_menu, default_value=self.d.audio_stream.name, key='stream')],
+            [sg.Combo(streams_menu, default_value=d.audio_stream.name, key='stream')],
             [sg.T('please note:\n'
                   'Selecting different audio format than video format, may takes longer time while merging')],
             [sg.T('')],
@@ -2553,7 +2554,7 @@ class MainWindow:
             selected_stream = audio_streams[selected_stream_index]
 
             # set audio stream
-            self.d.update_param(audio_stream=selected_stream)
+            d.select_audio(audio_stream=selected_stream)
             # print(self.d.audio_stream.name)
         window.close()
 

@@ -446,7 +446,7 @@ def get_seg_size(seg):
         return 0
 
 
-def run_command(cmd, verbose=True, shell=False, hide_window=False, d=None, nonblocking=False):
+def run_command(cmd, verbose=True, shell=False, hide_window=True, d=None, nonblocking=False):
     """
     run command in a subprocess
     :param cmd: string of actual command to be executed
@@ -686,6 +686,7 @@ def open_folder(path):
     :param path: path to folder or file
     :return: None
     """
+    print(path)
 
     try:
         if os.path.isdir(path):
@@ -696,10 +697,12 @@ def open_folder(path):
             folder = os.path.dirname(path)
         else:
             # try parent folder
+            file = None
             folder = os.path.dirname(path)
+            print(folder)
 
         if config.operating_system == 'Windows':
-            if not file:
+            if file:
                 # open folder and select the file
                 cmd = f'explorer /select, "{file}"'
                 run_command(cmd, nonblocking=True, verbose=False)
@@ -711,7 +714,9 @@ def open_folder(path):
             cmd = f'xdg-open "{folder}"'
             run_command(cmd, nonblocking=True, verbose=False)
     except Exception as e:
-        log('Main open_folder()> ', e, log_level=2)
+        log('utils> open_folder()> ', e, log_level=2)
+        if config.TEST_MODE:
+            raise e
 
 
 def compare_versions(x, y):  # todo: use version_value instead

@@ -24,7 +24,7 @@ from . import config
 class Segment:
     def __init__(self, name=None, num=None, range=None, size=None, url=None, tempfile=None, seg_type='', merge=True):
         self.name = name  # full path file name
-        self.basename = os.path.basename(self.name)
+        # self.basename = os.path.basename(self.name)
         self.num = num
         self.size = size
         self.range = range
@@ -35,6 +35,14 @@ class Segment:
         self.url = url
         self.seg_type = seg_type
         self.merge = merge
+        self.key = None
+
+    @property
+    def basename(self):
+        if self.name:
+            return os.path.basename(self.name)
+        else:
+            return 'undefined'
 
     def get_size(self):
         self.headers = get_headers(self.url)
@@ -97,6 +105,7 @@ class DownloadItem:
         self.audio_url = None
         self.audio_size = 0
         self.is_audio = False
+        self.audio_quality = None
 
         # postprocessing callback is a string represent any function name need to be called after done downloading
         # this function must be available or imported in brain.py namespace
@@ -173,7 +182,7 @@ class DownloadItem:
                                  '_remaining_parts', 'audio_url', 'audio_size', 'type', 'subtype_list', 'fragments',
                                  'fragment_base_url', 'audio_fragments', 'audio_fragment_base_url',
                                  '_total_size', 'protocol', 'manifest_url', 'selected_subtitles',
-                                 'abr', 'tbr', 'format_id', 'audio_format_id', 'resolution']
+                                 'abr', 'tbr', 'format_id', 'audio_format_id', 'resolution', 'audio_quality']
 
         # property to indicate that there is a time consuming operation is running on download item now
         self.busy = False
@@ -625,6 +634,15 @@ class DownloadItem:
 
         # load progress info, verify actual segments' size, and update self.segments
         self.load_progress_info()
+
+        # delete any previous encryption keys if segment is not completed to get a fresh key from server
+        uncompleted = [seg for seg in self.segments if not seg.downloaded]
+        for seg in uncompleted:
+            if seg.key:
+                seg.key.downloaded = False
+                seg.key.completed = False
+                delete_file(seg.key.name)
+
 
 
 

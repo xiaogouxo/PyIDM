@@ -79,27 +79,26 @@ class Video(DownloadItem):
 
     def __init__(self, url, vid_info=None):
         super().__init__(folder=config.download_folder)
-        self.url = url
         self.resumable = True
         self.vid_info = vid_info  # a youtube-dl dictionary contains video information
 
         # let youtube-dl fetch video info
         if self.vid_info is None:
             with ytdl.YoutubeDL(get_ytdl_options()) as ydl:
-                self.vid_info = ydl.extract_info(self.url, download=False, process=True)
+                self.vid_info = ydl.extract_info(url, download=False, process=True)
 
         self.webpage_url = self.vid_info.get('webpage_url', None) or url
 
-        # update url again if webpage url is available
-        self.url = self.webpage_url or self.url
+        # set url
+        self.url = self.webpage_url
 
         self.title = validate_file_name(self.vid_info.get('title', f'video{int(time.time())}'))
         self.name = self.title
 
         # streams
         self.all_streams = []
-        self.stream_menu = []
-        self.stream_menu_map = []
+        self.stream_menu = []  # streams names
+        self.stream_menu_map = []  # actual stream objects in same order like streams names in stream_menu
         self.names_map = {'mp4_videos': [], 'other_videos': [], 'audio_streams': [], 'extra_streams': []}
 
         self._selected_stream = None
@@ -218,7 +217,7 @@ class Video(DownloadItem):
             if index:
                 stream = self.stream_menu_map[index]
 
-            elif name:
+            elif name:  # select first match
                 stream = [stream for stream in self.all_streams if name == stream.name][0]
 
             elif raw_name:
@@ -254,7 +253,7 @@ class Video(DownloadItem):
         if self.thumbnail_url and not self.thumbnail:
             self.thumbnail = process_thumbnail(self.thumbnail_url)
 
-    def update_param(self, audio_stream=None):
+    def update_param(self):
         """Mainly used when select a stream for current video object"""
         # reset segments first
         self.segments.clear()
@@ -275,7 +274,7 @@ class Video(DownloadItem):
         self.tbr = stream.tbr
 
         # set type ---------------------------------------------------------------------------------------
-        self.type = stream.mediatype if stream.mediatype == 'audio' else 'video'
+        self.type = 'audio' if stream.mediatype == 'audio' else 'video'
 
         # set subtype
         self.subtype_list.clear()
@@ -295,6 +294,11 @@ class Video(DownloadItem):
         if 'ism' in self.protocol:
             self.subtype_list.append('ism')
 
+        self.select_audio()
+
+    def select_audio(self, audio_stream=None):
+        stream = self.selected_stream
+
         # select an audio to embed if our stream is dash video
         audio_streams = sorted([stream for stream in self.all_streams if stream.mediatype == 'audio'],
                                key=lambda stream: stream.quality, reverse=True)
@@ -302,8 +306,9 @@ class Video(DownloadItem):
         if stream.mediatype == 'dash' and audio_streams:
             # auto select audio stream if no parameter given
             if not audio_stream:
+                # todo: select best audio
                 matching_stream = [audio for audio in audio_streams if audio.extension == stream.extension
-                            or (audio.extension == 'm4a' and stream.extension == 'mp4')]
+                                   or (audio.extension == 'm4a' and stream.extension == 'mp4')]
                 # if failed to find a matching audio, choose any one
                 if matching_stream:
                     audio_stream = matching_stream[0]
@@ -311,11 +316,14 @@ class Video(DownloadItem):
                     audio_stream = audio_streams[0]
 
             self.audio_stream = audio_stream
+            self.audio_quality = self.audio_stream.name
             self.audio_url = audio_stream.url
             self.audio_size = audio_stream.size
             self.audio_fragment_base_url = audio_stream.fragment_base_url
             self.audio_fragments = audio_stream.fragments
             self.audio_format_id = audio_stream.format_id
+
+            print('downloaditem.select_audio:', self.audio_quality)
         else:
             self.audio_url = None
             self.audio_fragment_base_url = None
@@ -323,6 +331,7 @@ class Video(DownloadItem):
             self.audio_format_id = None
 
     def refresh(self):
+        # todo, use vid_info as property instead of this
         """will be used in case we updated vid_info dictionary from youtube-dl"""
         # reset properties and rebuild streams
         self.setup()
@@ -702,16 +711,16 @@ def pre_process_hls(d):
     # ---------------------------------------------------------------------------------------------------------
 
     # process remote m3u8 files -------------------------------------------------------------------------------
-    def process_m3u8(file, type_='video'):
+    def process_m3u8(file, stream_type='video'):
         """
         process m3u8 file, extract urls, build local m3u8 file, and build segments for download item
         :param file: m3u8 as a file object
-        :param type_: 'video' or 'audio'
+        :param stream_type: 'video' or 'audio'
         :return: None
         """
 
-        base_url = d.eff_url if type_=='video' else d.audio_url
-        name_prefix = 'v' if type_ == 'video' else 'a'
+        base_url = d.eff_url if stream_type == 'video' else d.audio_url
+        name_prefix = 'v' if stream_type == 'video' else 'a'
 
         url_list = []
         lines_with_local_paths = []
@@ -769,26 +778,55 @@ def pre_process_hls(d):
         d.segments += segments
 
         # write m3u8 file with absolute paths for debugging
-        name = 'remote_video2.m3u8' if type_ == 'video' else 'remote_audio2.m3u8'
+        name = 'remote_video2.m3u8' if stream_type == 'video' else 'remote_audio2.m3u8'
         file_path = os.path.join(d.temp_folder, name)
         with open(os.path.join(d.temp_folder, file_path), 'w') as f:
             f.write('\n'.join(lines_with_abs_urls))
 
         # write local m3u8 file
-        name = 'local_video.m3u8' if type_ == 'video' else 'local_audio.m3u8'
+        name = 'local_video.m3u8' if stream_type == 'video' else 'local_audio.m3u8'
         file_path = os.path.join(d.temp_folder, name)
         with open(os.path.join(d.temp_folder, file_path), 'w') as f:
             f.write('\n'.join(lines_with_local_paths))
+
+    def process_m3u8_test(m3u8_doc, stream_type='video'):
+        """
+        process m3u8 file, extract urls, build local m3u8 file, and build segments for download item
+        :param m3u8_doc: m3u8 as a text
+        :param stream_type: 'video' or 'audio'
+        :return: None
+        """
+
+        url = d.eff_url if stream_type == 'video' else d.audio_url
+
+        media_playlist = MediaPlaylist(d, url, m3u8_doc, stream_type)
+
+        segments = media_playlist.create_segment_list()
+        d.segments += segments
+
+        # write m3u8 file with absolute paths for debugging
+        name = 'remote_video2.m3u8' if stream_type == 'video' else 'remote_audio2.m3u8'
+        file_path = os.path.join(d.temp_folder, name)
+        with open(os.path.join(d.temp_folder, file_path), 'w') as f:
+            f.write(media_playlist.create_remote_m3u8_doc())
+
+        # write local m3u8 file
+        name = 'local_video.m3u8' if stream_type == 'video' else 'local_audio.m3u8'
+        file_path = os.path.join(d.temp_folder, name)
+        with open(os.path.join(d.temp_folder, file_path), 'w') as f:
+            f.write(media_playlist.create_local_m3u8_doc())
 
     # reset segments first
     d.segments = []
 
     # send video m3u8 file for processing
-    process_m3u8(video_m3u8, type_='video')
+    # process_m3u8(video_m3u8, stream_type='video')
+    process_m3u8_test(video_m3u8, stream_type='video')
 
     # send audio m3u8 file for processing
     if 'dash' in d.subtype_list:
-        process_m3u8(audio_m3u8, type_='audio')
+        # process_m3u8(audio_m3u8, stream_type='audio')
+        process_m3u8_test(audio_m3u8, stream_type='audio')
 
     log('pre_process_hls()> done processing', d.name)
 
@@ -997,6 +1035,192 @@ def download_subtitles(subs, d, ext='srt'):
 
         if selected_sub:
             download_sub(lang, selected_sub)
+
+
+class Key(Segment):
+    def __init__(self):
+        super().__init__(self)
+        self.name = None
+        self.url = None  # URI
+        self.method = None  # encryption method, METHOD: NONE, AES-128, and SAMPLE-AES ,  NONE = no encryption
+        self.iv = None
+        self.raw_line = None
+
+    def __repr__(self):
+        return self.create_line()
+
+    def create_line(self):
+        info = parse_m3u8_line(self.raw_line)
+        return self.raw_line.replace(info.get('URI', '__NONE__'), self.url)
+
+
+class MediaPlaylist:
+    def __init__(self, d, url, m3u8_doc, stream_type):
+        """
+
+        :param d: DownloadItem()
+        :param url: m3u8 url
+        :param m3u8_doc: string representation of m3u8_doc
+        :param stream_type: video or audio
+        """
+        self.d = d
+        self.url = url  # playlist url
+        self.m3u8_doc = m3u8_doc
+        self.stream_type = stream_type
+
+        self.playlist_version = None
+        self.playlist_type = None
+        self.media_sequence = None
+        self.seg_duration = 0
+        self.max_seg_duration = None  # #EXT-X-TARGETDURATION
+        self.total_duration = 0
+        self.encrypted = False
+        self.encryption_type = None
+        self.current_key = None
+        self.segments = []
+        self.parse_m3u8_doc()
+
+    def parse_m3u8_doc(self):
+        lines = self.m3u8_doc.splitlines()
+        lines = [line.strip() for line in lines if line.strip()]
+
+        for i, line in enumerate(lines):
+
+            if line.startswith('#EXT-X-VERSION'):
+                self.playlist_version = line.split(':')[1]
+            elif line.startswith('#EXT-X-PLAYLIST-TYPE'):
+                self.playlist_type = line.split(':')[1]
+            elif line.startswith('#EXT-X-MEDIA-SEQUENCE'):
+                self.media_sequence = line.split(':')[1]
+            elif line.startswith('#EXT-X-TARGETDURATION'):
+                self.max_seg_duration = line.split(':')[1]
+
+            elif line.startswith('#EXT-X-KEY'):
+                key = Key()
+                key.raw_line = line
+                info = parse_m3u8_line(line)
+                key.url = info.get('URI')
+                key.method = info.get('METHOD')
+                key.iv = info.get('IV')
+                if key.method and key.url:
+                    if key.url.startswith('skd://'):
+                        # replace skd:// with https://
+                        key.url = key.url.replace('skd://', 'https://')
+
+                    key.url = urljoin(self.url, key.url)
+                    self.encrypted = True
+                    self.encryption_type = key.method
+                    self.current_key = key
+
+            # stream #EXTINF tag must be followed by stream url
+            elif line.startswith('#EXTINF'):
+                try:
+                    self.seg_duration = float(line.split(':')[1].split(',')[0])
+                    self.total_duration += self.seg_duration
+                except:
+                    pass
+
+                next_line = lines[i + 1]
+                seg = Segment()
+                seg.url = next_line if not next_line.startswith('#') else None
+                seg.duration = self.seg_duration
+                seg.key = copy.copy(self.current_key)
+
+                if seg.url:
+                    if seg.url.startswith('skd://'):
+                        # replace skd:// with https://
+                        seg.url = seg.url.replace('skd://', 'https://')
+
+                    seg.url = urljoin(self.url, seg.url)
+                    self.segments.append(seg)
+
+            elif line.startswith('#EXT-X-ENDLIST'):
+                # print('end of playlist')
+                break
+
+        # naming
+        for i, seg in enumerate(self.segments):
+            seg.name = os.path.join(self.d.temp_folder, f'{self.stream_type}_seg_{i + 1}.ts')
+
+            if seg.key:
+                seg.key.name = f'{seg.name}.key'
+
+    def summary(self):
+        print('M3u8 playlist')
+        print('url:', self.url)
+        print('media duration:', self.total_duration // 60, 'minutes')
+        print('Encryption:', self.encryption_type)
+        print('Number of segments:', len(self.segments))
+
+        for seg in self.segments:
+            print(seg)
+
+    def create_m3u8_doc(self, segments):
+        lines = []
+
+        # start of playlist
+        lines.append('#EXTM3U')
+
+        # general tags
+        lines.append(f'#EXT-X-VERSION:{self.playlist_version}')
+        lines.append(f'#EXT-X-PLAYLIST-TYPE:{self.playlist_type}')
+        lines.append(f'#EXT-X-TARGETDURATION:{self.max_seg_duration}')
+        lines.append(f'#EXT-X-MEDIA-SEQUENCE:{self.media_sequence}')
+
+        # segments
+        for seg in segments:
+            if seg.key:
+                lines.append(seg.key.create_line())
+            lines.append(f'#EXTINF:{seg.duration},')
+            lines.append(seg.url)
+
+        # end of playlist
+        lines.append('#EXT-X-ENDLIST')
+
+        m3u8_doc = '\n'.join(lines)
+        # print(m3u8_doc)
+        return m3u8_doc
+
+    def create_remote_m3u8_doc(self):
+        return self.create_m3u8_doc(self.segments)
+
+    def create_local_m3u8_doc(self):
+        segments = copy.deepcopy(self.segments)
+        for seg in segments:
+            seg.url = seg.name.replace('\\', '/')
+
+            if seg.key:
+                seg.key.url = seg.key.name.replace('\\', '/')
+
+        return self.create_m3u8_doc(segments)
+
+    def create_segment_list(self):
+
+        merge = 'encrypted' not in self.d.subtype_list  # merge non-encrypted streams only
+        temp_file = self.d.temp_file if self.stream_type == 'video' else self.d.audio_file
+
+        segment_list = []
+        segments = self.segments.copy()
+
+        # Segment(name=seg_name, num=i, range=None, size=0, url=abs_url, tempfile=d.temp_file, merge=merge)
+        for i, seg in enumerate(segments):
+            seg_key_pair = [seg]
+            if seg.key:
+                seg_key_pair.append(seg.key)
+
+            for segment in seg_key_pair:
+                segment.num = i
+                segment.range = None
+                segment.size = 0
+                segment.tempfile = temp_file
+                segment.merge = merge
+                segment_list.append(segment)
+
+        return segment_list
+
+
+
+
 
 
 

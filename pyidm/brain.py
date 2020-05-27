@@ -14,7 +14,8 @@ from .video import merge_video_audio, unzip_ffmpeg, pre_process_hls, post_proces
     convert_audio, download_subtitles  # unzip_ffmpeg required here for ffmpeg callback
 from . import config
 from .config import Status, active_downloads, APP_NAME
-from .utils import (log, size_format, popup, notify, delete_folder, delete_file, rename_file, load_json, save_json)
+from .utils import (log, size_format, popup, notify, delete_folder, delete_file, rename_file, load_json, save_json,
+                    print_object)
 from .worker import Worker
 from .downloaditem import Segment
 
@@ -48,6 +49,8 @@ def brain(d=None, downloader=None):
         except Exception as e:
             d.status = Status.error
             log('pre_process_hls()> error: ', e, showpopup=True)
+            if config.TEST_MODE:
+                raise e
             return
     else:
         # for non hls videos and normal files
@@ -278,6 +281,8 @@ def file_manager(d, keep_segments=False):
 
             except Exception as e:
                 log('failed to merge segment', seg.name, ' - ', e)
+                if config.TEST_MODE:
+                    raise e
 
         # all segments already merged
         if not job_list:
