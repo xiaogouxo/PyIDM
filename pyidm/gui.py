@@ -2201,7 +2201,8 @@ class MainWindow:
                         pass
 
                     # update playlist menu, only videos names, there is no videos qualities yet
-                    self.update_pl_menu()
+                    # self.update_pl_menu()
+                    execute_command('update_pl_menu')
 
                     # user notification for big playlist
                     if config.process_playlist and playlist_length > config.big_playlist_length:
@@ -2278,7 +2279,8 @@ class MainWindow:
                         self.playlist = [vid]
 
                         # update playlist menu
-                        self.update_pl_menu()
+                        execute_command('update_pl_menu')
+                        # self.update_pl_menu()
 
                         # get thumbnail
                         Thread(target=vid.get_thumbnail, daemon=True).start()
