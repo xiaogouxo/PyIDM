@@ -258,7 +258,7 @@ class MainWindow:
              ],
 
             # format id
-            [sg.T(' ' * 300, key='format_id', font='any 9', pad=(5, 0))],
+            [sg.T(' ' * 300, key='format_id', font='any 8', pad=(5, 0))],
 
             # folder
             [sg.Image(data=folder_icon),
@@ -2384,8 +2384,8 @@ class MainWindow:
             # update video's selected stream
             self.video.select_stream(index=selected_index, update=True)
 
-            # display format Id
-            self.window['format_id']('Format Id: ' + self.video.selected_stream.format_id)
+            # display selected stream name including format Id
+            self.window['format_id'](self.video.selected_stream.name)
 
             # update gui
             self.update_gui()

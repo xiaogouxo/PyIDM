@@ -368,7 +368,7 @@ class Stream:
         self.extension = stream_info.get('ext', None)
         self.width = stream_info.get('width', 0)
         self.height = stream_info.get('height', 0)
-        self.fps = stream_info.get('fps', None)
+        self.fps = stream_info.get('fps', None)  # frame per second
         self.format_note = stream_info.get('format_note', '')
         self.acodec = stream_info.get('acodec', None)
         self.abr = stream_info.get('abr', 0)
@@ -413,7 +413,8 @@ class Stream:
 
     @property
     def name(self):
-        return f'   › {self.extension} - {self.quality} - {size_format(self.size)} - id:{self.format_id}'  # ¤ » ›
+        fps = f'{self.fps} fps' if self.fps else ''
+        return f'   › {self.extension} - {self.quality} - {size_format(self.size)} - id:{self.format_id} - {fps}'  # ¤ » ›
 
     @property
     def raw_name(self):
