@@ -657,15 +657,18 @@ def pre_process_hls(d):
 
         return False
 
-    log('master manifest:   ', d.manifest_url)
-    master_m3u8 = download_m3u8(d.manifest_url)
+    # maybe the playlist is a direct media playlist and not a master playlist
+    if d.manifest_url:
+        log('master manifest:   ', d.manifest_url)
+        master_m3u8 = download_m3u8(d.manifest_url)
+    else:
+        log('No master manifest')
+        master_m3u8 = None
 
-    if not master_m3u8:
-        log("Failed to get master m3u8 file, Probably expired link", showpopup=True)
-        return False
-
-    # get fresh urls
-    refresh_urls(master_m3u8, d.manifest_url)
+    if master_m3u8:
+        # master playlist doesn't have "#EXT-X-TARGETDURATION" tag, only media playlist has it
+        if not "#EXT-X-TARGETDURATION" in master_m3u8:
+            refresh_urls(master_m3u8, d.manifest_url)
 
     log('video m3u8:        ', d.eff_url)
     video_m3u8 = download_m3u8(d.eff_url)
