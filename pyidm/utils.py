@@ -686,7 +686,6 @@ def open_folder(path):
     :param path: path to folder or file
     :return: None
     """
-    print(path)
 
     try:
         if os.path.isdir(path):

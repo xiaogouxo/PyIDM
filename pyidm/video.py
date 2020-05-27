@@ -413,8 +413,8 @@ class Stream:
 
     @property
     def name(self):
-        fps = f'{self.fps} fps' if self.fps else ''
-        return f'   › {self.extension} - {self.quality} - {size_format(self.size)} - id:{self.format_id} - {fps}'  # ¤ » ›
+        fps = f' - {self.fps} fps' if self.fps else ''
+        return f'   › {self.extension} - {self.quality} - {size_format(self.size)} - id:{self.format_id}{fps}'  # ¤ » ›
 
     @property
     def raw_name(self):

@@ -2385,7 +2385,7 @@ class MainWindow:
             self.video.select_stream(index=selected_index, update=True)
 
             # display selected stream name including format Id
-            self.window['format_id'](self.video.selected_stream.name)
+            self.window['format_id'](self.video.selected_stream.name.strip())
 
             # update gui
             self.update_gui()
