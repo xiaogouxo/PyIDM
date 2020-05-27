@@ -146,24 +146,26 @@ class MainWindow:
 
         # override PySimpleGUI standard buttons' background with artwork using a decorator function
         def button_decorator(init_func):
-            def new_init_func(self, *args, **kwargs):
+            def new_init_func(btn, *args, **kwargs):
                 # pre processing arguments
                 if not kwargs.get('font'):
                     button_text = kwargs.get('button_text') or args[0] or ' '
-                    # adjust font to let text fit within button bg image boundaries
+                    # adjust font to let text fit within button bg image boundaries 66x25 pixels
                     if len(button_text) < 6:
                         kwargs['font'] = 'any 10 bold'
+                    elif len(button_text) < 7:
+                        kwargs['font'] = 'any 9 bold'
                     else:
-                        kwargs['font'] = 'any 9 bold'  # todo: measuring font will be more practical
+                        kwargs['font'] = 'any 8 bold'
 
                 # calling Button __init__() constructor
-                init_func(self, *args, **kwargs)
+                init_func(btn, *args, **kwargs)
 
                 # post process Button properties
-                if not self.ImageData:
-                    self.ImageData = default_button_icon
-                    self.ButtonColor = ('black', sg.theme_background_color())
-                    self.BorderWidth = 0
+                if not btn.ImageData:
+                    btn.ImageData = default_button_icon
+                    btn.ButtonColor = ('black', sg.theme_background_color())
+                    btn.BorderWidth = 0
 
             return new_init_func
 
@@ -3007,7 +3009,7 @@ class SubtitleWindow:
                            sg.T('*sub' if lang in self.d.subtitles else '*caption')])
 
         layout = [[sg.Column(layout, scrollable=True, vertical_scroll_only=True, size=(433, 195), key='col')],
-                  [sg.Button('Download', font='any 9 bold'), sg.Button('Close'), sg.ProgressBar(100, size=(25, 10), key='bar')]]
+                  [sg.Button('Download'), sg.Button('Close'), sg.ProgressBar(100, size=(25, 10), key='bar')]]
 
         window = sg.Window('Subtitles window', layout, finalize=True)
         self.window = window
@@ -3116,17 +3118,7 @@ class SubtitleWindow:
                 window = sg.Window('Subtitles', [[sg.T(f'Done downloading subtitles at: {self.d.folder}')], [sg.Ok(), sg.B('Show me')]])
                 event, values = window()
                 if event == 'Show me':
-                    try:
-                        if config.operating_system == 'Windows':
-
-                            os.startfile(self.d.folder)
-
-                        else:
-                            # linux
-                            cmd = f'xdg-open "{self.d.folder}"'
-                            run_command(cmd)
-                    except Exception as e:
-                        log(e)
+                    open_folder(self.d.folder)
 
                 window.close()
 
