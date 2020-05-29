@@ -139,10 +139,16 @@ def thread_manager(d):
     while True:
         time.sleep(0.1)  # a sleep time to while loop to make the app responsive
 
-        # getting jobs which might be returned from workers as failed
-        for _ in range(config.jobs_q.qsize()):
-            job = config.jobs_q.get()
-            job_list.append(job)
+        # Failed jobs returned from workers, will be used as a flag to rebuild job_list
+        if config.jobs_q.qsize() > 0:
+            # rebuild job_list
+            job_list = [seg for seg in d.segments if not seg.downloaded]
+            job_list.reverse()
+
+            # empty queue
+            for _ in range(config.jobs_q.qsize()):
+                _ = config.jobs_q.get()
+                # job_list.append(job)
 
         # allowable connections
         allowable_connections = min(config.max_connections, d.remaining_parts, limited_connections)
