@@ -221,7 +221,12 @@ class Worker:
 
     def run(self):
         # check if file completed before and exit
-        if self.seg.downloaded:
+        if self.seg.downloaded or self.seg.locked:
+            return
+
+        # check if segment in use by another worker
+        if self.seg.locked:
+            log('Seg', self.seg.basename, 'segment in use by another worker', '- worker', {self.tag}, log_level=2)
             return
 
         if not self.seg.url:
@@ -230,6 +235,9 @@ class Worker:
             return
 
         try:
+            # set lock
+            self.seg.locked = True
+
             # set options
             self.set_options()
 
@@ -280,6 +288,9 @@ class Worker:
 
                 # put back to jobs queue to try again
                 jobs_q.put(self.seg)
+
+            # remove segment lock
+            self.seg.locked = False
 
     def write(self, data):
         """write to file"""

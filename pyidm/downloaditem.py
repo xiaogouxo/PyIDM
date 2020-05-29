@@ -36,6 +36,7 @@ class Segment:
         self.seg_type = seg_type
         self.merge = merge
         self.key = None
+        self.locked = False  # set True by the worker which is currently downloading this segment
 
     @property
     def basename(self):

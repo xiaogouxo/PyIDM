@@ -233,6 +233,10 @@ def thread_manager(d):
             job_list = [seg for seg in d.segments if not seg.downloaded]
             if not job_list:
                 break
+            else:
+                # remove an orphan locks
+                for seg in job_list:
+                    seg.locked = False
 
         # Monitor active threads and add the offline to a free_workers
         for t in live_threads:
