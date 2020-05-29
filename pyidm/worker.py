@@ -12,7 +12,7 @@ import os
 import pycurl
 
 from .config import Status, error_q, jobs_q
-from .utils import log, set_curl_options, delete_file, get_headers, size_format
+from .utils import log, set_curl_options, size_format
 
 
 class Worker:
@@ -103,7 +103,6 @@ class Worker:
         # at this point file exists and resume is possible
         # case-1: segment is completed before
         if self.current_filesize == self.seg.size:
-            # self.report_completed()
             log('Seg', self.seg.basename, 'already completed before', ' - worker', self.tag, log_level=3)
             self.seg.downloaded = True
 
@@ -115,12 +114,11 @@ class Worker:
             # truncate file
             with open(self.seg.name, 'rb+') as f:
                 f.truncate(self.seg.size)
-            # self.report_completed()
             self.seg.downloaded = True
             self.d.downloaded -= self.current_filesize - self.seg.size
 
         # Case-3: Resume, with new range
-        elif self.seg.range and self.current_filesize < self.seg.size and self.seg.range:
+        elif self.seg.range and self.current_filesize < self.seg.size:
             # set new range and file open mode
             a, b = [int(x) for x in self.seg.range.split('-')]
             self.resume_range = f'{a + self.current_filesize}-{b}'
@@ -128,7 +126,7 @@ class Worker:
 
             # report
             log('Seg', self.seg.basename, 'resuming, new range:', self.resume_range,
-                'current file size:', size_format(self.current_filesize), ' - worker', self.tag, log_level=3)
+                'current segment size:', size_format(self.current_filesize), ' - worker', self.tag, log_level=3)
 
         # case-x: overwrite
         else:
@@ -145,9 +143,6 @@ class Worker:
     def report_not_completed(self):
         log('Seg', self.seg.basename, 'did not complete', '- done', size_format(self.current_filesize), '- target size:',
             size_format(self.seg.size), '- left:', size_format(self.seg.size - self.current_filesize), '- worker', self.tag, log_level=3)
-
-        # put back to jobs queue to try again
-        jobs_q.put(self.seg)
 
     def report_completed(self):
         # self.debug('worker', self.tag, 'completed', self.seg.name)
@@ -220,8 +215,8 @@ class Worker:
         if self.d.status != Status.downloading:
             return -1  # abort
 
-    def report_error(self, description='x'):
-        # report server error to thread manager, for now will just send segment name, no more data required
+    def report_error(self, description='unspecified error'):
+        # report server error to thread manager, to dynamically control connections number
         error_q.put(description)
 
     def run(self):
@@ -243,25 +238,27 @@ class Worker:
             if not os.path.isdir(target_directory):
                 os.makedirs(target_directory)  # it will also create any intermediate folders in the given path
 
-            with open(self.seg.name, self.mode) as self.file:
-                self.c.perform()
+            # open segment file
+            self.file = open(self.seg.name, self.mode, buffering=0)
 
-            # print('worker', self.tag, 'curl done')
+            # Main Libcurl operation
+            self.c.perform()
 
+            # check if download completed
             completed = self.verify()
             if completed:
                 self.report_completed()
-            else:
-                self.report_not_completed()
 
+            # get response code and check for connection errors
             response_code = self.c.getinfo(pycurl.RESPONSE_CODE)
             if response_code in range(400, 512):
                 log('server refuse connection', response_code, 'content type:', self.headers.get('content-type'), log_level=3)
 
-                # send error to thread manager
+                # send error to thread manager, it will reduce connections number to fix this error
                 self.report_error(f'server refuse connection: {response_code}')
 
         except Exception as e:
+            # this error generated when user cancel download, or write function abort
             if any(statement in repr(e) for statement in ('Failed writing body', 'Callback aborted')):
                 error = f'terminated'
                 log('Seg', self.seg.basename, error, 'worker', self.tag, log_level=3)
@@ -272,7 +269,17 @@ class Worker:
                 # report server error to thread manager
                 self.report_error(repr(e))
 
-            self.report_not_completed()
+        finally:
+            # close segment file handle
+            if self.file:
+                self.file.close()
+
+            # finally if segment not fully downloaded send it back to thread manager to try again
+            if not self.seg.downloaded:
+                self.report_not_completed()
+
+                # put back to jobs queue to try again
+                jobs_q.put(self.seg)
 
     def write(self, data):
         """write to file"""
@@ -294,16 +301,25 @@ class Worker:
                 pass
                 # log('worker:', e)
 
+        # write to file
+        self.file.write(data)
+
         self.downloaded += len(data)
 
         # report to download item
         self.d.downloaded += len(data)
 
-        # write to file
-        self.file.write(data)
-
         # check if we getting over sized
         if self.current_filesize > self.seg.size > 0:
+            log('Seg', self.seg.basename, 'oversized:',
+                'current segment size:', self.current_filesize, ' - worker', self.tag, log_level=3)
+
+            # truncate file to proper size
+            self.file.seek(0)
+            self.file.truncate(self.seg.size)
+
+            # re-adjust value of total downloaded data
+            self.d.downloaded -= self.current_filesize - self.seg.size
             return -1  # abort
 
 
