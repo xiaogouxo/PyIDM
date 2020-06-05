@@ -8,6 +8,7 @@
 """
 import base64
 import datetime
+import hashlib
 import importlib
 import os
 import io
@@ -968,12 +969,41 @@ def auto_rename(file_name, parent_folder):
     return new_name
 
 
+def calc_md5(file_name=None, buffer=None):
+    try:
+        if file_name:
+            buffer = open(file_name, 'rb')
+
+        md5 = hashlib.md5(buffer.read()).hexdigest()
+        if file_name:
+            buffer.close()
+
+        return md5
+    except Exception as e:
+        return f'calc_md5()> error, {str(e)}'
+
+
+def calc_sha256(file_name=None, buffer=None):
+    try:
+        if file_name:
+            buffer = open(file_name, 'rb')
+
+        sha256 = hashlib.sha256(buffer.read()).hexdigest()
+        if file_name:
+            buffer.close()
+
+        return sha256
+    except Exception as e:
+        return f'calc_sha256()> error, {str(e)}'
+
+
 __all__ = [
     'notify', 'handle_exceptions', 'get_headers', 'download', 'size_format', 'time_format', 'log', 'validate_file_name',
     'size_splitter', 'delete_folder', 'get_seg_size', 'run_command', 'print_object', 'update_object', 'truncate',
     'sort_dictionary', 'popup', 'compare_versions', 'translate_server_code', 'validate_url', 'open_file', 'delete_file',
     'rename_file', 'load_json', 'save_json', 'echo_stdout', 'echo_stderr', 'log_recorder', 'natural_sort', 'is_pkg_exist',
     'process_thumbnail', 'parse_bytes', 'set_curl_options', 'execute_command', 'clipboard', 'version_value',
-    'reset_queue', 'flip_visibility', 'alternative_to_gtk_clipboard', 'open_folder', 'auto_rename'
+    'reset_queue', 'flip_visibility', 'alternative_to_gtk_clipboard', 'open_folder', 'auto_rename', 'calc_md5',
+    'calc_sha256'
 
 ]
