@@ -10,12 +10,14 @@ import io
 import os
 import time
 from threading import Thread
+import concurrent.futures
+
 from .video import merge_video_audio, unzip_ffmpeg, pre_process_hls, post_process_hls, \
     convert_audio, download_subtitles  # unzip_ffmpeg required here for ffmpeg callback
 from . import config
 from .config import Status, active_downloads, APP_NAME
 from .utils import (log, size_format, popup, notify, delete_folder, delete_file, rename_file, load_json, save_json,
-                    print_object)
+                    print_object, calc_md5)
 from .worker import Worker
 from .downloaditem import Segment
 
@@ -63,7 +65,7 @@ def brain(d=None, downloader=None):
     Thread(target=file_manager, daemon=True, args=(d, keep_segments)).start()
 
     # run thread manager in a separate thread
-    Thread(target=thread_manager, daemon=True, args=(d,)).start()
+    Thread(target=thread_manager2, daemon=True, args=(d,)).start()
 
     while True:
         time.sleep(0.1)  # a sleep time to make the program responsive
@@ -90,173 +92,9 @@ def brain(d=None, downloader=None):
 
     # report quitting
     log(f'brain {d.num}: quitting')
+    if d.status == Status.completed:
+        log(calc_md5(d.target_file))
     log('=' * 106, '\n')
-
-
-def thread_manager(d):
-
-    #   soft start, connections will be gradually increase over time to reach max. number
-    #   set by user, this prevent impact on servers/network, and avoid "service not available" response
-    #   from server when exceeding multi-connection number set by server.
-    #
-    #   this technique will affect starting speed and may affect PyIDM speed testing against other download managers,
-    #   but playing fair is more important than winning the game.
-    limited_connections = 1  # used to limit connections in case of server errors
-
-    # create worker/connection list
-    workers = [Worker(tag=i, d=d) for i in range(config.max_connections)]
-
-    free_workers = [i for i in range(config.max_connections)]
-    free_workers.reverse()
-    busy_workers = []
-    live_threads = []  # hold reference to live threads
-
-    # job_list
-    job_list = [seg for seg in d.segments if not seg.downloaded]
-    # print('thread manager job list:', job_list)
-
-    # reverse job_list to process segments in proper order use pop()
-    job_list.reverse()
-
-    d.remaining_parts = len(job_list)
-
-    # error track, if receive many errors with no downloaded data, abort
-    downloaded = 0
-    total_errors = 0
-    max_errors = 100
-    errors_descriptions = set()  # store unique errors
-    error_timer = 0
-    errors_check_interval = 1  # in seconds
-
-    # speed limit
-    sl_timer = time.time()
-
-    def clear_error_q():
-        # clear error queue
-        for _ in range(config.error_q.qsize()):
-            errors_descriptions.add(config.error_q.get())
-
-    while True:
-        time.sleep(0.1)  # a sleep time to while loop to make the app responsive
-
-        # Failed jobs returned from workers, will be used as a flag to rebuild job_list
-        if config.jobs_q.qsize() > 0:
-            # rebuild job_list
-            job_list = [seg for seg in d.segments if not seg.downloaded]
-            job_list.reverse()
-
-            # empty queue
-            for _ in range(config.jobs_q.qsize()):
-                _ = config.jobs_q.get()
-                # job_list.append(job)
-
-        # allowable connections
-        allowable_connections = min(config.max_connections, d.remaining_parts, limited_connections)
-
-        # dynamic connection manager ---------------------------------------------------------------------------------
-        # check every n seconds for connection errors
-        if time.time() - error_timer >= errors_check_interval:
-            error_timer = time.time()
-            errors_num = config.error_q.qsize()
-
-            if errors_num >= 10:
-                limited_connections = limited_connections - 1 if limited_connections > 1 else 1
-                log('Thread Manager: receiving server errors, connections limited to:', limited_connections)
-
-                clear_error_q()
-            else:
-                if limited_connections < config.max_connections and limited_connections < d.remaining_parts:
-                    limited_connections = limited_connections + 1
-                    log('Thread Manager: allowable connections:', allowable_connections)
-
-            total_errors += errors_num
-            d.errors = total_errors  # update errors property of download item
-
-            if total_errors:
-                log('--------------------------------- errors ---------------------------------:', total_errors)
-                log('Errors descriptions:', errors_descriptions, log_level=3)
-
-            # reset total errors if received any data
-            if downloaded != d.downloaded:
-                downloaded = d.downloaded
-                # print('reset errors to zero')
-                total_errors = 0
-                clear_error_q()
-
-            if total_errors >= max_errors:
-                d.status = Status.error
-                log('Thread manager: too many connection errors', 'maybe network problem or expired link',
-                    start='', sep='\n', showpopup=True)
-
-        # speed limit ------------------------------------------------------------------------------------------------
-        # wait some time for dynamic connection manager to release all connections
-        if time.time() - sl_timer < config.max_connections * errors_check_interval:
-            worker_sl = (config.speed_limit // config.max_connections) if config.max_connections else 0
-        else:
-            # normal calculations
-            worker_sl = (config.speed_limit // allowable_connections) if allowable_connections else 0
-
-        # reuse a free worker to handle a job from job_list -----------------------------------------------------------
-        if free_workers and job_list and d.status == Status.downloading and len(live_threads) < allowable_connections:
-            # log('live_threads=', len(live_threads))
-            for _ in range(allowable_connections - len(live_threads)):
-                try:
-                    # sometimes download chokes when remaining only one worker, will set higher minimum speed and
-                    # less timeout for last workers batch
-                    if len(job_list) + config.jobs_q.qsize() <= allowable_connections:
-                        minimum_speed, timeout = 20 * 1024, 10  # worker will abort if speed less than 20 KB for 10 seconds
-                    else:
-                        minimum_speed = timeout = None   # default as in utils.set_curl_option
-
-                    # get available tag and  get a new job
-                    worker_num, seg = free_workers.pop(), job_list.pop()
-                    busy_workers.append(worker_num)  # add number to busy workers
-
-                    # create new threads
-                    worker = workers[worker_num]
-                    worker.reuse(seg=seg, speed_limit=worker_sl, minimum_speed=minimum_speed, timeout=timeout)
-                    t = Thread(target=worker.run, daemon=True, name=str(worker_num))
-                    live_threads.append(t)
-                    t.start()
-
-                    time.sleep(0.1)  # slow down between requests
-                except:
-                    break
-
-        # update d param
-        d.live_connections = len(live_threads)
-        d.remaining_parts = len(live_threads) + len(job_list) + config.jobs_q.qsize()
-
-        # Required check if things goes wrong
-        if len(live_threads) + len(job_list) + config.jobs_q.qsize() == 0:
-            # rebuild job_list
-            job_list = [seg for seg in d.segments if not seg.downloaded]
-            if not job_list:
-                break
-            else:
-                # remove an orphan locks
-                for seg in job_list:
-                    seg.locked = False
-
-        # Monitor active threads and add the offline to a free_workers
-        for t in live_threads:
-            if not t.is_alive():
-                worker_num = int(t.name)
-                busy_workers.remove(worker_num)
-                free_workers.append(worker_num)
-
-        # update live threads
-        live_threads = [thread for thread in live_threads if thread.is_alive()]
-
-        # monitor status change
-        if d.status != Status.downloading:
-            # print('--------------thread manager cancelled-----------------')
-            break
-
-    # update d param
-    d.live_connections = 0
-    d.remaining_parts = len(live_threads) + len(job_list) + config.jobs_q.qsize()
-    log(f'thread_manager {d.num}: quitting')
 
 
 def file_manager(d, keep_segments=False):
@@ -368,3 +206,153 @@ def file_manager(d, keep_segments=False):
 
     # Report quitting
     log(f'file_manager {d.num}: quitting')
+
+
+def thread_manager(d):
+
+    #   soft start, connections will be gradually increase over time to reach max. number
+    #   set by user, this prevent impact on servers/network, and avoid "service not available" response
+    #   from server when exceeding multi-connection number set by server.
+    limited_connections = 1  # used to limit connections in case of server errors
+
+    # create worker/connection list
+    all_workers = [Worker(tag=i, d=d) for i in range(config.max_connections)]
+    free_workers = set([w for w in all_workers])
+    threads_to_workers = dict()
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=config.max_connections)
+    num_live_threads = 0
+
+    # job_list
+    job_list = [seg for seg in d.segments if not seg.downloaded]
+
+    # reverse job_list to process segments in proper order use pop()
+    job_list.reverse()
+
+    d.remaining_parts = len(job_list)
+
+    # error track, if receive many errors with no downloaded data, abort
+    downloaded = 0
+    total_errors = 0
+    max_errors = 100
+    errors_descriptions = set()  # store unique errors
+    error_timer = 0
+    errors_check_interval = 0.25  # in seconds
+
+    # speed limit
+    sl_timer = time.time()
+
+    def clear_error_q():
+        # clear error queue
+        for _ in range(config.error_q.qsize()):
+            errors_descriptions.add(config.error_q.get())
+
+    while True:
+        time.sleep(0.001)  # a sleep time to while loop to make the app responsive
+
+        # Failed jobs returned from workers, will be used as a flag to rebuild job_list --------------------------------
+        if config.jobs_q.qsize() > 0:
+            # rebuild job_list
+            job_list = [seg for seg in d.segments if not seg.downloaded and not seg.locked]
+            job_list.reverse()
+
+            # empty queue
+            for _ in range(config.jobs_q.qsize()):
+                _ = config.jobs_q.get()
+                # job_list.append(job)
+
+        # allowable connections
+        allowable_connections = min(config.max_connections, d.remaining_parts, limited_connections)
+
+        # dynamic connection manager ---------------------------------------------------------------------------------
+        # check every n seconds for connection errors
+        if time.time() - error_timer >= errors_check_interval:
+            error_timer = time.time()
+            errors_num = config.error_q.qsize()
+
+            if errors_num >= 10:
+                limited_connections = limited_connections - 1 if limited_connections > 1 else 1
+                log('Thread Manager: received server errors, connections limited to:', limited_connections)
+
+                clear_error_q()
+            else:
+                if limited_connections < config.max_connections and limited_connections < d.remaining_parts:
+                    limited_connections = limited_connections + 1
+                    log('Thread Manager: allowable connections:', allowable_connections)
+
+            total_errors += errors_num
+            d.errors = total_errors  # update errors property of download item
+
+            if total_errors:
+                log('--------------------------------- errors ---------------------------------:', total_errors)
+                log('Errors descriptions:', errors_descriptions, log_level=3)
+
+            # reset total errors if received any data
+            if downloaded != d.downloaded:
+                downloaded = d.downloaded
+                # print('reset errors to zero')
+                total_errors = 0
+                clear_error_q()
+
+            if total_errors >= max_errors:
+                d.status = Status.error
+                log('Thread manager: too many connection errors', 'maybe network problem or expired link',
+                    start='', sep='\n', showpopup=True)
+
+        # speed limit ------------------------------------------------------------------------------------------------
+        # wait some time for dynamic connection manager to release all connections
+        if time.time() - sl_timer < config.max_connections * errors_check_interval:
+            worker_sl = (config.speed_limit // config.max_connections) if config.max_connections else 0
+        else:
+            # normal calculations
+            worker_sl = (config.speed_limit // allowable_connections) if allowable_connections else 0
+
+        # Threads ------------------------------------------------------------------------------------------------------
+        if d.status == Status.downloading and num_live_threads < allowable_connections:
+            for _ in range(min(len(free_workers), len(job_list), allowable_connections - num_live_threads)):
+                worker = free_workers.pop()
+                seg = job_list.pop()
+
+                # sometimes download chokes when remaining only one worker, will set higher minimum speed and
+                # less timeout for last workers batch
+                if len(job_list) + config.jobs_q.qsize() <= allowable_connections:
+                    minimum_speed, timeout = 20 * 1024, 10  # worker will abort if speed less than 20 KB for 10 seconds
+                else:
+                    minimum_speed = timeout = None  # default as in utils.set_curl_option
+
+                worker.reuse(seg=seg, speed_limit=worker_sl, minimum_speed=minimum_speed, timeout=timeout)
+
+                thread = executor.submit(worker.run)
+                threads_to_workers[thread] = worker
+                time.sleep(0.001)
+
+        # update d param -----------------------------------------------------------------------------------------------
+        num_live_threads = len(all_workers) - len(free_workers)
+        d.live_connections = num_live_threads
+        d.remaining_parts = d.live_connections + len(job_list) + config.jobs_q.qsize()
+
+        # check for completed threads ----------------------------------------------------------------------------------
+        for completed_thread in concurrent.futures.as_completed(threads_to_workers):
+            worker = threads_to_workers[completed_thread]
+            free_workers.add(worker)
+
+        # Required check if things goes wrong --------------------------------------------------------------------------
+        if num_live_threads + len(job_list) + config.jobs_q.qsize() == 0:
+            # rebuild job_list
+            job_list = [seg for seg in d.segments if not seg.downloaded]
+            if not job_list:
+                break
+            else:
+                # remove an orphan locks
+                for seg in job_list:
+                    seg.locked = False
+
+        # monitor status change ----------------------------------------------------------------------------------------
+        if d.status != Status.downloading:
+            # shutdown thread pool executor
+            executor.shutdown(wait=False)
+            break
+
+    # update d param
+    d.live_connections = 0
+    d.remaining_parts = num_live_threads + len(job_list) + config.jobs_q.qsize()
+    log(f'thread_manager {d.num}: quitting')
