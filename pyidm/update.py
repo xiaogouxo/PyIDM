@@ -387,8 +387,7 @@ def update_youtube_dl():
         # clean old files
         delete_folder('temp')
         log('delete temp folder')
-        log('youtube_dl module ..... done updating')
-        log('please restart Application now .................................')
+        log('youtube_dl module ..... done updating \nplease restart Application now', showpopup=True)
     except Exception as e:
         log('update_youtube_dl()> error', e)
 
