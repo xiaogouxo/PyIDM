@@ -65,7 +65,7 @@ def brain(d=None, downloader=None):
     Thread(target=file_manager, daemon=True, args=(d, keep_segments)).start()
 
     # run thread manager in a separate thread
-    Thread(target=thread_manager2, daemon=True, args=(d,)).start()
+    Thread(target=thread_manager, daemon=True, args=(d,)).start()
 
     while True:
         time.sleep(0.1)  # a sleep time to make the program responsive
