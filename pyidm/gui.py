@@ -2591,14 +2591,7 @@ class MainWindow:
 
             self.d.folder = config.download_folder
 
-            # get headers and update current download item, should use thread for responsive gui
-            Thread(target=self.d.update, args=[url], daemon=True).start()
-
-            # update status code widget, ---- it doesn't have any effect here since above line is a different thread ----
-            self.window['status_code'](f'status: {self.d.status_code}')
-
-            # check if the link contains stream videos by youtube-dl
-            Thread(target=self.youtube_func, daemon=True).start()
+            Thread(target=self.fetch_info, args=[url], daemon=True).start()
 
         except Exception as e:
             log('url_text_change()> error', e)
@@ -2606,6 +2599,15 @@ class MainWindow:
                 raise e
         finally:
             self.set_cursor('default')
+
+    def fetch_info(self, url):
+        self.d.update(url)
+
+        # use size to identify a direct download links
+        # can't depend on mime-type sent by server since it is not reliable
+        # this HLS link will send mime-type as "application" https://dash.akamaized.net/dash264/TestCasesIOP33/multiplePeriods/2/manifest_multiple_Periods_Add_Remove_AdaptationSet.mpd
+        if self.d.type == 'text/html' or self.d.size < 1024 * 1024:  # 1 MB as a max size
+            self.youtube_func()
 
     def retry(self):
         self.url = ''

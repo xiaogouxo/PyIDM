@@ -449,7 +449,7 @@ class DownloadItem:
 
     def update(self, url):
         """get headers and update properties (eff_url, name, ext, size, type, resumable, status code/description)"""
-        log('*'*20, 'update download item')
+        # log('*'*20, 'update download item')
 
         if url in ('', None):
             return
@@ -521,7 +521,7 @@ class DownloadItem:
             delete_file(self.audio_file)
 
     def build_segments(self):
-        log('-'*20, 'build segments')
+        # log('-'*20, 'build segments')
         # don't handle hls videos
         if 'hls' in self.subtype_list:
             return
