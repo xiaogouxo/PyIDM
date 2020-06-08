@@ -43,7 +43,11 @@ class Logger(object):
 def get_ytdl_options():
     ydl_opts = {'ignoreerrors': True, 'logger': Logger()}  # 'prefer_insecure': False, 'no_warnings': False,
     if config.proxy:
-        ydl_opts['proxy'] = config.proxy
+        # not sure if youtube-dl will accept socks4a, and socks5h used by libcurl to use a proxy dns, to be safe will
+        # remove it and use normal proxy names
+        proxy = config.proxy.replace('socks4a', 'socks4')
+        proxy = config.proxy.replace('socks5h', 'socks5')
+        ydl_opts['proxy'] = proxy
 
     # set Referer website
     if config.referer_url:

@@ -406,7 +406,7 @@ class MainWindow:
                       disabled=False if config.speed_limit else True, enable_events=True),
              sg.T('0', size=(30, 1), key='current_speed_limit'),
              sg.T('*ex: 512 KB or 5 MB', font='any 8')],
-            [sg.T('', font='any 1')],  # spacer
+            # [sg.T('', font='any 1')],  # spacer
             [sg.Text('Max concurrent downloads:      '),
              sg.Combo(values=[x for x in range(1, 101)], size=(5, 1), enable_events=True,
                       key='max_concurrent_downloads', default_value=config.max_concurrent_downloads)],
@@ -425,6 +425,7 @@ class MainWindow:
              sg.T(config.proxy if config.proxy else '_no proxy_', key='current_proxy_value',
                   size=(100, 1), font='any 9'),
              ],
+            [sg.Checkbox('Use proxy DNS', default=config.use_proxy_dns, key='use_proxy_dns', enable_events=True)],
             [sg.T('', font='any 1')],  # spacer
 
             [sg.Checkbox('Website Auth: ', default=config.use_web_auth, key='use_web_auth', enable_events=True),
@@ -1448,7 +1449,7 @@ class MainWindow:
                 if mc > 0:
                     config.max_connections = mc
 
-            elif event in ('raw_proxy', 'http', 'https', 'socks4', 'socks5', 'proxy_type', 'enable_proxy'):
+            elif event in ('raw_proxy', 'http', 'https', 'socks4', 'socks5', 'proxy_type', 'enable_proxy', 'use_proxy_dns'):
                 self.set_proxy()
 
             elif event in ('use_referer', 'referer_url'):
@@ -2768,6 +2769,8 @@ class MainWindow:
         enable_proxy = self.window['enable_proxy'].get()
         config.enable_proxy = enable_proxy
 
+        config.use_proxy_dns = self.window['use_proxy_dns'].get()
+
         # enable disable proxy entry text
         self.window['raw_proxy'](disabled=not enable_proxy)
 
@@ -2782,6 +2785,11 @@ class MainWindow:
 
         # proxy type
         config.proxy_type = self.window['proxy_type'].get()
+
+        # proxy dns
+        if config.use_proxy_dns:
+            config.proxy_type = config.proxy_type.replace('socks4', 'socks4a')
+            config.proxy_type = config.proxy_type.replace('socks5', 'socks5h')
 
         if raw_proxy:
             raw_proxy = raw_proxy.split('://')[-1]
