@@ -105,6 +105,7 @@ def set_curl_options(c):
     c.setopt(pycurl.NOSIGNAL, 1)  # option required for multithreading safety
     c.setopt(pycurl.NOPROGRESS, 1)
     c.setopt(pycurl.CAINFO, certifi.where())  # for https sites and ssl cert handling
+    c.setopt(pycurl.PROXY_CAINFO, certifi.where())
 
     # time out
     c.setopt(pycurl.CONNECTTIMEOUT, 10)  # limits the connection phase, it has no impact once it has connected.
@@ -426,7 +427,9 @@ def delete_file(file, verbose=False):
 def rename_file(oldname=None, newname=None, verbose=False):
     if oldname == newname:
         return True
-
+    elif os.path.isfile(newname):
+        log('rename_file()>  destination file already exist')
+        return False
     try:
         os.rename(oldname, newname)
         log('done renaming file:', oldname, '... to:', newname)
@@ -997,6 +1000,32 @@ def calc_sha256(file_name=None, buffer=None):
         return f'calc_sha256()> error, {str(e)}'
 
 
+def get_range_list(file_size):
+    """
+    return a list of ranges depend on config.segment_size and config.max_connections
+    :param file_size: file size
+    :return: list of ranges i.e. [[0, 100], [101, 2000], ... ]
+    """
+
+    if file_size == 0:
+        return [None]
+
+    range_list = []  # size_splitter(self.size, self.segment_size)
+    max_seg_nums = file_size // config.segment_size or 1
+    seg_nums = min(max_seg_nums, config.max_connections)
+    seg_size = file_size // seg_nums
+
+    start = 0
+    end = 0
+    for i in range(seg_nums):
+        start = 0 if i == 0 else start + seg_size
+        end = start + seg_size - 1 if i < seg_nums - 1 else file_size - 1
+
+        range_list.append([start, end])
+
+    return range_list
+
+
 __all__ = [
     'notify', 'handle_exceptions', 'get_headers', 'download', 'size_format', 'time_format', 'log', 'validate_file_name',
     'size_splitter', 'delete_folder', 'get_seg_size', 'run_command', 'print_object', 'update_object', 'truncate',
@@ -1004,6 +1033,6 @@ __all__ = [
     'rename_file', 'load_json', 'save_json', 'echo_stdout', 'echo_stderr', 'log_recorder', 'natural_sort', 'is_pkg_exist',
     'process_thumbnail', 'parse_bytes', 'set_curl_options', 'execute_command', 'clipboard', 'version_value',
     'reset_queue', 'flip_visibility', 'alternative_to_gtk_clipboard', 'open_folder', 'auto_rename', 'calc_md5',
-    'calc_sha256'
+    'calc_sha256', 'get_range_list'
 
 ]

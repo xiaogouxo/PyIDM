@@ -43,7 +43,7 @@ class Worker:
 
     @property
     def current_filesize(self):
-        return self.start_size + self.downloaded
+        return self.seg.current_size  # self.start_size + self.downloaded
 
     def reuse(self, seg=None, speed_limit=0, minimum_speed=None, timeout=None):
         """Recycle same object again, better for performance as recommended by curl docs"""
@@ -120,8 +120,8 @@ class Worker:
         # Case-3: Resume, with new range
         elif self.seg.range and self.current_filesize < self.seg.size:
             # set new range and file open mode
-            a, b = [int(x) for x in self.seg.range.split('-')]
-            self.resume_range = f'{a + self.current_filesize}-{b}'
+            a, b = self.seg.range
+            self.resume_range = [a + self.current_filesize, b]
             self.mode = 'ab'  # open file for append
 
             # report
@@ -164,7 +164,7 @@ class Worker:
 
         range_ = self.resume_range or self.seg.range
         if range_:
-            self.c.setopt(pycurl.RANGE, range_)  # download segment only not the whole file
+            self.c.setopt(pycurl.RANGE, f'{range_[0]}-{range_[1]}')  # download segment only not the whole file
 
         self.c.setopt(pycurl.NOPROGRESS, 0)  # will use a progress function
 
@@ -321,16 +321,13 @@ class Worker:
         self.d.downloaded += len(data)
 
         # check if we getting over sized
-        if self.current_filesize > self.seg.size > 0:
+        if self.seg.current_size > self.seg.size > 0:
             log('Seg', self.seg.basename, 'oversized:',
                 'current segment size:', self.current_filesize, ' - worker', self.tag, log_level=3)
 
-            # truncate file to proper size
-            self.file.seek(0)
-            self.file.truncate(self.seg.size)
-
             # re-adjust value of total downloaded data
             self.d.downloaded -= self.current_filesize - self.seg.size
+            self.report_completed()
             return -1  # abort
 
 

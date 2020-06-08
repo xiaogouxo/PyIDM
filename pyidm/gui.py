@@ -381,10 +381,10 @@ class MainWindow:
             [sg.Checkbox("Show video Thumbnail", key='show_thumbnail', default=config.show_thumbnail,
                          enable_events=True)],
 
-            [sg.Text('Segment size:  '), sg.Input(default_text=size_format(config.segment_size), size=(10, 1),
-                                                  enable_events=True, key='segment_size'),
-             sg.Text(f'Current value: {size_format(config.segment_size)}', size=(30, 1), key='seg_current_value'),
-             sg.T('*ex: 512 KB or 5 MB', font='any 8')],
+            # [sg.Text('Segment size:  '), sg.Input(default_text=size_format(config.segment_size), size=(10, 1),
+            #                                       enable_events=True, key='segment_size'),
+            #  sg.Text(f'Current value: {size_format(config.segment_size)}', size=(30, 1), key='seg_current_value'),
+            #  sg.T('*ex: 512 KB or 5 MB', font='any 8')],
 
             [sg.Checkbox('Playlist: Fetch all videos info in advance - *not recommended!!* -', default=config.process_playlist,
                          enable_events=True, key='process_playlist')],
@@ -488,9 +488,11 @@ class MainWindow:
             [sg.T('')],
             [sg.T('Developer options: "*you should know what you are doing before modifying these options!"')],
             [sg.Checkbox('keep temp files / folders after done downloading for debugging.',
-                         default=True if config.keep_temp else False, key='keep_temp', enable_events=True, )],
+                         default=config.keep_temp, key='keep_temp', enable_events=True, )],
             [sg.Checkbox('Re-raise all caught exceptions / errors for debugging "Application will crash on any Error"',
-                         default=True if config.TEST_MODE else False, key='TEST_MODE', enable_events=True,)],
+                         default=config.TEST_MODE, key='TEST_MODE', enable_events=True,)],
+            [sg.Checkbox('Show "MD5 and SHA256" checksums for downloaded files in log',
+                         default=config.checksum, key='checksum', enable_events=True, )],
         ]
 
         # layout ----------------------------------------------------------------------------------------------------
@@ -1354,25 +1356,25 @@ class MainWindow:
             elif event == 'auto_rename':
                 config.auto_rename = values['auto_rename']
 
-            elif event == 'segment_size':
-                user_input = values['segment_size']
-
-                # if no units entered will assume it KB
-                try:
-                    _ = int(user_input)  # will succeed if it has no string
-                    user_input = f'{user_input} KB'
-                except:
-                    pass
-
-                seg_size = parse_bytes(user_input)
-
-                # set non valid values or zero to default
-                if not seg_size:
-                    seg_size = config.DEFAULT_SEGMENT_SIZE
-
-                config.segment_size = seg_size
-                self.window['seg_current_value'](f'current value: {size_format(config.segment_size)}')
-                self.d.segment_size = seg_size
+            # elif event == 'segment_size':
+            #     user_input = values['segment_size']
+            #
+            #     # if no units entered will assume it KB
+            #     try:
+            #         _ = int(user_input)  # will succeed if it has no string
+            #         user_input = f'{user_input} KB'
+            #     except:
+            #         pass
+            #
+            #     seg_size = parse_bytes(user_input)
+            #
+            #     # set non valid values or zero to default
+            #     if not seg_size:
+            #         seg_size = config.DEFAULT_SEGMENT_SIZE
+            #
+            #     config.segment_size = seg_size
+            #     self.window['seg_current_value'](f'current value: {size_format(config.segment_size)}')
+            #     self.d.segment_size = seg_size
 
             elif event == 'sett_folder':
                 selected = values['sett_folder']
@@ -1513,6 +1515,9 @@ class MainWindow:
 
             elif event == 'TEST_MODE':
                 config.TEST_MODE = values['TEST_MODE']
+
+            elif event == 'checksum':
+                config.checksum = values['checksum']
 
             # log ---------------------------------------------------------------------------------------------------
             elif event == 'log_level':
@@ -2870,7 +2875,7 @@ class DownloadWindow:
 
     def create_window(self):
         layout = [
-            [sg.T('', size=(55, 4), key='out')],
+            [sg.T('', size=(60, 4), key='out')],
 
             [sg.T(' ' * 120, key='percent')],
 
@@ -2884,6 +2889,7 @@ class DownloadWindow:
         self.window = sg.Window(title=self.d.name, layout=layout, finalize=True, margins=(2, 2), size=(460, 205), return_keyboard_events=True)
         self.window['progress_bar'].expand()
         self.window['percent'].expand()
+        self.window['out'].expand()
 
         # log text, disable word wrap
         # self.window['log2'].Widget.config(wrap='none')
@@ -2892,7 +2898,7 @@ class DownloadWindow:
         # trim name and folder length
         name = truncate(self.d.name, 50)
         # folder = truncate(self.d.folder, 50)
-        errors = f' ... connection errors! ... {self.d.errors}' if self.d.errors and self.d.status == Status.downloading else ''
+        errors = f' ..connection errors!.. {self.d.errors}' if self.d.errors and self.d.status == Status.downloading else ''
 
         out = f"File: {name}\n" \
               f"downloaded: {size_format(self.d.downloaded)} out of {size_format(self.d.total_size)}\n" \

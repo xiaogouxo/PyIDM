@@ -17,7 +17,7 @@ from .video import merge_video_audio, unzip_ffmpeg, pre_process_hls, post_proces
 from . import config
 from .config import Status, active_downloads, APP_NAME
 from .utils import (log, size_format, popup, notify, delete_folder, delete_file, rename_file, load_json, save_json,
-                    print_object, calc_md5)
+                    print_object, calc_md5, calc_sha256)
 from .worker import Worker
 from .downloaditem import Segment
 
@@ -33,8 +33,12 @@ def brain(d=None, downloader=None):
     else:
         d.status = Status.downloading
 
-    # reset segments
-    d.segments = []
+    # first we will remove temp files because file manager is appending segments blindly to temp file
+    delete_file(d.temp_file)
+    delete_file(d.audio_file)
+
+    # reset downloaded
+    d.downloaded = 0
 
     log('\n')
     log('=' * 106)
@@ -58,8 +62,11 @@ def brain(d=None, downloader=None):
         # for non hls videos and normal files
         keep_segments = True  # False
 
-    # prepare download item for download
-    d.prepare_for_downloading()
+        # build segments
+        d.build_segments()
+
+        # load progress info
+        d.load_progress_info()
 
     # run file manager in a separate thread
     Thread(target=file_manager, daemon=True, args=(d, keep_segments)).start()
@@ -92,34 +99,57 @@ def brain(d=None, downloader=None):
 
     # report quitting
     log(f'brain {d.num}: quitting')
+
     if d.status == Status.completed:
-        log(calc_md5(d.target_file))
+        if config.checksum:
+            log('MD5:', calc_md5(file_name=d.target_file))
+            log('SHA256:', calc_sha256(file_name=d.target_file))
+
+        # uncomment to debug segments ranges
+        # segments = sorted([seg for seg in d.segments], key=lambda seg: seg.range[0])
+        # print('d.size:', d.size)
+        # for seg in segments:
+        #     print(seg.basename, seg.range, seg.range[1] - seg.range[0], seg.size, seg.remaining)
+
     log('=' * 106, '\n')
 
 
 def file_manager(d, keep_segments=False):
+    # create temp files
+    temp_files = set([seg.tempfile for seg in d.segments])
+    for file in temp_files:
+        open(file, 'ab').close()
 
     while True:
         time.sleep(0.1)
 
         job_list = [seg for seg in d.segments if not seg.completed]
+
         # print(job_list)
 
         for seg in job_list:
-            # process segments in order
 
-            if seg.completed:  # skip completed segment
-                continue
+            # for segments which have no range, it must be appended to temp file in order otherwise final file will be
+            # corrupted, therefore if the first non completed segment is not "downloaded", will exit loop
+            if not seg.downloaded:
+                if not seg.range:
+                    break
+                else:
+                    continue
 
-            if not seg.downloaded:  # if the first non completed segments is not downloaded will exit for loop
-                break
-
-            # append downloaded segment to temp file, mark as completed, then delete it.
+            # append downloaded segment to temp file, mark as completed
             try:
                 if seg.merge:
-                    with open(seg.tempfile, 'ab') as trgt_file:
-                        with open(seg.name, 'rb') as src_file:
-                            trgt_file.write(src_file.read())
+                    if seg.range:
+                        # use 'rb+' mode if we use seek, 'ab' doesn't work, but it will raise error if file doesn't exist
+                        with open(seg.tempfile, 'rb+') as trgt_file:
+                            with open(seg.name, 'rb') as src_file:
+                                trgt_file.seek(seg.range[0])
+                                trgt_file.write(src_file.read(seg.size))
+                    else:
+                        with open(seg.tempfile, 'ab') as trgt_file:
+                            with open(seg.name, 'rb') as src_file:
+                                trgt_file.write(src_file.read())
 
                 seg.completed = True
                 log('completed segment: ',  seg.basename)
@@ -213,7 +243,7 @@ def thread_manager(d):
     #   soft start, connections will be gradually increase over time to reach max. number
     #   set by user, this prevent impact on servers/network, and avoid "service not available" response
     #   from server when exceeding multi-connection number set by server.
-    limited_connections = 1  # used to limit connections in case of server errors
+    limited_connections = 1
 
     # create worker/connection list
     all_workers = [Worker(tag=i, d=d) for i in range(config.max_connections)]
@@ -233,10 +263,11 @@ def thread_manager(d):
     # error track, if receive many errors with no downloaded data, abort
     downloaded = 0
     total_errors = 0
-    max_errors = 100
+    max_errors = 5000
     errors_descriptions = set()  # store unique errors
     error_timer = 0
-    errors_check_interval = 0.25  # in seconds
+    error_timer2 = 0
+    errors_check_interval = 0.2  # in seconds
 
     # speed limit
     sl_timer = time.time()
@@ -245,6 +276,14 @@ def thread_manager(d):
         # clear error queue
         for _ in range(config.error_q.qsize()):
             errors_descriptions.add(config.error_q.get())
+
+    def on_completion_callback(future):
+        """add worker to free workers once thread is completed, it will be called by future.add_done_callback()"""
+        try:
+            free_worker= threads_to_workers[future]
+            free_workers.add(free_worker)
+        except:
+            pass
 
     while True:
         time.sleep(0.001)  # a sleep time to while loop to make the app responsive
@@ -260,8 +299,18 @@ def thread_manager(d):
                 _ = config.jobs_q.get()
                 # job_list.append(job)
 
+        # create new workers if user increases max_connections while download is running
+        if config.max_connections > len(all_workers):
+            extra_num = config.max_connections - len(all_workers)
+            index = len(all_workers)
+            for i in range(extra_num):
+                index += i
+                worker = Worker(tag=index, d=d)
+                all_workers.append(worker)
+                free_workers.add(worker)
+
         # allowable connections
-        allowable_connections = min(config.max_connections, d.remaining_parts, limited_connections)
+        allowable_connections = min(config.max_connections, limited_connections)
 
         # dynamic connection manager ---------------------------------------------------------------------------------
         # check every n seconds for connection errors
@@ -269,22 +318,22 @@ def thread_manager(d):
             error_timer = time.time()
             errors_num = config.error_q.qsize()
 
-            if errors_num >= 10:
-                limited_connections = limited_connections - 1 if limited_connections > 1 else 1
-                log('Thread Manager: received server errors, connections limited to:', limited_connections)
-
-                clear_error_q()
-            else:
-                if limited_connections < config.max_connections and limited_connections < d.remaining_parts:
-                    limited_connections = limited_connections + 1
-                    log('Thread Manager: allowable connections:', allowable_connections)
-
             total_errors += errors_num
             d.errors = total_errors  # update errors property of download item
 
             if total_errors:
                 log('--------------------------------- errors ---------------------------------:', total_errors)
                 log('Errors descriptions:', errors_descriptions, log_level=3)
+
+            if total_errors >= 10 and limited_connections > 1:
+                limited_connections -= 1
+                log('Thread Manager: received server errors, connections limited to:', limited_connections)
+
+            else:
+                if limited_connections < config.max_connections and time.time() - error_timer2 >= 1:
+                    error_timer2 = time.time()
+                    limited_connections += 1
+                    log('Thread Manager: allowable connections:', limited_connections)
 
             # reset total errors if received any data
             if downloaded != d.downloaded:
@@ -307,33 +356,54 @@ def thread_manager(d):
             worker_sl = (config.speed_limit // allowable_connections) if allowable_connections else 0
 
         # Threads ------------------------------------------------------------------------------------------------------
-        if d.status == Status.downloading and num_live_threads < allowable_connections:
-            for _ in range(min(len(free_workers), len(job_list), allowable_connections - num_live_threads)):
-                worker = free_workers.pop()
-                seg = job_list.pop()
-
-                # sometimes download chokes when remaining only one worker, will set higher minimum speed and
-                # less timeout for last workers batch
-                if len(job_list) + config.jobs_q.qsize() <= allowable_connections:
-                    minimum_speed, timeout = 20 * 1024, 10  # worker will abort if speed less than 20 KB for 10 seconds
+        if d.status == Status.downloading:
+            if free_workers and num_live_threads < allowable_connections:
+                seg = None
+                if job_list:
+                    seg = job_list.pop()
                 else:
-                    minimum_speed = timeout = None  # default as in utils.set_curl_option
+                    # share segments and help other workers
+                    remaining_segs = [seg for seg in d.segments if seg.remaining > config.segment_size]
+                    remaining_segs = sorted(remaining_segs, key=lambda seg: seg.remaining)
+                    # log('x'*20, 'check remaining')
 
-                worker.reuse(seg=seg, speed_limit=worker_sl, minimum_speed=minimum_speed, timeout=timeout)
+                    if remaining_segs:
+                        current_seg = remaining_segs.pop()
+                        size = current_seg.remaining // 2
+                        end = current_seg.range[1]
+                        current_seg.range = [current_seg.range[0], current_seg.range[0] + size]
 
-                thread = executor.submit(worker.run)
-                threads_to_workers[thread] = worker
-                time.sleep(0.001)
+                        # create new segment
+                        start = current_seg.range[1] + 1
+                        i = len(d.segments)
+                        seg = Segment(name=os.path.join(d.temp_folder, str(i)), url=d.eff_url,
+                                      tempfile=current_seg.tempfile, range=[start, end])
+
+                        # add to segments
+                        d.segments.append(seg)
+                        print('-' * 20,
+                              f'new segment {i} created from {current_seg.basename} with range {current_seg.range}')
+
+                if seg and not seg.downloaded and not seg.locked:
+                    worker = free_workers.pop()
+                    # sometimes download chokes when remaining only one worker, will set higher minimum speed and
+                    # less timeout for last workers batch
+                    if len(job_list) + config.jobs_q.qsize() <= allowable_connections:
+                        minimum_speed, timeout = 20 * 1024, 10  # worker will abort if speed less than 20 KB for 10 seconds
+                    else:
+                        minimum_speed = timeout = None  # default as in utils.set_curl_option
+
+                    worker.reuse(seg=seg, speed_limit=worker_sl, minimum_speed=minimum_speed, timeout=timeout)
+
+                    thread = executor.submit(worker.run)
+                    thread.add_done_callback(on_completion_callback)
+                    threads_to_workers[thread] = worker
+                    # time.sleep(0.001)
 
         # update d param -----------------------------------------------------------------------------------------------
         num_live_threads = len(all_workers) - len(free_workers)
         d.live_connections = num_live_threads
         d.remaining_parts = d.live_connections + len(job_list) + config.jobs_q.qsize()
-
-        # check for completed threads ----------------------------------------------------------------------------------
-        for completed_thread in concurrent.futures.as_completed(threads_to_workers):
-            worker = threads_to_workers[completed_thread]
-            free_workers.add(worker)
 
         # Required check if things goes wrong --------------------------------------------------------------------------
         if num_live_threads + len(job_list) + config.jobs_q.qsize() == 0:
