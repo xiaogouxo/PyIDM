@@ -65,8 +65,8 @@ def brain(d=None, downloader=None):
         # build segments
         d.build_segments()
 
-        # load progress info
-        d.load_progress_info()
+    # load progress info
+    d.load_progress_info()
 
     # run file manager in a separate thread
     Thread(target=file_manager, daemon=True, args=(d, keep_segments)).start()
@@ -263,7 +263,7 @@ def thread_manager(d):
     # error track, if receive many errors with no downloaded data, abort
     downloaded = 0
     total_errors = 0
-    max_errors = 5000
+    max_errors = 500
     errors_descriptions = set()  # store unique errors
     error_timer = 0
     error_timer2 = 0
@@ -325,6 +325,8 @@ def thread_manager(d):
 
             total_errors += errors_num
             d.errors = total_errors  # update errors property of download item
+
+            clear_error_q()
 
             if total_errors:
                 log('--------------------------------- errors ---------------------------------:', total_errors)
