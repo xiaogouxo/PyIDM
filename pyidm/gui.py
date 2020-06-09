@@ -494,6 +494,8 @@ class MainWindow:
                          default=config.TEST_MODE, key='TEST_MODE', enable_events=True,)],
             [sg.Checkbox('Show "MD5 and SHA256" checksums for downloaded files in log',
                          default=config.checksum, key='checksum', enable_events=True, )],
+            [sg.Checkbox('Use ThreadPoolExecutor instead of individual threads',
+                         default=config.use_thread_pool_executor, key='use_thread_pool_executor', enable_events=True, )],
         ]
 
         # layout ----------------------------------------------------------------------------------------------------
@@ -1519,6 +1521,9 @@ class MainWindow:
 
             elif event == 'checksum':
                 config.checksum = values['checksum']
+
+            elif event == 'use_thread_pool_executor':
+                config.use_thread_pool_executor = values['use_thread_pool_executor']
 
             # log ---------------------------------------------------------------------------------------------------
             elif event == 'log_level':

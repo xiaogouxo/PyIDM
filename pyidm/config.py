@@ -109,6 +109,7 @@ ytdl_abort = False
 # advanced
 keep_temp = False  # keep temp files / folders after done downloading for debugging
 checksum = False  # calculate checksums for completed files MD5 and SHA256
+use_thread_pool_executor = False
 
 # -------------------------------------------------------------------------------------
 
@@ -155,7 +156,7 @@ settings_keys = ['current_theme', 'monitor_clipboard', 'show_download_window', '
                  'update_frequency', 'last_update_check', 'proxy', 'proxy_type', 'raw_proxy', 'enable_proxy',
                  'log_level', 'download_folder', 'manually_select_dash_audio', 'use_referer', 'referer_url',
                  'close_action', 'process_playlist', 'keep_temp', 'auto_rename', 'dynamic_theme_change', 'checksum',
-                 'use_proxy_dns']
+                 'use_proxy_dns', 'use_thread_pool_executor']
 
 
 # -------------------------------------------------------------------------------------

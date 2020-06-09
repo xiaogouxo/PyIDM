@@ -272,6 +272,8 @@ def thread_manager(d):
     # speed limit
     sl_timer = time.time()
 
+    log('Thread Manager()> concurrency method:', 'ThreadPoolExecutor' if config.use_thread_pool_executor else 'Individual Threads')
+
     def clear_error_q():
         # clear error queue
         for _ in range(config.error_q.qsize()):
@@ -280,7 +282,7 @@ def thread_manager(d):
     def on_completion_callback(future):
         """add worker to free workers once thread is completed, it will be called by future.add_done_callback()"""
         try:
-            free_worker= threads_to_workers[future]
+            free_worker = threads_to_workers.pop(future)
             free_workers.add(free_worker)
         except:
             pass
@@ -308,6 +310,9 @@ def thread_manager(d):
                 worker = Worker(tag=index, d=d)
                 all_workers.append(worker)
                 free_workers.add(worker)
+
+            # redefine executor
+            executor = concurrent.futures.ThreadPoolExecutor(max_workers=config.max_connections)
 
         # allowable connections
         allowable_connections = min(config.max_connections, limited_connections)
@@ -395,10 +400,20 @@ def thread_manager(d):
 
                     worker.reuse(seg=seg, speed_limit=worker_sl, minimum_speed=minimum_speed, timeout=timeout)
 
-                    thread = executor.submit(worker.run)
-                    thread.add_done_callback(on_completion_callback)
+                    if config.use_thread_pool_executor:
+                        thread = executor.submit(worker.run)
+                        thread.add_done_callback(on_completion_callback)
+                    else:
+                        thread = Thread(target=worker.run, daemon=True)
+                        thread.start()
                     threads_to_workers[thread] = worker
-                    # time.sleep(0.001)
+
+        # check thread completion
+        if not config.use_thread_pool_executor:
+            for thread in list(threads_to_workers.keys()):
+                if not thread.is_alive():
+                    worker = threads_to_workers.pop(thread)
+                    free_workers.add(worker)
 
         # update d param -----------------------------------------------------------------------------------------------
         num_live_threads = len(all_workers) - len(free_workers)
