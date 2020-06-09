@@ -151,7 +151,7 @@ def main():
 
         if main_window and main_window.active:
             main_window.run()
-            sleep_time = 0.01
+            sleep_time = 0.1
         else:
             main_window = None
             sleep_time = 0.5
