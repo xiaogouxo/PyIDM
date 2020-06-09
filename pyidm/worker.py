@@ -27,7 +27,6 @@ class Worker:
         self.mode = 'wb'  # file opening mode default to new write binary
 
         self.downloaded = 0
-        self.start_size = 0  # initial file size before start resuming
 
         # connection parameters
         self.c = pycurl.Curl()
@@ -43,7 +42,7 @@ class Worker:
 
     @property
     def current_filesize(self):
-        return self.seg.current_size  # self.start_size + self.downloaded
+        return self.seg.current_size
 
     def reuse(self, seg=None, speed_limit=0, minimum_speed=None, timeout=None):
         """Recycle same object again, better for performance as recommended by curl docs"""
@@ -71,7 +70,6 @@ class Worker:
         self.c.reset()
 
         # reset variables
-        self.start_size = 0
         self.file = None
         self.mode = 'wb'  # file opening mode default to new write binary
         self.downloaded = 0
@@ -80,8 +78,7 @@ class Worker:
     def check_previous_download(self):
         def overwrite():
             # reset start size and remove value from d.downloaded
-            self.d.downloaded -= self.start_size
-            self.start_size = 0
+            self.d.downloaded -= self.current_filesize
             self.mode = 'wb'
             log('Seg', self.seg.basename, 'overwrite the previous part-downloaded segment', ' - worker', self.tag,
                 log_level=3)
@@ -90,10 +87,6 @@ class Worker:
         if not os.path.exists(self.seg.name):
             self.mode = 'wb'
             return
-
-        # get start file size if this segment file partially downloaded before
-        with open(self.seg.name, 'rb') as f:
-            self.start_size = len(f.read())
 
         # if no seg.size, we will overwrite current file because resume is not possible
         if not self.seg.size:
