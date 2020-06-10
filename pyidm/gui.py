@@ -2785,16 +2785,20 @@ class MainWindow:
         config.raw_proxy = raw_proxy
 
         # proxy type
-        config.proxy_type = self.window['proxy_type'].get()
+        proxy_type = self.window['proxy_type'].get()
+
+        config.proxy_type = proxy_type
 
         # proxy dns
         if config.use_proxy_dns:
-            config.proxy_type = config.proxy_type.replace('socks4', 'socks4a')
-            config.proxy_type = config.proxy_type.replace('socks5', 'socks5h')
+            if proxy_type == 'socks4':
+                proxy_type = 'socks4a'
+            elif proxy_type == 'socks5':
+                proxy_type = 'socks5h'
 
         if raw_proxy:
             raw_proxy = raw_proxy.split('://')[-1]
-            proxy = config.proxy_type + '://' + raw_proxy
+            proxy = proxy_type + '://' + raw_proxy
         else:
             proxy = ''
 
