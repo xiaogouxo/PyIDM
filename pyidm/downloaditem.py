@@ -149,7 +149,7 @@ class DownloadItem:
         self.prev_downloaded_value = 0
         self.speed_buffer = deque()  # store some speed readings for calculating average speed afterwards
         self.speed_timer = 0
-        self.speed_refresh_rate = 1  # calculate speed every n seconds
+        self.speed_refresh_rate = 0.5  # calculate speed every n seconds
 
         # segments
         self.segments = []
@@ -434,6 +434,8 @@ class DownloadItem:
             if sizes and [seg for seg in self.segments if seg.downloaded is False and not seg.size]:
                 avg_seg_size = sum(sizes) // len(sizes)
                 total_size = avg_seg_size * len(self.segments)  # estimated
+
+        total_size = total_size or self.size
 
         return total_size
 
