@@ -1113,6 +1113,13 @@ class MainWindow:
         except Exception as e:
             log('gui> properties>', e)
 
+    def show_download_window(self, d):
+        if d not in [win.d for win in self.active_windows]:
+            self.active_windows.append(DownloadWindow(d))
+        else:
+            win = [win for win in self.active_windows if win.d == d][0]
+            win.focus()
+
     # endregion
 
     def run(self):
@@ -1272,16 +1279,7 @@ class MainWindow:
                     if self.selected_d.status != Status.downloading:
                         self.show_properties(self.selected_d)
                     else:
-                        if config.auto_close_download_window and self.selected_d.status != Status.downloading:
-                            sg.Popup('To open download window offline \n'
-                                     'go to setting tab, then uncheck "auto close download window" option', title='info')
-                        else:
-                            d = self.selected_d
-                            if d.id not in [win.d.id for win in self.active_windows]:
-                                self.active_windows.append(DownloadWindow(d=d))
-                            else:
-                                win = [win for win in self.active_windows if win.d.id == d.id][0]
-                                win.focus()
+                        self.show_download_window(self.selected_d)
 
             elif event == 'Resume All':
                 self.resume_all_downloads()
@@ -1771,7 +1769,7 @@ class MainWindow:
 
         # create download window and append to active list
         if config.show_download_window and (not silent or force_window):
-            self.active_windows.append(DownloadWindow(d))
+            self.show_download_window(d)
 
         # create and start brain in a separate thread
         Thread(target=brain, daemon=True, args=(d, downloader)).start()
@@ -1880,10 +1878,8 @@ class MainWindow:
         return v
 
     def resume_btn(self):
-        if self.selected_row_num is None:
+        if not self.selected_d or self.selected_d.status in (Status.downloading, Status.processing):
             return
-
-        # print_object(self.selected_d)
 
         self.start_download(self.selected_d, silent=True, force_window=True)
 
