@@ -163,7 +163,7 @@ class MainWindow:
 
                 # post process Button properties
                 if not btn.ImageData:
-                    btn.ImageData = default_button_icon
+                    # btn.ImageData = default_button_icon
                     btn.ButtonColor = ('black', sg.theme_background_color())
                     btn.BorderWidth = 0
 
@@ -1113,13 +1113,6 @@ class MainWindow:
         except Exception as e:
             log('gui> properties>', e)
 
-    def show_download_window(self, d):
-        if d not in [win.d for win in self.active_windows]:
-            self.active_windows.append(DownloadWindow(d))
-        else:
-            win = [win for win in self.active_windows if win.d == d][0]
-            win.focus()
-
     # endregion
 
     def run(self):
@@ -1279,7 +1272,16 @@ class MainWindow:
                     if self.selected_d.status != Status.downloading:
                         self.show_properties(self.selected_d)
                     else:
-                        self.show_download_window(self.selected_d)
+                        if config.auto_close_download_window and self.selected_d.status != Status.downloading:
+                            sg.Popup('To open download window offline \n'
+                                     'go to setting tab, then uncheck "auto close download window" option', title='info')
+                        else:
+                            d = self.selected_d
+                            if d.id not in [win.d.id for win in self.active_windows]:
+                                self.active_windows.append(DownloadWindow(d=d))
+                            else:
+                                win = [win for win in self.active_windows if win.d.id == d.id][0]
+                                win.focus()
 
             elif event == 'Resume All':
                 self.resume_all_downloads()
@@ -1559,7 +1561,7 @@ class MainWindow:
             # run one time, reason this is here not in setup, is to minimize gui loading time
             if self.one_time:
                 self.one_time = False
-                
+
                 # check availability of ffmpeg in the system or in same folder with this script
                 self.ffmpeg_check()
 
@@ -1606,6 +1608,8 @@ class MainWindow:
                 self.statusbar_timer = time.time()
                 self.set_status('')
 
+        except UnicodeDecodeError:
+            pass
         except Exception as e:
             log('Main window - Run()>', e)
             if config.TEST_MODE:
@@ -1769,7 +1773,7 @@ class MainWindow:
 
         # create download window and append to active list
         if config.show_download_window and (not silent or force_window):
-            self.show_download_window(d)
+            self.active_windows.append(DownloadWindow(d))
 
         # create and start brain in a separate thread
         Thread(target=brain, daemon=True, args=(d, downloader)).start()
@@ -1878,8 +1882,10 @@ class MainWindow:
         return v
 
     def resume_btn(self):
-        if not self.selected_d or self.selected_d.status in (Status.downloading, Status.processing):
+        if self.selected_row_num is None:
             return
+
+        # print_object(self.selected_d)
 
         self.start_download(self.selected_d, silent=True, force_window=True)
 
@@ -2785,20 +2791,16 @@ class MainWindow:
         config.raw_proxy = raw_proxy
 
         # proxy type
-        proxy_type = self.window['proxy_type'].get()
-
-        config.proxy_type = proxy_type
+        config.proxy_type = self.window['proxy_type'].get()
 
         # proxy dns
         if config.use_proxy_dns:
-            if proxy_type == 'socks4':
-                proxy_type = 'socks4a'
-            elif proxy_type == 'socks5':
-                proxy_type = 'socks5h'
+            config.proxy_type = config.proxy_type.replace('socks4', 'socks4a')
+            config.proxy_type = config.proxy_type.replace('socks5', 'socks5h')
 
         if raw_proxy:
             raw_proxy = raw_proxy.split('://')[-1]
-            proxy = proxy_type + '://' + raw_proxy
+            proxy = config.proxy_type + '://' + raw_proxy
         else:
             proxy = ''
 
@@ -3760,7 +3762,6 @@ class SysTray:
                         MenuItem("Quit", self.quit))
             self.icon = Icon('PyIDM', self.tray_icon, menu=menu)
             self.active = True
-            self.icon.run()
         except Exception as e:
             log('systray: - run() - ', e)
             self.active = False
