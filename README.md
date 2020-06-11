@@ -144,8 +144,27 @@ other download options include a wheel, zip file, or even a windows installer
 
 for linux users:
 there is no issues, since most linux distros have curl preinstalled, so pycurl will link with libcurl library to get built with no issues, checked with python versions 3.6, 3.7, and 3.8 working with no problems.
-<br>
 
+for mac users:
+if you run `pip install pycurl` command install pycurl,try to start the main window `python3 pyidm.py` may raise this error`ImportError: pycurl: libcurl link-time ssl backend (openssl) is different from compile-time ssl backend (none/other)`
+follow the steps below
+```
+# uninstall pycurl first
+pip uninstall pycurl
+export PYCURL_SSL_LIBRARY=openssl
+export LDFLAGS=-L/usr/local/opt/openssl/lib
+export CPPFLAGS=-I/usr/local/opt/openssl/include
+# reinstall pycurl
+pip install pycurl --compile --no-cache-dir
+```
+if the error remains,try the steps below
+```
+# uninstall pycurl first
+pip uninstall pycurl
+# reinstall pycurl
+pip install pycurl==7.43.0.1 --global-option=build_ext --global-option="-L/usr/local/opt/openssl/lib" --global-option="-I/usr/local/opt/openssl/include"
+```
+<br>
 
 ### note for [Youtube-dl](https://github.com/ytdl-org/youtube-dl): <br>
 youtube website changes frequently, if this application failed to retrieve video/playlist data
